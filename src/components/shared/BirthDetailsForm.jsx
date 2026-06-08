@@ -19,7 +19,7 @@ export default function BirthDetailsForm({ onSubmit, submitLabel = 'Continue', i
     search(e.target.value)
   }
 
-  const handleSelectPlace = async result => {
+  const handleSelectPlace = result => {
     setPlace(result.display_name)
     setSelectedPlace(result)
     clear()
@@ -51,7 +51,7 @@ export default function BirthDetailsForm({ onSubmit, submitLabel = 'Continue', i
         <label htmlFor="bf-name" className="text-xs font-semibold text-text-2 uppercase tracking-wide">Full name</label>
         <input id="bf-name" type="text" value={name} onChange={e => setName(e.target.value)}
           className="w-full px-3 py-2 rounded-lg border border-border bg-white text-text focus:outline-none focus:border-primary"
-          placeholder="Sarthak Chhabra" required />
+          placeholder="e.g. Jane Smith" required />
       </div>
 
       <div className="flex flex-col gap-1">
