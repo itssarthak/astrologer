@@ -8,7 +8,7 @@ export function useLLM(profile, tab) {
   const [streaming, setStreaming] = useState(false)
   const [error, setError] = useState(null)
 
-  const send = useCallback(async ({ userMessage, extraContext = '' }) => {
+  const send = useCallback(async ({ userMessage, extraContext = '', onChunk }) => {
     const keyData = getApiKey()
     if (!keyData) throw new Error('No API key configured')
     if (!profile) throw new Error('No active profile')
@@ -29,7 +29,10 @@ export function useLLM(profile, tab) {
         key: keyData.key,
         messages,
         systemPrompt,
-        onChunk: chunk => { fullResponse += chunk },
+        onChunk: chunk => {
+          fullResponse += chunk
+          onChunk?.(chunk)
+        },
       })
       appendMessage(profile.id, tab, { role: 'assistant', content: fullResponse })
       return fullResponse
