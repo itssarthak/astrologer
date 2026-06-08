@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext } from 'react'
+import { useEffect, useState, useContext, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { v4 as uuidv4 } from 'uuid'
 import { PyodideContext } from '../../contexts/PyodideContext'
@@ -18,6 +18,8 @@ export default function StepComputing({ birthData }) {
   const { addProfile } = useContext(ProfilesContext)
   const [completed, setCompleted] = useState([])
   const [error, setError] = useState(null)
+  const isReadyRef = useRef(isReady)
+  isReadyRef.current = isReady
 
   useEffect(() => {
     if (!birthData) return
@@ -55,9 +57,9 @@ export default function StepComputing({ birthData }) {
   }
 
   const waitForPyodide = () => new Promise(resolve => {
-    if (isReady) { resolve(); return }
+    if (isReadyRef.current) { resolve(); return }
     const interval = setInterval(() => {
-      if (isReady) { clearInterval(interval); resolve() }
+      if (isReadyRef.current) { clearInterval(interval); resolve() }
     }, 200)
   })
 
