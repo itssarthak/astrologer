@@ -12,11 +12,11 @@ export function useProfiles() {
 
   const addProfile = useCallback(profile => {
     saveProfile(profile)
-    setProfiles(getProfiles())
     if (!getActiveProfileId()) {
       setActiveProfileId(profile.id)
       setActiveId(profile.id)
     }
+    setProfiles(getProfiles())
   }, [])
 
   const removeProfile = useCallback(id => {
