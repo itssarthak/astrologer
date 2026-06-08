@@ -10,13 +10,19 @@ const PROVIDERS = [
 export default function StepApiKey({ onNext }) {
   const [provider, setProvider] = useState('claude')
   const [key, setKey] = useState('')
+  const [saveError, setSaveError] = useState(null)
 
   const current = PROVIDERS.find(p => p.id === provider)
+  const trimmedKey = key.trim()
 
   const handleContinue = () => {
-    if (!key.trim()) return
-    saveApiKey({ provider, key: key.trim() })
-    onNext()
+    if (!trimmedKey) return
+    try {
+      saveApiKey({ provider, key: trimmedKey })
+      onNext()
+    } catch {
+      setSaveError('Could not save to browser storage. Try disabling private browsing mode.')
+    }
   }
 
   return (
@@ -30,7 +36,8 @@ export default function StepApiKey({ onNext }) {
         <label className="text-xs font-semibold text-text-2 uppercase tracking-wide">Choose provider</label>
         <div className="flex gap-2">
           {PROVIDERS.map(p => (
-            <button key={p.id} onClick={() => setProvider(p.id)}
+            <button key={p.id} onClick={() => { setProvider(p.id); setKey('') }}
+              aria-pressed={provider === p.id}
               className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
                 provider === p.id
                   ? 'border-primary bg-primary-light text-primary'
@@ -54,7 +61,9 @@ export default function StepApiKey({ onNext }) {
         How do I get an API key? →
       </a>
 
-      <button onClick={handleContinue} disabled={!key.trim()}
+      {saveError && <p className="text-xs text-red-500 text-center">{saveError}</p>}
+
+      <button onClick={handleContinue} disabled={!trimmedKey}
         className="w-full py-3 rounded-lg bg-primary text-white font-semibold hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
         Continue →
       </button>
