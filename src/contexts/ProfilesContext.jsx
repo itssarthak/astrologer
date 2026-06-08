@@ -14,6 +14,15 @@ export function ProfilesProvider({ children }) {
 
   const addProfile = useCallback(profile => {
     saveProfile(profile)
+    if (!getActiveProfileId()) {
+      setActiveProfileId(profile.id)
+      setActiveId(profile.id)
+    }
+    setProfiles(getProfiles())
+  }, [])
+
+  const updateProfile = useCallback(profile => {
+    saveProfile(profile)
     setProfiles(getProfiles())
   }, [])
 
@@ -34,7 +43,7 @@ export function ProfilesProvider({ children }) {
   }, [])
 
   return (
-    <ProfilesContext.Provider value={{ profiles, activeProfile, activeProfileId, addProfile, removeProfile, switchProfile, refreshProfiles }}>
+    <ProfilesContext.Provider value={{ profiles, activeProfile, activeProfileId, addProfile, updateProfile, removeProfile, switchProfile, refreshProfiles }}>
       {children}
     </ProfilesContext.Provider>
   )
