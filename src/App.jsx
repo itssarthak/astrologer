@@ -1,3 +1,10 @@
+import { BrowserRouter } from 'react-router-dom'
+import AppRouter from './router'
+
 export default function App() {
-  return <div className="min-h-screen bg-background">Infrastructure ready</div>
+  return (
+    <BrowserRouter>
+      <AppRouter />
+    </BrowserRouter>
+  )
 }
