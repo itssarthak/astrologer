@@ -1,4 +1,68 @@
 // src/pages/MainApp.jsx
+import { useState, useContext } from 'react'
+import { ProfilesContext } from '../contexts/ProfilesContext'
+import Sidebar from '../components/Sidebar/Sidebar'
+import TabBar from '../components/TabBar/TabBar'
+import BottomNav from '../components/TabBar/BottomNav'
+import ChatTab from '../components/Tabs/ChatTab'
+import TodayTab from '../components/Tabs/TodayTab'
+import ChartTab from '../components/Tabs/ChartTab'
+import NumbersTab from '../components/Tabs/NumbersTab'
+import MatchTab from '../components/Tabs/MatchTab'
+
+const TAB_COMPONENTS = {
+  chat: ChatTab,
+  today: TodayTab,
+  chart: ChartTab,
+  numbers: NumbersTab,
+  match: MatchTab,
+}
+
 export default function MainApp() {
-  return <div className="min-h-screen bg-background flex items-center justify-center text-muted text-sm">Loading app...</div>
+  const [activeTab, setActiveTab] = useState('chat')
+  const { activeProfile } = useContext(ProfilesContext)
+
+  const TabContent = TAB_COMPONENTS[activeTab] ?? ChatTab
+
+  return (
+    <div className="flex h-screen bg-background overflow-hidden">
+      {/* Desktop sidebar — hidden on mobile */}
+      <div className="hidden md:flex">
+        <Sidebar />
+      </div>
+
+      {/* Main content column */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Desktop profile name header */}
+        <div className="hidden md:flex items-center px-4 py-3 border-b border-border bg-surface gap-3 flex-shrink-0">
+          <span className="text-sm font-semibold text-text">{activeProfile?.name ?? '—'}</span>
+          <span className="text-xs text-muted">{activeProfile?.dob ?? ''}</span>
+        </div>
+
+        {/* Tab bar (desktop) */}
+        <div className="hidden md:flex flex-col flex-shrink-0">
+          <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+        </div>
+
+        {/* Mobile header */}
+        <div className="flex md:hidden items-center justify-between px-4 py-3 border-b border-border bg-surface flex-shrink-0">
+          <div>
+            <p className="text-sm font-semibold text-text">{activeProfile?.name ?? '—'}</p>
+            <p className="text-xs text-muted">{activeProfile?.dob ?? ''}</p>
+          </div>
+          <span className="text-xs text-muted">Ask My Astro</span>
+        </div>
+
+        {/* Tab content */}
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+          <TabContent />
+        </div>
+
+        {/* Bottom nav (mobile) */}
+        <div className="flex md:hidden flex-col flex-shrink-0">
+          <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+        </div>
+      </div>
+    </div>
+  )
 }
