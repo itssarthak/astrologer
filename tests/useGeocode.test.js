@@ -1,4 +1,4 @@
-import { renderHook, act, waitFor } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { useGeocode } from '../src/hooks/useGeocode'
 
 beforeAll(() => vi.useFakeTimers())
@@ -45,4 +45,31 @@ test('fetchTimezone calls timeapi.io', async () => {
     offset = await result.current.fetchTimezone(28.6139, 77.2090)
   })
   expect(offset).toBe(5.5)
+})
+
+test('search with short query clears results', async () => {
+  const { result } = renderHook(() => useGeocode())
+  // first add a result to state
+  global.fetch.mockResolvedValueOnce({ ok: true, json: async () => [{ display_name: 'Delhi' }] })
+  await act(async () => { result.current.search('De'); await vi.runAllTimersAsync() })
+  // then try short query
+  act(() => result.current.search('D'))
+  expect(result.current.results).toEqual([])
+})
+
+test('search sets error on fetch failure', async () => {
+  global.fetch.mockResolvedValueOnce({ ok: false })
+  const { result } = renderHook(() => useGeocode())
+  await act(async () => { result.current.search('Delhi'); await vi.runAllTimersAsync() })
+  expect(result.current.error).toBe('Geocoding failed')
+  expect(result.current.results).toEqual([])
+})
+
+test('clear empties results', async () => {
+  global.fetch.mockResolvedValueOnce({ ok: true, json: async () => [{ display_name: 'Delhi' }] })
+  const { result } = renderHook(() => useGeocode())
+  await act(async () => { result.current.search('Delhi'); await vi.runAllTimersAsync() })
+  expect(result.current.results).toHaveLength(1)
+  act(() => result.current.clear())
+  expect(result.current.results).toEqual([])
 })
