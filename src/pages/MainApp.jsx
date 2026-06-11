@@ -9,6 +9,7 @@ import TodayTab from '../components/Tabs/TodayTab'
 import ChartTab from '../components/Tabs/ChartTab'
 import NumbersTab from '../components/Tabs/NumbersTab'
 import MatchTab from '../components/Tabs/MatchTab'
+import GitHubLink from '../components/shared/GitHubLink'
 
 const TAB_COMPONENTS = {
   chat: ChatTab,
@@ -37,6 +38,7 @@ export default function MainApp() {
         <div className="hidden md:flex items-center px-4 py-3 border-b border-border bg-surface gap-3 flex-shrink-0">
           <span className="text-sm font-semibold text-text">{activeProfile?.name ?? '—'}</span>
           <span className="text-xs text-muted">{activeProfile?.dob ?? ''}</span>
+          <GitHubLink className="ml-auto" />
         </div>
 
         {/* Tab bar (desktop) */}
@@ -50,7 +52,7 @@ export default function MainApp() {
             <p className="text-sm font-semibold text-text">{activeProfile?.name ?? '—'}</p>
             <p className="text-xs text-muted">{activeProfile?.dob ?? ''}</p>
           </div>
-          <span className="text-xs text-muted">Ask My Astro</span>
+          <GitHubLink />
         </div>
 
         {/* Tab content */}

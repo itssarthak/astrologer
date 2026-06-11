@@ -48,7 +48,9 @@ test.describe('Chart tab (D1 renderer)', () => {
 
     await page.getByRole('button', { name: /^chart$/i }).first().click()
 
-    const svg = page.locator('svg').first()
+    // Target the Kundli chart specifically (viewBox 0 0 360 360) — other SVGs exist on the
+    // page now (e.g. the GitHub icon), so `svg.first()` is no longer the chart.
+    const svg = page.locator('svg[viewBox="0 0 360 360"]')
     await expect(svg).toBeVisible()
 
     // Planets from the fixture must appear in the SVG (Sun+Jupiter in H10, Moon in H6,
@@ -68,7 +70,7 @@ test.describe('Chart tab (D1 renderer)', () => {
     await page.getByRole('button', { name: /^chart$/i }).first().click()
     await page.getByRole('button', { name: /^D9$/ }).click()
     // D9 has its own ascendant + houses; the SVG should still render (no "not available")
-    await expect(page.locator('svg').first()).toBeVisible()
+    await expect(page.locator('svg[viewBox="0 0 360 360"]')).toBeVisible()
     await expect(page.getByText('D9 chart not available')).toHaveCount(0)
   })
 })

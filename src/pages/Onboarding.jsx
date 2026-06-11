@@ -5,6 +5,7 @@ import StepWelcome from '../components/Onboarding/StepWelcome'
 import StepApiKey from '../components/Onboarding/StepApiKey'
 import StepBirthDetails from '../components/Onboarding/StepBirthDetails'
 import StepComputing from '../components/Onboarding/StepComputing'
+import GitHubLink from '../components/shared/GitHubLink'
 
 const TOTAL = 4
 
@@ -16,6 +17,9 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="absolute top-4 right-4">
+        <GitHubLink />
+      </div>
       <div className="w-full max-w-md">
         <div className="flex justify-center gap-2 mb-6">
           {Array.from({ length: TOTAL }).map((_, i) => (
