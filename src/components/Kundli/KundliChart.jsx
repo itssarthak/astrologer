@@ -4,82 +4,79 @@ const ABBREV = {
   'North Node': 'Ra', 'South Node': 'Ke',
 }
 
-// North Indian 4x4 grid: cell (col, row) → house number
-// Corners: (0,0)=H12, (3,0)=H3, (0,3)=H9, (3,3)=H6
-// Center 2x2: (1,1)(2,1)(1,2)(2,2) = lagna display area (no house)
-const CELL_HOUSE = {
-  '0,0': 12, '1,0': 1, '2,0': 2, '3,0': 3,
-  '0,1': 11,                              '3,1': 4,
-  '0,2': 10,                              '3,2': 5,
-  '0,3': 9,  '1,3': 8, '2,3': 7, '3,3': 6,
+const SIGN_NUM = {
+  Aries: 1, Taurus: 2, Gemini: 3, Cancer: 4, Leo: 5, Virgo: 6,
+  Libra: 7, Scorpio: 8, Sagittarius: 9, Capricorn: 10, Aquarius: 11, Pisces: 12,
 }
 
-export default function KundliChart({ chart, size = 400 }) {
+// Traditional North Indian (diamond) chart. The 12 houses sit in FIXED positions —
+// house 1 (lagna) is always the top-centre diamond, and houses run counter-clockwise.
+// Each house is a polygon; signs rotate through them. Coordinates are fractions of the
+// square's side so the chart scales cleanly. q1..q4 are where the square's diagonals
+// cross the inner diamond's edges.
+const HOUSES = [
+  { n: 1,  pts: [[0.5, 0],   [0.75, 0.25], [0.5, 0.5],  [0.25, 0.25]], cx: 0.5,  cy: 0.25 },
+  { n: 2,  pts: [[0, 0],     [0.5, 0],     [0.25, 0.25]],              cx: 0.25, cy: 0.10 },
+  { n: 3,  pts: [[0, 0],     [0.25, 0.25], [0, 0.5]],                  cx: 0.10, cy: 0.25 },
+  { n: 4,  pts: [[0, 0.5],   [0.25, 0.25], [0.5, 0.5],  [0.25, 0.75]], cx: 0.25, cy: 0.5  },
+  { n: 5,  pts: [[0, 0.5],   [0.25, 0.75], [0, 1]],                    cx: 0.10, cy: 0.75 },
+  { n: 6,  pts: [[0, 1],     [0.25, 0.75], [0.5, 1]],                  cx: 0.25, cy: 0.90 },
+  { n: 7,  pts: [[0.5, 1],   [0.25, 0.75], [0.5, 0.5],  [0.75, 0.75]], cx: 0.5,  cy: 0.75 },
+  { n: 8,  pts: [[0.5, 1],   [0.75, 0.75], [1, 1]],                    cx: 0.75, cy: 0.90 },
+  { n: 9,  pts: [[1, 1],     [0.75, 0.75], [1, 0.5]],                  cx: 0.90, cy: 0.75 },
+  { n: 10, pts: [[1, 0.5],   [0.75, 0.75], [0.5, 0.5],  [0.75, 0.25]], cx: 0.75, cy: 0.5  },
+  { n: 11, pts: [[1, 0.5],   [0.75, 0.25], [1, 0]],                    cx: 0.90, cy: 0.25 },
+  { n: 12, pts: [[1, 0],     [0.75, 0.25], [0.5, 0]],                  cx: 0.75, cy: 0.10 },
+]
+
+export default function KundliChart({ chart, size = 360 }) {
   if (!chart) return null
 
-  const cellSize = size / 4
-  const houses = {}
-  ;(chart.houses ?? []).forEach(h => { houses[h.number] = h })
+  // Accept either a full birth chart (houses under d1Chart) or a divisional chart
+  // (houses at the top level). Index houses by their number for fixed-position lookup.
+  const houseList = chart.d1Chart?.houses ?? chart.houses ?? []
+  const byNumber = {}
+  houseList.forEach(h => { byNumber[h.number] = h })
 
-  const lagnaSign = chart.ascendant?.sign ?? chart.houses?.[0]?.sign ?? ''
+  const S = size
+  const pt = ([x, y]) => `${(x * S).toFixed(1)},${(y * S).toFixed(1)}`
 
   return (
-    <svg viewBox={`0 0 ${size} ${size}`} className="w-full max-w-sm mx-auto" style={{ maxWidth: size }}>
-      {/* Outer border */}
-      <rect x={0} y={0} width={size} height={size} fill="#fdf6ee" stroke="#e8d5b7" strokeWidth="1" />
+    <svg viewBox={`0 0 ${S} ${S}`} className="w-full mx-auto block" style={{ maxWidth: S }}>
+      {/* Outer square */}
+      <rect x={0} y={0} width={S} height={S} fill="#fdf6ee" stroke="#c45c1a" strokeWidth="1.5" />
+      {/* Diagonals (corner to corner) */}
+      <line x1={0} y1={0} x2={S} y2={S} stroke="#e8d5b7" strokeWidth="1" />
+      <line x1={S} y1={0} x2={0} y2={S} stroke="#e8d5b7" strokeWidth="1" />
+      {/* Inner diamond connecting the edge midpoints */}
+      <polygon points={`${pt([0.5, 0])} ${pt([1, 0.5])} ${pt([0.5, 1])} ${pt([0, 0.5])}`}
+        fill="none" stroke="#e8d5b7" strokeWidth="1" />
 
-      {/* Grid lines */}
-      {[1, 2, 3].map(i => (
-        <g key={i}>
-          <line x1={i * cellSize} y1={0} x2={i * cellSize} y2={size} stroke="#e8d5b7" strokeWidth="0.5" />
-          <line x1={0} y1={i * cellSize} x2={size} y2={i * cellSize} stroke="#e8d5b7" strokeWidth="0.5" />
-        </g>
-      ))}
-
-      {/* Center diamond — inner square for lagna display */}
-      <rect x={cellSize} y={cellSize} width={cellSize * 2} height={cellSize * 2} fill="#fff8f0" stroke="#e8d5b7" strokeWidth="1" />
-      {/* Diagonal crosses inside center */}
-      <line x1={cellSize} y1={cellSize} x2={cellSize * 3} y2={cellSize * 3} stroke="#e8d5b7" strokeWidth="0.5" />
-      <line x1={cellSize * 3} y1={cellSize} x2={cellSize} y2={cellSize * 3} stroke="#e8d5b7" strokeWidth="0.5" />
-
-      {/* Lagna label in center */}
-      <text x={size / 2} y={size / 2 - 8} textAnchor="middle" dominantBaseline="middle"
-        fill="#c45c1a" fontSize={cellSize * 0.18} fontWeight="600">
-        {lagnaSign}
-      </text>
-      <text x={size / 2} y={size / 2 + 10} textAnchor="middle" dominantBaseline="middle"
-        fill="#8a7060" fontSize={cellSize * 0.13}>
-        Lagna
-      </text>
-
-      {/* House cells */}
-      {Object.entries(CELL_HOUSE).map(([key, houseNum]) => {
-        const [col, row] = key.split(',').map(Number)
-        const x = col * cellSize
-        const y = row * cellSize
-        const house = houses[houseNum]
+      {HOUSES.map(({ n, cx, cy }) => {
+        const house = byNumber[n]
+        const signNum = house ? SIGN_NUM[house.sign] : null
         const occupants = house?.occupants ?? []
-        const sign = house?.sign ?? ''
+        const x = cx * S
+        const y = cy * S
+        // Sign number sits at the top of the cell; planets stack below it, clear of it.
+        const planetTop = y + S * 0.02
+        const startY = planetTop - ((occupants.length - 1) * S * 0.045)
 
         return (
-          <g key={key}>
-            {/* House number */}
-            <text x={x + 5} y={y + 13}
-              fill="#b89070" fontSize={cellSize * 0.12} fontWeight="500">
-              {houseNum}
-            </text>
-            {/* Sign name */}
-            <text x={x + cellSize / 2} y={y + cellSize * 0.38} textAnchor="middle"
-              fill="#8a7060" fontSize={cellSize * 0.13}>
-              {sign}
-            </text>
-            {/* Planet abbreviations */}
-            {occupants.slice(0, 4).map((occ, i) => (
-              <text key={i} x={x + cellSize / 2} y={y + cellSize * 0.58 + i * (cellSize * 0.19)}
-                textAnchor="middle"
-                fill="#c45c1a" fontSize={cellSize * 0.16} fontWeight="600">
+          <g key={n}>
+            {/* Rashi (sign) number for this house */}
+            {signNum != null && (
+              <text x={x} y={y - S * 0.095} textAnchor="middle" dominantBaseline="middle"
+                fill="#b89070" fontSize={S * 0.045} fontWeight="500">
+                {signNum}
+              </text>
+            )}
+            {/* Planets in this house */}
+            {occupants.slice(0, 5).map((occ, i) => (
+              <text key={i} x={x} y={startY + i * S * 0.09} textAnchor="middle" dominantBaseline="middle"
+                fill="#c45c1a" fontSize={S * 0.05} fontWeight="600">
                 {ABBREV[occ.celestialBody] ?? occ.celestialBody?.slice(0, 2)}
-                {occ.motion_type === 'retrograde' ? 'R' : ''}
+                {occ.motion_type === 'retrograde' ? '℞' : ''}
               </text>
             ))}
           </g>

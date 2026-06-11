@@ -25,8 +25,25 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,wasm}'],
+        // de421.bsp (16 MB) is intentionally NOT in the precache glob — Workbox caps
+        // precached files at 2 MiB, and forcing it into the SW install would bloat first
+        // load. It's cached at runtime on first chart compute instead (rule below).
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,wasm,py}'],
         runtimeCaching: [
+          {
+            // Ephemeris binary — same-origin, immutable. CacheFirst so it's stored on first
+            // fetch and available offline afterward.
+            urlPattern: ({ url }) => url.pathname.endsWith('/de421.bsp'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'ephemeris-cache',
+              expiration: {
+                maxEntries: 2,
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
           {
             urlPattern: /cdn\.jsdelivr\.net\/pyodide\/.+\.(wasm|js|data)$/,
             handler: 'CacheFirst',
@@ -65,6 +82,20 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    proxy: {
+      '/api/nominatim': {
+        target: 'https://nominatim.openstreetmap.org',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/api\/nominatim/, ''),
+      },
+      '/api/timeapi': {
+        target: 'https://timeapi.io',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/api\/timeapi/, ''),
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./tests/setup.js'],

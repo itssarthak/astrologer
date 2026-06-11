@@ -27,6 +27,8 @@ export function useLLM(profile, tab) {
       await chat({
         provider: keyData.provider,
         key: keyData.key,
+        baseUrl: keyData.baseUrl,
+        model: keyData.model,
         messages,
         systemPrompt,
         onChunk: chunk => {

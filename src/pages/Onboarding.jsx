@@ -1,5 +1,6 @@
 // src/pages/Onboarding.jsx
 import { useState } from 'react'
+import { getApiKey } from '../lib/storage/keys'
 import StepWelcome from '../components/Onboarding/StepWelcome'
 import StepApiKey from '../components/Onboarding/StepApiKey'
 import StepBirthDetails from '../components/Onboarding/StepBirthDetails'
@@ -11,6 +12,8 @@ export default function Onboarding() {
   const [step, setStep] = useState(1)
   const [birthData, setBirthData] = useState(null)
 
+  const afterWelcome = () => setStep(getApiKey() ? 3 : 2)
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -21,7 +24,7 @@ export default function Onboarding() {
         </div>
 
         <div className="bg-surface rounded-2xl border border-border p-6 shadow-sm">
-          {step === 1 && <StepWelcome onNext={() => setStep(2)} />}
+          {step === 1 && <StepWelcome onNext={afterWelcome} />}
           {step === 2 && <StepApiKey onNext={() => setStep(3)} />}
           {step === 3 && <StepBirthDetails onNext={data => { setBirthData(data); setStep(4) }} />}
           {step === 4 && <StepComputing birthData={birthData} />}

@@ -23,7 +23,7 @@ export default function AddProfileModal({ onClose }) {
       addProfile({
         id: uuidv4(),
         ...formData,
-        chart: JSON.parse(chartJson),
+        chart: chartJson,
         yogas: yogasDoshas.yogas_active ?? [],
         doshas: yogasDoshas.doshas ?? {},
         numerology,

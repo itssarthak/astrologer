@@ -14,15 +14,22 @@ const STEPS = [
 
 export default function StepComputing({ birthData }) {
   const navigate = useNavigate()
-  const { isReady, message, computeChart, computeNumerology, getYogasAndDoshas } = useContext(PyodideContext)
+  const { isReady, status, message, computeChart, computeNumerology, getYogasAndDoshas } = useContext(PyodideContext)
   const { addProfile } = useContext(ProfilesContext)
   const [completed, setCompleted] = useState([])
   const [error, setError] = useState(null)
   const isReadyRef = useRef(isReady)
+  const statusRef = useRef(status)
+  const startedRef = useRef(false)
   isReadyRef.current = isReady
+  statusRef.current = status
 
   useEffect(() => {
     if (!birthData) return
+    // Guard against StrictMode's double-invoked effect (and any remount) so we compute
+    // and persist the profile exactly once — otherwise duplicate profiles get created.
+    if (startedRef.current) return
+    startedRef.current = true
     run()
   }, [])
 
@@ -43,7 +50,7 @@ export default function StepComputing({ birthData }) {
       const profile = {
         id: uuidv4(),
         ...birthData,
-        chart: JSON.parse(chartJson),
+        chart: chartJson,
         yogas: yogasDoshas.yogas_active ?? [],
         doshas: yogasDoshas.doshas ?? {},
         numerology,
@@ -56,10 +63,12 @@ export default function StepComputing({ birthData }) {
     }
   }
 
-  const waitForPyodide = () => new Promise(resolve => {
+  const waitForPyodide = () => new Promise((resolve, reject) => {
     if (isReadyRef.current) { resolve(); return }
+    if (statusRef.current === 'error') { reject(new Error('Python engine failed to load. Check your internet connection and reload.')); return }
     const interval = setInterval(() => {
       if (isReadyRef.current) { clearInterval(interval); resolve() }
+      else if (statusRef.current === 'error') { clearInterval(interval); reject(new Error('Python engine failed to load. Check your internet connection and reload.')) }
     }, 200)
   })
 
@@ -69,6 +78,10 @@ export default function StepComputing({ birthData }) {
         <div className="text-4xl">⚠️</div>
         <p className="text-sm text-text font-semibold">Something went wrong</p>
         <p className="text-xs text-muted">{error}</p>
+        <button onClick={() => window.location.reload()}
+          className="mx-auto px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-hover transition-colors">
+          Reload and try again
+        </button>
       </div>
     )
   }
@@ -90,15 +103,20 @@ export default function StepComputing({ birthData }) {
           const done = completed.includes(step.key)
           const active = !done && completed.length === STEPS.indexOf(step)
           return (
-            <div key={step.key} className={`flex items-center gap-3 px-3 py-2 rounded-lg border ${done ? 'border-border bg-white' : 'border-border bg-surface opacity-50'}`}>
-              {done ? <span className="text-primary text-sm">✓</span> : active ? <LoadingSpinner size="sm" /> : <span className="text-muted text-sm">○</span>}
-              <span className="text-sm text-text">{done ? step.doneLabel : step.label}</span>
+            <div key={step.key} className={`flex items-start gap-3 px-3 py-2.5 rounded-lg border transition-opacity ${done ? 'border-border bg-white' : active ? 'border-primary/30 bg-surface' : 'border-border bg-surface opacity-40'}`}>
+              <div className="mt-0.5 flex-shrink-0">
+                {done ? <span className="text-primary text-sm">✓</span> : active ? <LoadingSpinner size="sm" /> : <span className="text-muted text-sm">○</span>}
+              </div>
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <span className="text-sm text-text">{done ? step.doneLabel : step.label}</span>
+                {active && message && (
+                  <span className="text-xs text-muted truncate">{message}</span>
+                )}
+              </div>
             </div>
           )
         })}
       </div>
-
-      {message && <p className="text-xs text-muted text-center">{message}</p>}
     </div>
   )
 }

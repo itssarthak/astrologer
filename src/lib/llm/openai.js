@@ -1,6 +1,9 @@
-// OpenAI Chat Completions API — streaming
-export async function openaiChat({ key, messages, systemPrompt, onChunk, model = 'gpt-4o' }) {
-  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+// OpenAI Chat Completions API — streaming.
+// baseUrl lets the "custom" provider point at any OpenAI-compatible endpoint
+// (Ollama, LM Studio, OpenRouter, vLLM, a self-hosted proxy, etc.).
+export async function openaiChat({ key, messages, systemPrompt, onChunk, model = 'gpt-4o', baseUrl = 'https://api.openai.com/v1' }) {
+  const endpoint = `${baseUrl.replace(/\/+$/, '')}/chat/completions`
+  const resp = await fetch(endpoint, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${key}`,

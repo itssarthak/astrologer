@@ -2,11 +2,12 @@
 import { useState, useContext } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { useLLM } from '../../hooks/useLLM'
-import { getHistory } from '../../lib/storage/chat'
+import { getHistory, clearHistory } from '../../lib/storage/chat'
 import { formatChartContext } from '../../lib/prompts/formatters'
 import KundliChart from '../Kundli/KundliChart'
 import ChatMessages from '../Chat/ChatMessages'
 import ChatInput from '../Chat/ChatInput'
+import ChatToolbar from '../shared/ChatToolbar'
 
 const SUB_TABS = ['D1', 'D9']
 
@@ -38,13 +39,18 @@ export default function ChartTab() {
     }
   }
 
+  const reload = () => setMessages(getHistory(activeProfile.id, 'chart'))
+  const clearChat = () => { clearHistory(activeProfile.id, 'chart'); setMessages([]) }
+
   if (!activeProfile?.chart) return (
     <div className="flex-1 flex items-center justify-center text-muted text-sm">Chart not yet computed</div>
   )
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-border overflow-y-auto">
+      <ChatToolbar title="Chart" onRefresh={reload} onClear={clearChat}
+        refreshDisabled={streaming} clearDisabled={streaming || messages.length === 0} />
+      <div className="p-4 border-b border-border overflow-y-auto flex-shrink-0 max-h-[60%]">
         <div className="flex gap-2 mb-4">
           {SUB_TABS.map(t => (
             <button key={t} onClick={() => setSubTab(t)}

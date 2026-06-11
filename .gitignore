@@ -23,6 +23,26 @@ dist-ssr
 *.sln
 *.sw?
 
+# Large ephemeris binary — fetched at build time by scripts/fetch-ephemeris.mjs
+# (or manually: curl -o public/de421.bsp https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de421.bsp)
+public/de421.bsp
+# Full Hipparcos catalogue — NOT needed at runtime (the single Spica record is embedded
+# in src/lib/pyodide/index.js). Only appears if someone re-downloads it.
+hip_main.dat
+
+# Python / test tooling
+.venv*/
+.pytest_cache/
+__pycache__/
+*.pyc
+
+# Playwright / test output
+test-results/
+playwright-report/
+
+# Tooling
+.superpowers/
+
 # env files
 .env
 .env.local

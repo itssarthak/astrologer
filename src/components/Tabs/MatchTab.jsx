@@ -3,11 +3,12 @@ import { useState, useContext } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { PyodideContext } from '../../contexts/PyodideContext'
 import { useLLM } from '../../hooks/useLLM'
-import { getHistory } from '../../lib/storage/chat'
+import { getHistory, clearHistory } from '../../lib/storage/chat'
 import { formatSynastryContext } from '../../lib/prompts/formatters'
 import AddProfileModal from '../Sidebar/AddProfileModal'
 import ChatMessages from '../Chat/ChatMessages'
 import ChatInput from '../Chat/ChatInput'
+import ChatToolbar from '../shared/ChatToolbar'
 import LoadingSpinner from '../shared/LoadingSpinner'
 
 export default function MatchTab() {
@@ -54,10 +55,21 @@ export default function MatchTab() {
     }
   }
 
+  // Refresh recomputes the synastry for the selected partner; with none selected there's
+  // nothing to recompute, so it just re-syncs the conversation from storage.
+  const refresh = () => {
+    if (computing || streaming) return
+    if (partnerProfileId) handleCompute()
+    else setMessages(getHistory(activeProfile.id, 'match'))
+  }
+  const clearChat = () => { clearHistory(activeProfile.id, 'match'); setMessages([]) }
+
   if (!activeProfile) return <div className="flex-1 flex items-center justify-center text-muted text-sm">No profile selected</div>
 
   return (
     <div className="flex flex-col h-full">
+      <ChatToolbar title="Kundali Match" onRefresh={refresh} onClear={clearChat}
+        refreshDisabled={computing || streaming} clearDisabled={streaming || messages.length === 0} />
       <div className="p-4 border-b border-border flex flex-col gap-3">
         <p className="text-xs font-semibold text-muted uppercase tracking-wide">Kundali Match</p>
         {otherProfiles.length === 0 ? (

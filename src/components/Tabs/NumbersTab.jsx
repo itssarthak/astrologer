@@ -2,10 +2,11 @@
 import { useState, useContext } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { useLLM } from '../../hooks/useLLM'
-import { getHistory } from '../../lib/storage/chat'
+import { getHistory, clearHistory } from '../../lib/storage/chat'
 import { formatNumerologyContext } from '../../lib/prompts/formatters'
 import ChatMessages from '../Chat/ChatMessages'
 import ChatInput from '../Chat/ChatInput'
+import ChatToolbar from '../shared/ChatToolbar'
 
 const NUM_LABELS = {
   life_path: 'Life Path',
@@ -38,23 +39,31 @@ export default function NumbersTab() {
     }
   }
 
+  const reload = () => setMessages(getHistory(activeProfile.id, 'numbers'))
+  const clearChat = () => { clearHistory(activeProfile.id, 'numbers'); setMessages([]) }
+
   if (!activeProfile) return <div className="flex-1 flex items-center justify-center text-muted text-sm">No profile selected</div>
 
   return (
     <div className="flex flex-col h-full">
+      <ChatToolbar title="Numbers" onRefresh={reload} onClear={clearChat}
+        refreshDisabled={streaming} clearDisabled={streaming || messages.length === 0} />
       {numerology && (
         <div className="p-4 border-b border-border">
           <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">Numerology Profile</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {Object.entries(NUM_LABELS).map(([key, label]) => {
-              const chaldean = numerology.chaldean?.[key]
-              const pythagorean = numerology.pythagorean?.[key]
+              // life_path & personal_year are single numbers; the rest are
+              // { chaldean (primary), pythagorean (cross-check) }.
+              const value = numerology[key]
+              const primary = typeof value === 'object' && value !== null ? value.chaldean : value
+              const secondary = typeof value === 'object' && value !== null ? value.pythagorean : null
               return (
                 <div key={key} className="bg-surface border border-border rounded-xl p-3 flex flex-col gap-1">
                   <span className="text-xs text-muted">{label}</span>
-                  <span className="text-2xl font-bold text-primary">{chaldean ?? '—'}</span>
-                  {pythagorean && pythagorean !== chaldean && (
-                    <span className="text-xs text-muted">Pyth: {pythagorean}</span>
+                  <span className="text-2xl font-bold text-primary">{primary ?? '—'}</span>
+                  {secondary != null && secondary !== primary && (
+                    <span className="text-xs text-muted">Pyth: {secondary}</span>
                   )}
                 </div>
               )
