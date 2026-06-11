@@ -16,10 +16,11 @@ export default function StepWelcome({ onNext }) {
       <div className="rounded-xl p-4 bg-dark-bg text-gold flex flex-col gap-2">
         <div className="flex items-center gap-2 font-bold text-sm">🔒 100% private by design</div>
         <p className="text-xs text-gold/80 leading-relaxed">
-          Your birth data never leaves your device. No servers, no accounts, no tracking.
+          Your birth data never leaves your device — no accounts, no cloud storage. We use only
+          anonymous usage analytics; your chart, details, and API keys stay private.
         </p>
         <div className="flex flex-wrap gap-1.5 mt-1">
-          {['No sign-up', 'No cloud storage', 'No tracking', 'Open source'].map(p => (
+          {['No sign-up', 'No cloud storage', 'Anonymous analytics', 'Open source'].map(p => (
             <span key={p} className="px-2 py-0.5 rounded-full text-xs border border-gold/30 bg-white/10 text-gold/90">{p}</span>
           ))}
         </div>

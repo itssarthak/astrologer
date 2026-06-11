@@ -71,7 +71,7 @@ export default defineConfig({
       manifest: {
         name: 'Ask My Astro',
         short_name: 'AskMyAstro',
-        description: 'Your private Vedic astrologer — 100% on-device',
+        description: 'Your private Vedic astrologer — your birth data stays on your device',
         theme_color: '#c45c1a',
         background_color: '#fdf6ee',
         display: 'standalone',
