@@ -59,10 +59,14 @@ Plain English only — explain what each number means for this person's life.`
 }
 
 export function formatSynastryContext(synastryData, profileA, profileB) {
-  const { guna_milan, a_planets_in_b_houses, b_planets_in_a_houses } = synastryData
+  const { guna_milan, a_planets_in_b_houses, b_planets_in_a_houses, overlay_summary } = synastryData
   const breakdown = Object.entries(guna_milan.breakdown)
     .map(([k, v]) => `  ${k}: ${v.score}/${v.max}`)
     .join('\n')
+  const fmt = o => `- ${o.planet} → their H${o.falls_in_house} (${o.house_meaning}) — ${o.effect.toUpperCase()}: ${o.note}`
+  const tally = overlay_summary
+    ? `${overlay_summary.supportive} supportive · ${overlay_summary.challenging} challenging · ${overlay_summary.neutral} neutral — overall ${overlay_summary.lean}`
+    : ''
 
   return `## Computed Synastry Data: ${profileA.name} ↔ ${profileB.name}
 
@@ -71,13 +75,18 @@ Total: ${guna_milan.total}/36 — ${guna_milan.verdict}
 Breakdown:
 ${breakdown}
 
-### ${profileA.name}'s Planets in ${profileB.name}'s Chart
-${b_planets_in_a_houses.map(o => `- ${o.planet} falls in H${o.falls_in_house} (${o.sign})`).join('\n')}
+### Planetary overlay balance
+${tally}
 
-### ${profileB.name}'s Planets in ${profileA.name}'s Chart
-${a_planets_in_b_houses.map(o => `- ${o.planet} falls in H${o.falls_in_house} (${o.sign})`).join('\n')}
+### How ${profileA.name}'s planets land in ${profileB.name}'s life areas
+${a_planets_in_b_houses.map(fmt).join('\n')}
 
-Interpret this compatibility. Guna Milan total score first, then key house overlay findings.
-Plain English — tell them what it means for the relationship, not the astrological mechanics.
-Only discuss Kundali Match if the user explicitly asks — never volunteer matchmaking framing.`
+### How ${profileB.name}'s planets land in ${profileA.name}'s life areas
+${b_planets_in_a_houses.map(fmt).join('\n')}
+
+Interpret this compatibility in plain English:
+1. Lead with the overall picture — the Guna Milan score AND whether the planetary overlays lean harmonious or challenging.
+2. Explain how each person's key planets affect the other's life areas. Be explicit about where it is SUPPORTIVE (one person's planets help the other) versus CHALLENGING (they interfere or create friction), and what that feels like day to day.
+3. Be honest about the hard spots and what to watch for, then close with the genuine strengths.
+Talk about the people and the relationship, not the astrological mechanics. This is the Match tab, so a compatibility framing is expected here.`
 }

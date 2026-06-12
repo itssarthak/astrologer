@@ -1,5 +1,5 @@
-// E2E for the Match (synastry) tab — exercises the REAL Pyodide compute_synastry path
-// that the double-encoding bug broke. Two profiles, compute, expect a Guna Milan score.
+// E2E for the Match (synastry) tab — exercises the REAL Pyodide compute_synastry path,
+// the enriched overlay card, and the auto-generated compatibility read.
 
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'fs'
@@ -14,7 +14,11 @@ const base = { dob: '1990-06-15', time: '14:30', place: 'Mumbai', lat: 19.076, l
 const PROFILE_A = { ...base, id: 'prof-a', name: 'Alice' }
 const PROFILE_B = { ...base, id: 'prof-b', name: 'Bob' }
 
-test('Match computes a Guna Milan score between two profiles (no double-encode error)', async ({ page }) => {
+const CLAUDE_SSE =
+  'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"You two balance each other well."}}\n\n' +
+  'data: [DONE]\n\n'
+
+test('Match shows Guna breakdown, classified overlays, and an auto compatibility read', async ({ page }) => {
   test.setTimeout(180_000) // first Pyodide load
 
   await page.addInitScript(([profiles, key]) => {
@@ -24,23 +28,32 @@ test('Match computes a Guna Milan score between two profiles (no double-encode e
     localStorage.setItem('astro:apiKey', key)
   }, [JSON.stringify([PROFILE_A, PROFILE_B]), JSON.stringify({ provider: 'claude', key: 'sk-ant-test' })])
 
+  // Mock the LLM so the auto-generated read completes deterministically
+  await page.route('https://api.anthropic.com/**', route =>
+    route.fulfill({ status: 200, contentType: 'text/event-stream', body: CLAUDE_SSE }))
+
   await page.goto(BASE)
   await expect(page).toHaveURL(/\/app/)
   await page.getByRole('button', { name: /^match$/i }).first().click()
 
-  // Select the partner and compute
   await page.locator('select').selectOption('prof-b')
   await page.getByRole('button', { name: 'Match →' }).click()
 
-  // The Guna Milan score card must appear, and no compute error
-  await expect(page.getByText('Guna Milan Score')).toBeVisible({ timeout: 150_000 })
+  // Guna Milan card with real breakdown (the old UI rendered an empty 'kuttas' grid)
+  await expect(page.getByText('Guna Milan')).toBeVisible({ timeout: 150_000 })
   await expect(page.getByText('/36')).toBeVisible()
+  await expect(page.getByText(/nadi/i)).toBeVisible() // a koota from the breakdown
 
-  // Sanity: a numeric score is rendered (not the "—" fallback)
-  const scoreText = await page.getByText('/36').locator('..').innerText()
-  expect(scoreText).toMatch(/\d+\s*\/\s*36/)
+  // Enriched planetary overlay section
+  await expect(page.getByText('Planetary compatibility')).toBeVisible()
+  await expect(page.getByText(/supportive/i).first()).toBeVisible()
+  await expect(page.getByText(/challenging/i).first()).toBeVisible()
 
-  // The old bug surfaced as a red error string — make sure it's gone
+  // Auto-generated compatibility read (from the mocked LLM)
+  await expect(page.getByText('Compatibility Read')).toBeVisible()
+  await expect(page.getByText('You two balance each other well.')).toBeVisible()
+
+  // The old double-encode bug is gone
   const body = await page.locator('body').innerText()
   expect(body).not.toContain('string indices')
   expect(body).not.toContain('d1Chart')

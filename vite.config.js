@@ -5,15 +5,30 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { copyFileSync, mkdirSync } from 'fs'
 import { resolve } from 'path'
 
+// The Python compute scripts live in src/ as the single source of truth and are copied
+// into public/ (which is gitignored — generated, not committed) so the app can fetch them
+// at runtime. Copied at build time AND watched in dev, so edits never serve stale.
+const PY_SCRIPT_SRC = resolve(__dirname, 'src/lib/pyodide/scripts')
+const PY_SCRIPT_DEST = resolve(__dirname, 'public/pyodide-scripts')
+const PY_SCRIPTS = ['chart', 'transit', 'yogas', 'doshas', 'numerology', 'synastry']
+
+function copyPyScriptsToPublic() {
+  mkdirSync(PY_SCRIPT_DEST, { recursive: true })
+  for (const f of PY_SCRIPTS) {
+    copyFileSync(`${PY_SCRIPT_SRC}/${f}.py`, `${PY_SCRIPT_DEST}/${f}.py`)
+  }
+}
+
 const copyPyScripts = {
   name: 'copy-py-scripts',
   buildStart() {
-    const src = resolve(__dirname, 'src/lib/pyodide/scripts')
-    const dest = resolve(__dirname, 'public/pyodide-scripts')
-    mkdirSync(dest, { recursive: true })
-    for (const f of ['chart', 'transit', 'yogas', 'doshas', 'numerology', 'synastry']) {
-      copyFileSync(`${src}/${f}.py`, `${dest}/${f}.py`)
-    }
+    copyPyScriptsToPublic()
+  },
+  configureServer(server) {
+    server.watcher.add(PY_SCRIPT_SRC)
+    server.watcher.on('change', file => {
+      if (file.startsWith(PY_SCRIPT_SRC) && file.endsWith('.py')) copyPyScriptsToPublic()
+    })
   },
 }
 

@@ -49,3 +49,6 @@ playwright-report/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Generated from src/lib/pyodide/scripts by the vite copy-py-scripts plugin
+public/pyodide-scripts/

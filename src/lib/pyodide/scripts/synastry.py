@@ -29,6 +29,51 @@ GRAHA_FRIEND = {
     0: {0,1,2,4}, 1: {0,3}, 2: {0,1,4}, 3: {0,5}, 4: {0,1,2}, 5: {3,6}, 6: {3,5}
 }
 
+# --- House-overlay interpretation -------------------------------------------------
+# When one partner's planet falls into a house of the other's chart, it activates that
+# life area for them. Benefics generally bless it; malefics generally stress it. The
+# 7th (partnership) house affects the relationship itself most directly, and the
+# dusthana houses (6/8/12) are inherently difficult.
+BENEFIC_PLANETS = {"Jupiter", "Venus", "Mercury", "Moon"}
+MALEFIC_PLANETS = {"Saturn", "Mars", "Sun", "Rahu", "Ketu"}
+HARD_HOUSES = {6, 8, 12}
+
+HOUSE_MEANING = {
+    1: "sense of self", 2: "money & family", 3: "drive & communication",
+    4: "home & emotional security", 5: "romance, joy & children",
+    6: "conflict, health & daily grind", 7: "the partnership itself",
+    8: "intimacy & shared resources", 9: "luck, beliefs & growth",
+    10: "career & reputation", 11: "gains, friends & hopes",
+    12: "letting go, costs & the unseen",
+}
+
+def _classify_overlay(planet, house):
+    """Returns (nature, effect, note). effect ∈ supportive | challenging | neutral."""
+    nature = "benefic" if planet in BENEFIC_PLANETS else "malefic" if planet in MALEFIC_PLANETS else "neutral"
+    area = HOUSE_MEANING.get(house, "this area of life")
+
+    if house == 7:  # partnership house — strongest direct effect on the relationship
+        if nature == "benefic":
+            return nature, "supportive", f"{planet} brings warmth and ease to {area}"
+        if nature == "malefic":
+            return nature, "challenging", f"{planet} can bring friction or distance to {area}"
+        return nature, "neutral", f"{planet} strongly activates {area}"
+
+    if house in HARD_HOUSES:
+        if nature == "malefic":
+            return nature, "challenging", f"{planet} adds strain to their {area}"
+        if nature == "benefic":
+            return nature, "neutral", f"{planet} softens a difficult area — their {area}"
+        return nature, "neutral", f"{planet} colours their {area}"
+
+    # supportive houses (1,2,3,4,5,9,10,11)
+    if nature == "benefic":
+        return nature, "supportive", f"{planet} blesses their {area}"
+    if nature == "malefic":
+        return nature, "neutral", f"{planet} pushes hard on their {area} — growth with some friction"
+    return nature, "neutral", f"{planet} activates their {area}"
+
+
 def _moon_nakshatra(chart_json):
     for h in chart_json["d1Chart"]["houses"]:
         for occ in h.get("occupants", []):
@@ -98,20 +143,42 @@ def compute_house_overlays(chart_a, chart_b):
             sign = occ["sign"]
             house_in_a = sign_to_house_a.get(sign, 0)
             if house_in_a:
+                nature, effect, note = _classify_overlay(planet, house_in_a)
                 overlays.append({
                     "planet": planet,
                     "falls_in_house": house_in_a,
+                    "house_meaning": HOUSE_MEANING.get(house_in_a, ""),
                     "sign": sign,
+                    "nature": nature,
+                    "effect": effect,
+                    "note": note,
                 })
     return overlays
+
+def _overlay_tally(*overlay_lists):
+    flat = [o for lst in overlay_lists for o in lst]
+    supportive = sum(1 for o in flat if o["effect"] == "supportive")
+    challenging = sum(1 for o in flat if o["effect"] == "challenging")
+    return {
+        "supportive": supportive,
+        "challenging": challenging,
+        "neutral": len(flat) - supportive - challenging,
+        # Overall lean of the planetary overlays, independent of Guna Milan.
+        "lean": "harmonious" if supportive > challenging
+                else "challenging" if challenging > supportive
+                else "mixed",
+    }
 
 def compute_synastry(chart_a_json, chart_b_json):
     nak_a, pada_a = _moon_nakshatra(chart_a_json)
     nak_b, pada_b = _moon_nakshatra(chart_b_json)
+    a_in_b = compute_house_overlays(chart_b_json, chart_a_json)
+    b_in_a = compute_house_overlays(chart_a_json, chart_b_json)
     return {
         "guna_milan": compute_guna_milan(nak_a, pada_a, nak_b, pada_b),
-        "a_planets_in_b_houses": compute_house_overlays(chart_b_json, chart_a_json),
-        "b_planets_in_a_houses": compute_house_overlays(chart_a_json, chart_b_json),
+        "a_planets_in_b_houses": a_in_b,
+        "b_planets_in_a_houses": b_in_a,
+        "overlay_summary": _overlay_tally(a_in_b, b_in_a),
     }
 
 def compute_synastry_json(chart_a_str, chart_b_str):
