@@ -1,5 +1,5 @@
 // src/components/Tabs/ChartTab.jsx
-import { useState, useContext } from 'react'
+import { useState, useContext, useEffect } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { useLLM } from '../../hooks/useLLM'
 import { getHistory, clearHistory } from '../../lib/storage/chat'
@@ -19,6 +19,12 @@ export default function ChartTab() {
     activeProfile ? getHistory(activeProfile.id, 'chart') : []
   )
   const [streamingContent, setStreamingContent] = useState('')
+
+  // Reload this tab's conversation when the active profile changes — chats are per-profile.
+  useEffect(() => {
+    setMessages(activeProfile ? getHistory(activeProfile.id, 'chart') : [])
+    setStreamingContent('')
+  }, [activeProfile?.id])
 
   const chart = activeProfile?.chart
   const yogas = activeProfile?.yogas ?? []

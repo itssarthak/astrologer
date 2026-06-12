@@ -1,5 +1,5 @@
 // src/components/Tabs/ChatTab.jsx
-import { useState, useContext } from 'react'
+import { useState, useContext, useEffect } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { useAgent } from '../../hooks/useAgent'
 import { getHistory, clearHistory } from '../../lib/storage/chat'
@@ -26,6 +26,12 @@ export default function ChatTab() {
     activeProfile ? getHistory(activeProfile.id, 'chat') : []
   )
   const [streamingContent, setStreamingContent] = useState('')
+
+  // Reload this tab's conversation when the active profile changes — chats are per-profile.
+  useEffect(() => {
+    setMessages(activeProfile ? getHistory(activeProfile.id, 'chat') : [])
+    setStreamingContent('')
+  }, [activeProfile?.id])
 
   const handleSend = async userMessage => {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])

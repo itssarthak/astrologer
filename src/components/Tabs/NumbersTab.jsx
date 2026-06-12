@@ -1,5 +1,5 @@
 // src/components/Tabs/NumbersTab.jsx
-import { useState, useContext } from 'react'
+import { useState, useContext, useEffect } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { useLLM } from '../../hooks/useLLM'
 import { getHistory, clearHistory } from '../../lib/storage/chat'
@@ -23,6 +23,12 @@ export default function NumbersTab() {
     activeProfile ? getHistory(activeProfile.id, 'numbers') : []
   )
   const [streamingContent, setStreamingContent] = useState('')
+
+  // Reload this tab's conversation when the active profile changes — chats are per-profile.
+  useEffect(() => {
+    setMessages(activeProfile ? getHistory(activeProfile.id, 'numbers') : [])
+    setStreamingContent('')
+  }, [activeProfile?.id])
 
   const numerology = activeProfile?.numerology
 

@@ -1,5 +1,5 @@
 // src/components/Tabs/MatchTab.jsx
-import { useState, useContext } from 'react'
+import { useState, useContext, useEffect } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { PyodideContext } from '../../contexts/PyodideContext'
 import { useLLM } from '../../hooks/useLLM'
@@ -60,6 +60,17 @@ export default function MatchTab() {
   const [streamingContent, setStreamingContent] = useState('')
   const [synastryRead, setSynastryRead] = useState('')
   const [generatingRead, setGeneratingRead] = useState(false)
+
+  // When the active profile changes, reload its conversation and reset the match — the
+  // partner selection and synastry are computed relative to the (old) active profile.
+  useEffect(() => {
+    setMessages(activeProfile ? getHistory(activeProfile.id, 'match') : [])
+    setStreamingContent('')
+    setPartnerProfileId('')
+    setSynastryData(null)
+    setSynastryRead('')
+    setComputeError(null)
+  }, [activeProfile?.id])
 
   const otherProfiles = profiles.filter(p => p.id !== activeProfile?.id)
   const partnerProfile = profiles.find(p => p.id === partnerProfileId)
