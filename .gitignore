@@ -28,7 +28,7 @@ dist-ssr
 public/de421.bsp
 # Full Hipparcos catalogue — NOT needed at runtime (the single Spica record is embedded
 # in src/lib/pyodide/index.js). Only appears if someone re-downloads it.
-hip_main.dat
+hip_main.dat*
 
 # Python / test tooling
 .venv*/
@@ -52,3 +52,6 @@ playwright-report/
 
 # Generated from src/lib/pyodide/scripts by the vite copy-py-scripts plugin
 public/pyodide-scripts/
+
+# Partial download artifacts
+*.download
