@@ -16,7 +16,7 @@ export function formatTransitContext(transitData, chartJson) {
   const md = activeMahadasha(chartJson)
   const dasha = md ? `Current Mahadasha: ${md.mdLord}${md.adLord ? `, Antardasha: ${md.adLord}` : ''}` : ''
 
-  return `## Today's Computed Transit Data (${transitData.date} ${transitData.time} IST)
+  return `## Today's Computed Transit Data (${transitData.date} ${transitData.time} local time)
 
 ### Panchanga
 ${JSON.stringify(transitData.panchanga, null, 2)}
