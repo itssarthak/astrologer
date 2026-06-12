@@ -84,10 +84,17 @@ def _moon_nakshatra(chart_json):
 def _nak_idx(name):
     return NAKSHATRA_INDEX.get(name, 0)
 
-def _tara_score(nak_boy, nak_girl):
-    diff = (nak_girl - nak_boy) % 27
-    tara = diff % 9
-    return 3 if tara not in {2, 4, 6, 8} else 0
+def _tara_ok(src, dst):
+    # Dina/Tara koota: count from one's birth star to the other's (inclusive); the 3rd, 5th
+    # and 7th taras (Vipat, Pratyak, Naidhana) are inauspicious, the rest auspicious.
+    count = ((dst - src) % 27) + 1
+    return (count % 9) not in (3, 5, 7)
+
+def _tara_score(nak_a, nak_b):
+    # Proper Tara considers BOTH directions, so it's symmetric (gender-independent):
+    # full 3 if both ways are auspicious, half if one way, 0 if neither.
+    fwd, rev = _tara_ok(nak_a, nak_b), _tara_ok(nak_b, nak_a)
+    return 3 if (fwd and rev) else (1.5 if (fwd or rev) else 0)
 
 def _bhakoot_score(nak_boy, nak_girl):
     b = nak_boy // 9 + 1
@@ -105,11 +112,15 @@ def compute_guna_milan(nak_a_name, pada_a, nak_b_name, pada_b):
     vashya = 2  # simplified
     tara = _tara_score(bi, gi)
     yoni = 4 if NAK_YONI[bi] == NAK_YONI[gi] else (2 if abs(NAK_YONI[bi] - NAK_YONI[gi]) <= 3 else 0)
-    graha_boy = NAK_GRAHA[bi]
-    graha_girl = NAK_GRAHA[gi]
-    graha_maitri = (5 if graha_boy == graha_girl
-                    else 4 if graha_girl in GRAHA_FRIEND.get(graha_boy, set())
-                    else 3 if graha_boy in GRAHA_FRIEND.get(graha_girl, set())
+    # Graha Maitri = mutual friendship of the two Moon-sign lords (symmetric):
+    # same lord or mutual friends -> 5, a one-way friendship -> 4, otherwise 0.
+    graha_a = NAK_GRAHA[bi]
+    graha_b = NAK_GRAHA[gi]
+    a_friend_b = graha_a in GRAHA_FRIEND.get(graha_b, set())
+    b_friend_a = graha_b in GRAHA_FRIEND.get(graha_a, set())
+    graha_maitri = (5 if graha_a == graha_b
+                    else 5 if (a_friend_b and b_friend_a)
+                    else 4 if (a_friend_b or b_friend_a)
                     else 0)
     gana_boy = NAK_GANA[bi]
     gana_girl = NAK_GANA[gi]
