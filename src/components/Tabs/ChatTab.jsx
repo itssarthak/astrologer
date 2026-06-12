@@ -7,6 +7,18 @@ import ChatMessages from '../Chat/ChatMessages'
 import ChatInput from '../Chat/ChatInput'
 import ChatToolbar from '../shared/ChatToolbar'
 
+// Human-friendly status shown while the agent runs a tool.
+const TOOL_LABELS = {
+  list_profiles: 'Looking up your profiles',
+  get_chart: 'Fetching the birth chart',
+  get_today_transit: "Reading today's transits",
+  match_profiles: 'Checking compatibility',
+  compute_numerology: 'Crunching the numbers',
+  geocode_place: 'Looking up the location',
+  compute_chart: 'Computing the birth chart',
+  web_search: 'Searching the web',
+}
+
 export default function ChatTab() {
   const { activeProfile } = useContext(ProfilesContext)
   const { send, busy, error, toolEvent } = useAgent(activeProfile, 'chat')
@@ -38,9 +50,9 @@ export default function ChatTab() {
         refreshDisabled={busy} clearDisabled={busy || messages.length === 0} />
       <ChatMessages messages={messages} streaming={busy} streamingContent={streamingContent} />
       {busy && toolEvent && (
-        <p className="px-4 py-1.5 text-xs text-primary bg-primary-light/40 border-t border-border flex items-center gap-1.5">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-          Using <span className="font-mono">{toolEvent.name}</span>…
+        <p className="px-4 py-2 text-xs font-medium text-primary bg-primary-light/50 border-t border-border flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" />
+          {TOOL_LABELS[toolEvent.name] ?? `Running ${toolEvent.name}`}…
         </p>
       )}
       {error && <p className="px-4 py-2 text-xs text-red-500 bg-red-50 border-t border-red-100">{error}</p>}

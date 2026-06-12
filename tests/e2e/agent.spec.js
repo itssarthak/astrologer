@@ -52,7 +52,12 @@ test('agent calls a read tool (list_profiles) and answers', async ({ page }) => 
 
   // Two rounds happened, and the tool result was fed back into the 2nd request
   expect(capture.bodies.length).toBe(2)
-  expect(JSON.stringify(capture.bodies[0])).toContain('list_profiles') // tools were offered
+  const round1 = JSON.stringify(capture.bodies[0])
+  expect(round1).toContain('list_profiles') // tools were offered
+  // System prompt is genericized to the active profile at runtime — not hardcoded to Sarthak
+  expect(round1).toContain('Alice')
+  expect(round1).not.toContain('Sarthak')
+  expect(round1).not.toContain('{{NAME}}')
   const round2 = JSON.stringify(capture.bodies[1])
   expect(round2).toContain('"role":"tool"')
   expect(round2).toContain('Alice')
