@@ -1,7 +1,7 @@
 // src/components/Tabs/ChatTab.jsx
 import { useState, useContext } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
-import { useLLM } from '../../hooks/useLLM'
+import { useAgent } from '../../hooks/useAgent'
 import { getHistory, clearHistory } from '../../lib/storage/chat'
 import ChatMessages from '../Chat/ChatMessages'
 import ChatInput from '../Chat/ChatInput'
@@ -9,7 +9,7 @@ import ChatToolbar from '../shared/ChatToolbar'
 
 export default function ChatTab() {
   const { activeProfile } = useContext(ProfilesContext)
-  const { send, streaming, error } = useLLM(activeProfile, 'chat')
+  const { send, busy, error, toolEvent } = useAgent(activeProfile, 'chat')
   const [messages, setMessages] = useState(() =>
     activeProfile ? getHistory(activeProfile.id, 'chat') : []
   )
@@ -19,10 +19,7 @@ export default function ChatTab() {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])
     setStreamingContent('')
     try {
-      await send({
-        userMessage,
-        onChunk: chunk => setStreamingContent(prev => prev + chunk),
-      })
+      await send({ userMessage, onText: t => setStreamingContent(t) })
       setMessages(activeProfile ? getHistory(activeProfile.id, 'chat') : [])
       setStreamingContent('')
     } catch {
@@ -38,10 +35,16 @@ export default function ChatTab() {
   return (
     <div className="flex flex-col h-full">
       <ChatToolbar title="Chat" onRefresh={reload} onClear={clearChat}
-        refreshDisabled={streaming} clearDisabled={streaming || messages.length === 0} />
-      <ChatMessages messages={messages} streaming={streaming} streamingContent={streamingContent} />
+        refreshDisabled={busy} clearDisabled={busy || messages.length === 0} />
+      <ChatMessages messages={messages} streaming={busy} streamingContent={streamingContent} />
+      {busy && toolEvent && (
+        <p className="px-4 py-1.5 text-xs text-primary bg-primary-light/40 border-t border-border flex items-center gap-1.5">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+          Using <span className="font-mono">{toolEvent.name}</span>…
+        </p>
+      )}
       {error && <p className="px-4 py-2 text-xs text-red-500 bg-red-50 border-t border-red-100">{error}</p>}
-      <ChatInput onSend={handleSend} disabled={streaming} placeholder="Ask your astrologer anything..." />
+      <ChatInput onSend={handleSend} disabled={busy} placeholder="Ask your astrologer anything..." />
     </div>
   )
 }

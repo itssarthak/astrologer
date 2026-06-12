@@ -15,10 +15,6 @@ const PROFILE = {
   chart: NATAL_CHART, yogas: [], doshas: {}, numerology: {}, createdAt: '2026-06-10T00:00:00.000Z',
 }
 
-const OPENAI_SSE =
-  'data: {"choices":[{"delta":{"content":"Hello from your custom endpoint."}}]}\n\n' +
-  'data: [DONE]\n\n'
-
 async function seedProfile(page, apiKey) {
   await page.addInitScript(([profile, key]) => {
     localStorage.setItem('astro:profiles', profile)
@@ -67,7 +63,9 @@ test.describe('Custom LLM provider — request routing', () => {
     await page.route('https://my-llm.example.com/**', route => {
       const req = route.request()
       captured = { url: req.url(), auth: req.headers()['authorization'], body: req.postDataJSON() }
-      route.fulfill({ status: 200, contentType: 'text/event-stream', body: OPENAI_SSE })
+      // Chat is agentic now (non-streaming JSON). No tool call -> the content is the answer.
+      route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'Hello from your custom endpoint.' } }] }) })
     })
     // If the code wrongly hit OpenAI's real host, fail loudly instead of going to network
     await page.route('https://api.openai.com/**', route => route.fulfill({ status: 500, body: 'should not be called' }))
