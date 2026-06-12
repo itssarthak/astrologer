@@ -95,9 +95,11 @@ def _bhakoot_score(nak_boy, nak_girl):
     diff = abs(b - g)
     return 0 if diff in {6, 8} else 7
 
-def compute_guna_milan(nak_boy_name, pada_boy, nak_girl_name, pada_girl):
-    bi = _nak_idx(nak_boy_name)
-    gi = _nak_idx(nak_girl_name)
+def compute_guna_milan(nak_a_name, pada_a, nak_b_name, pada_b):
+    # Several kootas (varna, tara, graha maitri) are traditionally directional (groom -> bride).
+    # This app has no gender, so the score must NOT depend on which profile is active vs. the
+    # partner. Order the two nakshatras canonically so compute(A, B) == compute(B, A).
+    bi, gi = sorted([_nak_idx(nak_a_name), _nak_idx(nak_b_name)])
 
     varna = 1 if NAK_VARNA[gi] >= NAK_VARNA[bi] else 0
     vashya = 2  # simplified

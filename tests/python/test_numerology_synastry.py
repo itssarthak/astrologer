@@ -26,6 +26,14 @@ def test_guna_milan_nadi_full_score_different_nadi():
     result = compute_guna_milan("Ashwini", 1, "Rohini", 1)  # Vata vs Kapha
     assert result["breakdown"]["nadi"]["score"] == 8
 
+def test_guna_milan_is_order_independent():
+    # The app has no gender, so the same pair must score the same regardless of which
+    # profile is active vs. partner (regression: A->B 31 vs B->A 27).
+    import itertools
+    from synastry import NAKSHATRA_NAMES
+    for a, b in itertools.combinations(NAKSHATRA_NAMES, 2):
+        assert compute_guna_milan(a, 1, b, 1)["total"] == compute_guna_milan(b, 1, a, 1)["total"], f"{a} vs {b}"
+
 def test_synastry_returns_guna_milan_and_overlays():
     chart_a = compute_chart("A", "1996-11-22", "13:06", 28.6139, 77.2090, 5.5, "Delhi")
     chart_b = compute_chart("B", "1998-07-11", "19:10", 27.1767, 78.0081, 5.5, "Agra")
