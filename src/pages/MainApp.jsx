@@ -10,6 +10,7 @@ import ChartTab from '../components/Tabs/ChartTab'
 import NumbersTab from '../components/Tabs/NumbersTab'
 import MatchTab from '../components/Tabs/MatchTab'
 import GitHubLink from '../components/shared/GitHubLink'
+import { trackEvent } from '../lib/analytics'
 
 const TAB_COMPONENTS = {
   chat: ChatTab,
@@ -22,6 +23,11 @@ const TAB_COMPONENTS = {
 export default function MainApp() {
   const [activeTab, setActiveTab] = useState('chat')
   const { activeProfile } = useContext(ProfilesContext)
+
+  const changeTab = tab => {
+    setActiveTab(tab)
+    trackEvent('tab_view', { tab }) // usage analytics only — no birth data (see analytics.js)
+  }
 
   const TabContent = TAB_COMPONENTS[activeTab] ?? ChatTab
 
@@ -43,7 +49,7 @@ export default function MainApp() {
 
         {/* Tab bar (desktop) */}
         <div className="hidden md:flex flex-col flex-shrink-0">
-          <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+          <TabBar activeTab={activeTab} onTabChange={changeTab} />
         </div>
 
         {/* Mobile header */}
@@ -62,7 +68,7 @@ export default function MainApp() {
 
         {/* Bottom nav (mobile) */}
         <div className="flex md:hidden flex-col flex-shrink-0">
-          <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+          <BottomNav activeTab={activeTab} onTabChange={changeTab} />
         </div>
       </div>
     </div>

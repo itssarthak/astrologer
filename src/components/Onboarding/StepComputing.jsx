@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { PyodideContext } from '../../contexts/PyodideContext'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
 import LoadingSpinner from '../shared/LoadingSpinner'
+import { trackEvent } from '../../lib/analytics'
 
 const STEPS = [
   { key: 'pyodide', label: 'Loading Python engine', doneLabel: 'Python engine ready ✓' },
@@ -57,9 +58,11 @@ export default function StepComputing({ birthData }) {
         createdAt: new Date().toISOString(),
       }
       addProfile(profile)
+      trackEvent('chart_computed') // no birth data — just that a chart was created
       navigate('/app')
     } catch (err) {
       setError(err.message)
+      trackEvent('compute_error')
     }
   }
 

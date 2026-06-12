@@ -3,6 +3,7 @@ import { runAgent, providerSupportsTools } from '../lib/llm/agent'
 import { getApiKey } from '../lib/storage/keys'
 import { appendMessage, getHistory } from '../lib/storage/chat'
 import { buildSystemPrompt } from '../lib/prompts/soul'
+import { trackEvent } from '../lib/analytics'
 
 const TOOL_GUIDANCE = `
 # Tools
@@ -51,6 +52,7 @@ export function useAgent(profile, tab) {
       return text
     } catch (err) {
       setError(err.message)
+      trackEvent('chat_error', { provider: keyData.provider })
       throw err
     } finally {
       setBusy(false)

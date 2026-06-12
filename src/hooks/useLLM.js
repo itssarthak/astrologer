@@ -3,6 +3,7 @@ import { chat } from '../lib/llm/index'
 import { getApiKey } from '../lib/storage/keys'
 import { appendMessage, getHistory } from '../lib/storage/chat'
 import { buildSystemPrompt } from '../lib/prompts/soul'
+import { trackEvent } from '../lib/analytics'
 
 export function useLLM(profile, tab) {
   const [streaming, setStreaming] = useState(false)
@@ -40,6 +41,7 @@ export function useLLM(profile, tab) {
       return fullResponse
     } catch (err) {
       setError(err.message)
+      trackEvent('llm_error', { where: tab })
       throw err
     } finally {
       setStreaming(false)

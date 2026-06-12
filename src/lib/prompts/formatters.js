@@ -1,11 +1,20 @@
+// Active Vimshottari period from the chart: { mdLord, adLord }.
+export function activeMahadasha(chart) {
+  const md = chart?.dashas?.current?.mahadashas
+  const mdLord = md && Object.keys(md)[0]
+  if (!mdLord) return null
+  const ad = md[mdLord]?.antardashas
+  const adLord = ad ? Object.keys(ad)[0] : null
+  return { mdLord, adLord }
+}
+
 export function formatTransitContext(transitData, chartJson) {
   const planets = transitData.planets
     .map(p => `- ${p.planet} in your H${p.natal_house} (${p.sign})${p.retrograde ? ' retrograde' : ''}`)
     .join('\n')
 
-  const dasha = chartJson?.dashas?.vimshottari
-    ? `Current dasha: ${JSON.stringify(chartJson.dashas.vimshottari).slice(0, 200)}`
-    : ''
+  const md = activeMahadasha(chartJson)
+  const dasha = md ? `Current Mahadasha: ${md.mdLord}${md.adLord ? `, Antardasha: ${md.adLord}` : ''}` : ''
 
   return `## Today's Computed Transit Data (${transitData.date} ${transitData.time} IST)
 
@@ -17,8 +26,12 @@ ${planets}
 
 ${dasha}
 
-Interpret this as a transit read. Effects only — no factor-explaining.
-Plain English, no jargon, no Sanskrit, no house numbers in your reply.`
+Write today's transit read in this exact shape, plain English, no jargon/Sanskrit/house numbers:
+1. A single one-line summary of the day's overall feel.
+2. 2–3 short "•" bullets on what's most active and how it may feel.
+3. "Do today:" one practical thing the energy supports.
+4. "Avoid today:" one thing to be careful with.
+Effects only — don't explain the astrological factors.`
 }
 
 export function formatChartContext(chartJson, yogas, doshas) {

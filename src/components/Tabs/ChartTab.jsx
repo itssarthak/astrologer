@@ -3,7 +3,7 @@ import { useState, useContext } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { useLLM } from '../../hooks/useLLM'
 import { getHistory, clearHistory } from '../../lib/storage/chat'
-import { formatChartContext } from '../../lib/prompts/formatters'
+import { formatChartContext, activeMahadasha } from '../../lib/prompts/formatters'
 import KundliChart from '../Kundli/KundliChart'
 import ChatMessages from '../Chat/ChatMessages'
 import ChatInput from '../Chat/ChatInput'
@@ -69,6 +69,17 @@ export default function ChartTab() {
         )}
 
         <div className="mt-4 flex flex-col gap-2 text-sm">
+          {(() => {
+            const dasha = activeMahadasha(chart)
+            return dasha ? (
+              <div className="flex gap-2 flex-wrap items-center">
+                <span className="text-muted text-xs uppercase tracking-wide font-semibold">Dasha:</span>
+                <span className="px-2 py-0.5 rounded-full bg-surface-2 border border-border text-text-2 text-xs">
+                  {dasha.mdLord}{dasha.adLord ? ` › ${dasha.adLord}` : ''}
+                </span>
+              </div>
+            ) : null
+          })()}
           <div className="flex gap-2 flex-wrap items-center">
             <span className="text-muted text-xs uppercase tracking-wide font-semibold">Yogas:</span>
             {yogas.length ? yogas.slice(0, 5).map((y, i) => (
