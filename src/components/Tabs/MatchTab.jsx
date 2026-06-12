@@ -48,7 +48,7 @@ function OverlaySection({ title, overlays }) {
 export default function MatchTab() {
   const { activeProfile, profiles } = useContext(ProfilesContext)
   const { computeSynastry } = useContext(PyodideContext)
-  const { send, streaming, error } = useLLM(activeProfile, 'match')
+  const { send, streaming, error, stop } = useLLM(activeProfile, 'match')
   const [partnerProfileId, setPartnerProfileId] = useState('')
   const [synastryData, setSynastryData] = useState(null)
   const [computing, setComputing] = useState(false)
@@ -221,7 +221,7 @@ export default function MatchTab() {
 
       <ChatMessages messages={messages} streaming={streaming} streamingContent={streamingContent} />
       {error && <p className="px-4 py-2 text-xs text-red-500 bg-red-50 border-t border-red-100">{error}</p>}
-      <ChatInput onSend={handleSend} disabled={streaming || generatingRead || !synastryData}
+      <ChatInput onSend={handleSend} disabled={!synastryData} busy={streaming || generatingRead} onStop={stop}
         placeholder={synastryData ? 'Ask about compatibility...' : 'Compute a match first'} />
 
       {showAddModal && <AddProfileModal onClose={() => setShowAddModal(false)} />}

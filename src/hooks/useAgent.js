@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { runAgent, providerSupportsTools } from '../lib/llm/agent'
 import { getApiKey } from '../lib/storage/keys'
 import { appendMessage, getHistory } from '../lib/storage/chat'
@@ -22,6 +22,7 @@ export function useAgent(profile, tab) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [toolEvent, setToolEvent] = useState(null)
+  const abortRef = useRef(null)
 
   const send = useCallback(async ({ userMessage, onText }) => {
     const keyData = getApiKey()
@@ -32,6 +33,8 @@ export function useAgent(profile, tab) {
     const history = getHistory(profile.id, tab)
 
     appendMessage(profile.id, tab, { role: 'user', content: userMessage })
+    const controller = new AbortController()
+    abortRef.current = controller
     setBusy(true)
     setError(null)
     setToolEvent(null)
@@ -47,18 +50,23 @@ export function useAgent(profile, tab) {
         history,
         onText,
         onToolEvent: e => setToolEvent(e.status === 'done' ? null : e),
+        signal: controller.signal,
       })
       appendMessage(profile.id, tab, { role: 'assistant', content: text })
       return text
     } catch (err) {
+      if (err.name === 'AbortError') return '' // stopped by the user — no error
       setError(err.message)
       trackEvent('chat_error', { provider: keyData.provider })
       throw err
     } finally {
       setBusy(false)
       setToolEvent(null)
+      abortRef.current = null
     }
   }, [profile, tab])
 
-  return { send, busy, error, toolEvent, supportsTools: providerSupportsTools(getApiKey()?.provider) }
+  const stop = useCallback(() => abortRef.current?.abort(), [])
+
+  return { send, stop, busy, error, toolEvent, supportsTools: providerSupportsTools(getApiKey()?.provider) }
 }

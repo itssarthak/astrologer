@@ -1,5 +1,5 @@
 // Google Generative AI REST API — streaming
-export async function geminiChat({ key, messages, systemPrompt, onChunk, model = 'gemini-2.0-flash' }) {
+export async function geminiChat({ key, messages, systemPrompt, onChunk, signal, model = 'gemini-2.0-flash' }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`
 
   const contents = messages.map(m => ({
@@ -9,6 +9,7 @@ export async function geminiChat({ key, messages, systemPrompt, onChunk, model =
 
   const resp = await fetch(url, {
     method: 'POST',
+    signal,
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
     body: JSON.stringify({
       system_instruction: { parts: [{ text: systemPrompt }] },

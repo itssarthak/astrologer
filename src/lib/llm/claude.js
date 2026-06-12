@@ -1,10 +1,12 @@
 // Anthropic Messages API — streaming via fetch SSE
-export async function claudeChat({ key, messages, systemPrompt, onChunk, model = 'claude-sonnet-4-6' }) {
+export async function claudeChat({ key, messages, systemPrompt, onChunk, signal, model = 'claude-sonnet-4-6' }) {
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    signal,
     headers: {
       'x-api-key': key,
       'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
       'content-type': 'application/json',
     },
     body: JSON.stringify({

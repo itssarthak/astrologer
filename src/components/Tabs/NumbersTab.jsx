@@ -18,7 +18,7 @@ const NUM_LABELS = {
 
 export default function NumbersTab() {
   const { activeProfile } = useContext(ProfilesContext)
-  const { send, streaming, error } = useLLM(activeProfile, 'numbers')
+  const { send, streaming, error, stop } = useLLM(activeProfile, 'numbers')
   const [messages, setMessages] = useState(() =>
     activeProfile ? getHistory(activeProfile.id, 'numbers') : []
   )
@@ -79,7 +79,7 @@ export default function NumbersTab() {
       )}
       <ChatMessages messages={messages} streaming={streaming} streamingContent={streamingContent} />
       {error && <p className="px-4 py-2 text-xs text-red-500 bg-red-50 border-t border-red-100">{error}</p>}
-      <ChatInput onSend={handleSend} disabled={streaming} placeholder="Ask about your numbers..." />
+      <ChatInput onSend={handleSend} busy={streaming} onStop={stop} placeholder="Ask about your numbers..." />
     </div>
   )
 }

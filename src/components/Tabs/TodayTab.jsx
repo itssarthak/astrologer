@@ -14,7 +14,7 @@ import LoadingSpinner from '../shared/LoadingSpinner'
 export default function TodayTab() {
   const { activeProfile } = useContext(ProfilesContext)
   const { isReady, computeTransit } = useContext(PyodideContext)
-  const { send, streaming, error } = useLLM(activeProfile, 'today')
+  const { send, streaming, error, stop } = useLLM(activeProfile, 'today')
   const [transitData, setTransitData] = useState(null)
   const [computing, setComputing] = useState(false)
   const [transitError, setTransitError] = useState(null)
@@ -128,7 +128,7 @@ export default function TodayTab() {
       {transitError && <p className="px-4 py-2 text-xs text-red-500">{transitError}</p>}
       <ChatMessages messages={messages} streaming={streaming} streamingContent={streamingContent} />
       {error && <p className="px-4 py-2 text-xs text-red-500 bg-red-50 border-t border-red-100">{error}</p>}
-      <ChatInput onSend={handleSend} disabled={streaming || generating} placeholder="Ask about today's transits..." />
+      <ChatInput onSend={handleSend} busy={streaming || generating} onStop={stop} placeholder="Ask about today's transits..." />
     </div>
   )
 }

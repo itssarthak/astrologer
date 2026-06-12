@@ -27,10 +27,11 @@ function toOpenAIMessages(systemPrompt, log) {
   return out
 }
 
-async function runOpenAIRound({ key, baseUrl, model, systemPrompt, log }) {
+async function runOpenAIRound({ key, baseUrl, model, systemPrompt, log, signal }) {
   const endpoint = `${(baseUrl || 'https://api.openai.com/v1').replace(/\/+$/, '')}/chat/completions`
   const resp = await fetch(endpoint, {
     method: 'POST',
+    signal,
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: model || 'gpt-4o',
@@ -64,9 +65,10 @@ function toClaudeMessages(log) {
   })
 }
 
-async function runClaudeRound({ key, model, systemPrompt, log }) {
+async function runClaudeRound({ key, model, systemPrompt, log, signal }) {
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    signal,
     headers: {
       'x-api-key': key,
       'anthropic-version': '2023-06-01',
@@ -105,11 +107,12 @@ function toGeminiContents(log) {
   })
 }
 
-async function runGeminiRound({ key, model, systemPrompt, log }) {
+async function runGeminiRound({ key, model, systemPrompt, log, signal }) {
   const m = model || 'gemini-2.0-flash'
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`
   const resp = await fetch(url, {
     method: 'POST',
+    signal,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -145,7 +148,7 @@ export function providerSupportsTools(provider) {
  * Run the agentic loop. Returns the final assistant text.
  * @param {{provider,key,baseUrl?,model?,systemPrompt,userMessage,history?,onText?,onToolEvent?,maxRounds?}} opts
  */
-export async function runAgent({ provider, key, baseUrl, model, systemPrompt, userMessage, history = [], onText, onToolEvent, maxRounds = 6 }) {
+export async function runAgent({ provider, key, baseUrl, model, systemPrompt, userMessage, history = [], onText, onToolEvent, signal, maxRounds = 6 }) {
   const runner = RUNNERS[provider]
   if (!runner) throw new Error(`No agent runner for provider: ${provider}`)
 
@@ -158,7 +161,8 @@ export async function runAgent({ provider, key, baseUrl, model, systemPrompt, us
   ]
 
   for (let round = 0; round < maxRounds; round++) {
-    const { text, toolCalls } = await runner({ key, baseUrl: resolvedBaseUrl, model: resolvedModel, systemPrompt, log })
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+    const { text, toolCalls } = await runner({ key, baseUrl: resolvedBaseUrl, model: resolvedModel, systemPrompt, log, signal })
 
     if (!toolCalls || toolCalls.length === 0) {
       onText?.(text || '')

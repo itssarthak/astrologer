@@ -21,7 +21,7 @@ const TOOL_LABELS = {
 
 export default function ChatTab() {
   const { activeProfile } = useContext(ProfilesContext)
-  const { send, busy, error, toolEvent } = useAgent(activeProfile, 'chat')
+  const { send, stop, busy, error, toolEvent } = useAgent(activeProfile, 'chat')
   const [messages, setMessages] = useState(() =>
     activeProfile ? getHistory(activeProfile.id, 'chat') : []
   )
@@ -62,7 +62,7 @@ export default function ChatTab() {
         </p>
       )}
       {error && <p className="px-4 py-2 text-xs text-red-500 bg-red-50 border-t border-red-100">{error}</p>}
-      <ChatInput onSend={handleSend} disabled={busy} placeholder="Ask your astrologer anything..." />
+      <ChatInput onSend={handleSend} busy={busy} onStop={stop} placeholder="Ask your astrologer anything..." />
     </div>
   )
 }

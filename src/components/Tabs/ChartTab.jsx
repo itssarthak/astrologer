@@ -13,7 +13,7 @@ const SUB_TABS = ['D1', 'D9']
 
 export default function ChartTab() {
   const { activeProfile } = useContext(ProfilesContext)
-  const { send, streaming, error } = useLLM(activeProfile, 'chart')
+  const { send, streaming, error, stop } = useLLM(activeProfile, 'chart')
   const [subTab, setSubTab] = useState('D1')
   const [messages, setMessages] = useState(() =>
     activeProfile ? getHistory(activeProfile.id, 'chart') : []
@@ -104,7 +104,7 @@ export default function ChartTab() {
 
       <ChatMessages messages={messages} streaming={streaming} streamingContent={streamingContent} />
       {error && <p className="px-4 py-2 text-xs text-red-500 bg-red-50 border-t border-red-100">{error}</p>}
-      <ChatInput onSend={handleSend} disabled={streaming} placeholder="Ask about your chart..." />
+      <ChatInput onSend={handleSend} busy={streaming} onStop={stop} placeholder="Ask about your chart..." />
     </div>
   )
 }

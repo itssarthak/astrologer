@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { chat } from '../lib/llm/index'
 import { getApiKey } from '../lib/storage/keys'
 import { appendMessage, getHistory } from '../lib/storage/chat'
@@ -8,6 +8,7 @@ import { trackEvent } from '../lib/analytics'
 export function useLLM(profile, tab) {
   const [streaming, setStreaming] = useState(false)
   const [error, setError] = useState(null)
+  const abortRef = useRef(null)
 
   const send = useCallback(async ({ userMessage, extraContext = '', onChunk }) => {
     const keyData = getApiKey()
@@ -20,6 +21,8 @@ export function useLLM(profile, tab) {
     appendMessage(profile.id, tab, { role: 'user', content: userMessage })
     const messages = [...history, { role: 'user', content: userMessage }]
 
+    const controller = new AbortController()
+    abortRef.current = controller
     setStreaming(true)
     setError(null)
     let fullResponse = ''
@@ -32,6 +35,7 @@ export function useLLM(profile, tab) {
         model: keyData.model,
         messages,
         systemPrompt,
+        signal: controller.signal,
         onChunk: chunk => {
           fullResponse += chunk
           onChunk?.(chunk)
@@ -40,13 +44,21 @@ export function useLLM(profile, tab) {
       appendMessage(profile.id, tab, { role: 'assistant', content: fullResponse })
       return fullResponse
     } catch (err) {
+      if (err.name === 'AbortError') {
+        // Stopped by the user — keep whatever streamed so far, no error.
+        if (fullResponse) appendMessage(profile.id, tab, { role: 'assistant', content: fullResponse })
+        return fullResponse
+      }
       setError(err.message)
       trackEvent('llm_error', { where: tab })
       throw err
     } finally {
       setStreaming(false)
+      abortRef.current = null
     }
   }, [profile, tab])
 
-  return { send, streaming, error }
+  const stop = useCallback(() => abortRef.current?.abort(), [])
+
+  return { send, streaming, error, stop }
 }
