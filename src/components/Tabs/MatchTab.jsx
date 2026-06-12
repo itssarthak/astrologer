@@ -33,7 +33,8 @@ export default function MatchTab() {
     setComputing(true)
     setComputeError(null)
     try {
-      const result = await computeSynastry(JSON.stringify(activeProfile.chart), JSON.stringify(partnerProfile.chart))
+      // Pass the chart objects directly — computeSynastry stringifies them itself.
+      const result = await computeSynastry(activeProfile.chart, partnerProfile.chart)
       setSynastryData(result)
     } catch (err) {
       setComputeError(err.message)
