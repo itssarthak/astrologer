@@ -2,8 +2,10 @@ import { claudeChat } from './claude'
 import { geminiChat } from './gemini'
 import { openaiChat } from './openai'
 
-// "custom" reuses the OpenAI client against a user-supplied baseUrl + model.
-const CLIENTS = { claude: claudeChat, gemini: geminiChat, openai: openaiChat, custom: openaiChat }
+// "custom" and "openrouter" both reuse the OpenAI-compatible client. OpenRouter has a fixed
+// base URL (the user only supplies a key + model), so we inject it here.
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1'
+const CLIENTS = { claude: claudeChat, gemini: geminiChat, openai: openaiChat, custom: openaiChat, openrouter: openaiChat }
 
 /**
  * Unified streaming chat interface.
@@ -13,5 +15,7 @@ const CLIENTS = { claude: claudeChat, gemini: geminiChat, openai: openaiChat, cu
 export async function chat({ provider, key, messages, systemPrompt, onChunk, baseUrl, model }) {
   const client = CLIENTS[provider]
   if (!client) throw new Error(`Unknown provider: ${provider}`)
-  return client({ key, messages, systemPrompt, onChunk, baseUrl, model })
+  const resolvedBaseUrl = provider === 'openrouter' ? OPENROUTER_BASE_URL : baseUrl
+  const resolvedModel = provider === 'openrouter' ? (model || 'openrouter/free') : model
+  return client({ key, messages, systemPrompt, onChunk, baseUrl: resolvedBaseUrl, model: resolvedModel })
 }

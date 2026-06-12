@@ -3,32 +3,43 @@ import { useState } from 'react'
 import { getApiKey, saveApiKey, clearApiKey } from '../../lib/storage/keys'
 
 const PROVIDERS = [
-  { id: 'claude', label: 'Claude', placeholder: 'sk-ant-...' },
-  { id: 'gemini', label: 'Gemini', placeholder: 'AIza...' },
-  { id: 'openai', label: 'OpenAI', placeholder: 'sk-...' },
-  { id: 'custom', label: 'Custom', placeholder: 'your API key' },
+  { id: 'claude', label: 'Claude', placeholder: 'sk-ant-...', docs: 'https://console.anthropic.com/account/keys' },
+  { id: 'gemini', label: 'Gemini', placeholder: 'AIza...', docs: 'https://aistudio.google.com/app/apikey' },
+  { id: 'openai', label: 'OpenAI', placeholder: 'sk-...', docs: 'https://platform.openai.com/api-keys' },
+  {
+    id: 'openrouter', label: 'OpenRouter', placeholder: 'sk-or-...',
+    docs: 'https://openrouter.ai/keys', docsLabel: 'Generate your OpenRouter API key →',
+    needsModel: true, defaultModel: 'openrouter/free',
+  },
+  { id: 'custom', label: 'Custom', placeholder: 'your API key', needsBaseUrl: true, needsModel: true },
 ]
+
+function defaultModelFor(id) {
+  return PROVIDERS.find(p => p.id === id)?.defaultModel ?? ''
+}
 
 export default function ApiKeyModal({ onClose }) {
   const existing = getApiKey()
-  const [provider, setProvider] = useState(existing?.provider ?? 'claude')
+  const initialProvider = existing?.provider ?? 'claude'
+  const [provider, setProvider] = useState(initialProvider)
   const [key, setKey] = useState(existing?.key ?? '')
   const [baseUrl, setBaseUrl] = useState(existing?.baseUrl ?? '')
-  const [model, setModel] = useState(existing?.model ?? '')
+  const [model, setModel] = useState(existing?.model ?? defaultModelFor(initialProvider))
   const [saveError, setSaveError] = useState(null)
 
   const current = PROVIDERS.find(p => p.id === provider)
-  const isCustom = provider === 'custom'
+  const needsBaseUrl = !!current.needsBaseUrl
+  const needsModel = !!current.needsModel
   const trimmedKey = key.trim()
   const trimmedUrl = baseUrl.trim()
   const trimmedModel = model.trim()
-  const canSave = isCustom ? (trimmedKey && trimmedUrl && trimmedModel) : !!trimmedKey
+  const canSave = !!trimmedKey && (!needsBaseUrl || !!trimmedUrl) && (!needsModel || !!trimmedModel)
 
   const switchProvider = id => {
     setProvider(id)
     setKey('')
     setBaseUrl('')
-    setModel('')
+    setModel(defaultModelFor(id))
     setSaveError(null)
   }
 
@@ -38,8 +49,8 @@ export default function ApiKeyModal({ onClose }) {
       saveApiKey({
         provider,
         key: trimmedKey,
-        baseUrl: isCustom ? trimmedUrl : undefined,
-        model: isCustom ? trimmedModel : undefined,
+        baseUrl: needsBaseUrl ? trimmedUrl : undefined,
+        model: needsModel ? trimmedModel : undefined,
       })
       onClose()
     } catch {
@@ -51,7 +62,7 @@ export default function ApiKeyModal({ onClose }) {
     clearApiKey()
     setKey('')
     setBaseUrl('')
-    setModel('')
+    setModel(defaultModelFor(provider))
     setSaveError(null)
   }
 
@@ -80,22 +91,28 @@ export default function ApiKeyModal({ onClose }) {
           </div>
         </div>
 
-        {isCustom && (
-          <>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-muted uppercase tracking-wide">Base URL</label>
-              <input type="url" value={baseUrl} onChange={e => setBaseUrl(e.target.value)}
-                placeholder="https://your-endpoint.com/v1"
-                className="w-full px-3 py-2 rounded-lg border border-border bg-white text-text focus:outline-none focus:border-primary font-mono text-sm" />
-              <p className="text-xs text-muted">OpenAI-compatible endpoint (must allow browser CORS).</p>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-muted uppercase tracking-wide">Model</label>
-              <input type="text" value={model} onChange={e => setModel(e.target.value)}
-                placeholder="e.g. llama-3.1-70b"
-                className="w-full px-3 py-2 rounded-lg border border-border bg-white text-text focus:outline-none focus:border-primary font-mono text-sm" />
-            </div>
-          </>
+        {needsBaseUrl && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-muted uppercase tracking-wide">Base URL</label>
+            <input type="url" value={baseUrl} onChange={e => setBaseUrl(e.target.value)}
+              placeholder="https://your-endpoint.com/v1"
+              className="w-full px-3 py-2 rounded-lg border border-border bg-white text-text focus:outline-none focus:border-primary font-mono text-sm" />
+            <p className="text-xs text-muted">OpenAI-compatible endpoint (must allow browser CORS).</p>
+          </div>
+        )}
+
+        {needsModel && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-muted uppercase tracking-wide">Model</label>
+            <input type="text" value={model} onChange={e => setModel(e.target.value)}
+              placeholder={current.defaultModel ?? 'e.g. llama-3.1-70b'}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-white text-text focus:outline-none focus:border-primary font-mono text-sm" />
+            {provider === 'openrouter' && (
+              <p className="text-xs text-muted">
+                Suggested: <span className="font-mono text-text-2">openrouter/free</span> — routes to free models at no cost.
+              </p>
+            )}
+          </div>
         )}
 
         <div className="flex flex-col gap-1">
@@ -104,6 +121,13 @@ export default function ApiKeyModal({ onClose }) {
             placeholder={current?.placeholder ?? ''}
             className="w-full px-3 py-2 rounded-lg border border-border bg-white text-text focus:outline-none focus:border-primary font-mono text-sm" />
         </div>
+
+        {current.docs && (
+          <a href={current.docs} target="_blank" rel="noopener noreferrer"
+            className={`text-xs text-center underline ${provider === 'openrouter' ? 'text-primary font-medium' : 'text-muted'}`}>
+            {current.docsLabel ?? 'How do I get an API key? →'}
+          </a>
+        )}
 
         {saveError && <p className="text-xs text-red-500">{saveError}</p>}
 
