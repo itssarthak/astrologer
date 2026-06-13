@@ -26,6 +26,10 @@ export function buildSystemPrompt(profile) {
   const lagna = profile?.chart?.d1Chart?.houses?.find(h => h.number === 1)?.sign ?? 'unknown'
   const values = {
     NAME: profile?.name ?? 'the user',
+    DOB: profile?.dob ?? 'unknown',
+    TIME: profile?.time ?? 'unknown',
+    PLACE: profile?.place ?? 'unknown',
+    GENDER: profile?.gender || 'not specified',
     LAGNA: lagna,
   }
   const combined = `${soulMd}\n\n---\n\n# Current User\n${userMdTemplate}`
