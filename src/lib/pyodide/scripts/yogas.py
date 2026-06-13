@@ -6,13 +6,50 @@ strength, graha-drishti aspects and conjunctions; we read those (never recompute
 Clean-room implementations from classical (BPHS) definitions.
 """
 import json
-from adapter import planet_facts, house_lords, lagna_sign, SIGN_IDX
+from adapter import planet_facts, house_lords, lagna_sign, SIGN_IDX, SIGN_LORD
 
 KENDRAS = {1, 4, 7, 10}
 TRIKONAS = {1, 5, 9}
 DUSTHANAS = {6, 8, 12}
 NODES = {"Rahu", "Ketu"}
 STRONG_DIGNITIES = {"exalted", "moolatrikona", "own"}
+
+# planet -> the signs it rules (inverse of adapter.SIGN_LORD).
+OWNED_SIGNS = {}
+for _sign, _lord in SIGN_LORD.items():
+    OWNED_SIGNS.setdefault(_lord, []).append(_sign)
+
+
+def _aspects(ctx, giver, receiver):
+    """True if `giver` casts a graha-drishti onto `receiver` (read from the
+    receiver's pre-computed aspects_receives — jyotishganit already resolved drishti)."""
+    pr = ctx["planets"].get(receiver)
+    if not pr:
+        return False
+    return any(e.get("from_planet") == giver for e in pr.get("aspects_receives", []))
+
+
+def _parivartana(ctx, a, b):
+    """Sign exchange (parivartana): a sits in a sign b rules AND b sits in a sign a rules."""
+    pa, pb = ctx["planets"].get(a), ctx["planets"].get(b)
+    if not pa or not pb:
+        return False
+    return pa["sign"] in OWNED_SIGNS.get(b, []) and pb["sign"] in OWNED_SIGNS.get(a, [])
+
+
+def _associated(ctx, a, b):
+    """Classical 'association' of two planets: conjunction (same house),
+    mutual aspect, or sign exchange. Two distinct planets only."""
+    if a == b:
+        return False
+    pa, pb = ctx["planets"].get(a), ctx["planets"].get(b)
+    if not pa or not pb:
+        return False
+    if pa["house"] == pb["house"]:
+        return True
+    if _aspects(ctx, a, b) and _aspects(ctx, b, a):
+        return True
+    return _parivartana(ctx, a, b)
 
 
 def _context(chart_json):

@@ -5,6 +5,7 @@ from yogas import _mahapurusha_present
 from yogas import (_gaja_kesari, _sunapha, _anapha, _durudhara, _kemadruma)
 from yogas import (_budha_aditya, _vesi, _vasi, _ubhayachari)
 from yogas import (_chandra_mangal, _adhi, _kesari, _lakshmi, _dharma_karmadhipati)
+from yogas import _aspects, _parivartana, _associated, OWNED_SIGNS
 
 
 def test_context_shape(sarthak_chart):
@@ -190,3 +191,41 @@ def test_compute_yogas_json_roundtrips(sarthak_chart):
     from yogas import compute_yogas_json
     parsed = _json.loads(compute_yogas_json(_json.dumps(sarthak_chart)))
     assert isinstance(parsed, list)
+
+
+def test_owned_signs_map():
+    assert set(OWNED_SIGNS["Mars"]) == {"Aries", "Scorpio"}
+    assert OWNED_SIGNS["Sun"] == ["Leo"]
+
+
+def test_aspects_reads_receives():
+    # B (Mars) records that it receives an aspect from A (Saturn).
+    ctx = _ctx({"Saturn": {"house": 1}, "Mars": {"house": 7}})
+    ctx["planets"]["Mars"]["aspects_receives"] = [{"from_planet": "Saturn", "aspect_type": "7"}]
+    assert _aspects(ctx, "Saturn", "Mars") is True
+    assert _aspects(ctx, "Mars", "Saturn") is False
+
+
+def test_parivartana_detects_sign_exchange():
+    # Mars in Venus's sign (Libra) and Venus in Mars's sign (Aries) -> exchange.
+    ctx = _ctx({"Mars": {"house": 1, "sign": "Libra"}, "Venus": {"house": 7, "sign": "Aries"}})
+    assert _parivartana(ctx, "Mars", "Venus") is True
+    ctx2 = _ctx({"Mars": {"house": 1, "sign": "Libra"}, "Venus": {"house": 7, "sign": "Taurus"}})
+    assert _parivartana(ctx2, "Mars", "Venus") is False
+
+
+def test_associated_conjunction_aspect_exchange():
+    # Conjunction (same house)
+    ctx = _ctx({"Mars": {"house": 5}, "Venus": {"house": 5}})
+    assert _associated(ctx, "Mars", "Venus") is True
+    # Mutual aspect
+    ctx2 = _ctx({"Mars": {"house": 1}, "Venus": {"house": 7}})
+    ctx2["planets"]["Mars"]["aspects_receives"] = [{"from_planet": "Venus"}]
+    ctx2["planets"]["Venus"]["aspects_receives"] = [{"from_planet": "Mars"}]
+    assert _associated(ctx2, "Mars", "Venus") is True
+    # One-sided aspect only -> not associated
+    ctx3 = _ctx({"Mars": {"house": 1}, "Venus": {"house": 7}})
+    ctx3["planets"]["Mars"]["aspects_receives"] = [{"from_planet": "Venus"}]
+    assert _associated(ctx3, "Mars", "Venus") is False
+    # Same planet -> never self-associated
+    assert _associated(ctx, "Mars", "Mars") is False
