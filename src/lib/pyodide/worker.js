@@ -79,7 +79,7 @@ _astro.loader = Loader('/home/pyodide')
 `)
 
   // Keep in sync with PY_SCRIPTS in vite.config.js (both must list every module served).
-  const scripts = ['chart', 'transit', 'yogas', 'doshas', 'numerology', 'synastry', 'dignity', 'adapter']
+  const scripts = ['chart', 'transit', 'yogas', 'doshas', 'relationships', 'numerology', 'synastry', 'dignity', 'adapter']
   for (const name of scripts) {
     post({ type: 'progress', message: `Loading ${name}.py...` })
     const resp = await fetch(`/pyodide-scripts/${name}.py`)
