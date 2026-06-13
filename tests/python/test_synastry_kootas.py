@@ -39,7 +39,21 @@ def test_benefic_aspect_supportive_malefic_challenging():
     assert any(x["from"] == "Saturn" and x["effect"] == "challenging" for x in cross_aspects(a2, b2))
 
 
-from synastry import compute_house_overlays
+from synastry import compute_house_overlays, marriage_factors
+
+
+def test_marriage_factors_reports_seventh_lord_and_karakas():
+    facts = {
+        "Venus": {"house": 2, "dignity": "own", "strength": "strong"},
+        "Jupiter": {"house": 5, "dignity": "neutral", "strength": "adequate"},
+        "Saturn": {"house": 7, "dignity": "neutral", "strength": "weak"},
+    }
+    lords = {7: "Saturn"}
+    mf = marriage_factors(facts, lords)
+    assert mf["seventh_lord"] == "Saturn"
+    assert mf["seventh_lord_strength"] == "weak"
+    assert mf["venus_strength"] == "strong"
+    assert mf["jupiter_strength"] == "adequate"
 
 
 def test_overlay_carries_strength_when_facts_given():

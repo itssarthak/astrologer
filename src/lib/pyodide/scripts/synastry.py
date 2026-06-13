@@ -336,6 +336,25 @@ def cross_aspects(facts_a, facts_b):
                             "note": f"{pa} and {pb} sit together — fused energies"})
     return out
 
+def marriage_factors(facts, lords):
+    """Relationship-significant condition for one chart: the 7th lord and the love karakas."""
+    l7 = lords.get(7)
+    l7f = facts.get(l7, {}) if l7 else {}
+    venus = facts.get("Venus", {})
+    jup = facts.get("Jupiter", {})
+    return {
+        "seventh_lord": l7,
+        "seventh_lord_strength": l7f.get("strength"),
+        "seventh_lord_house": l7f.get("house"),
+        "venus_strength": venus.get("strength"),
+        "venus_dignity": venus.get("dignity"),
+        "jupiter_strength": jup.get("strength"),
+        "summary": (
+            f"7th lord {l7 or '—'} is {l7f.get('strength','unknown')}; "
+            f"Venus is {venus.get('strength','unknown')}, Jupiter {jup.get('strength','unknown')}"
+        ),
+    }
+
 def compute_synastry(chart_a_json, chart_b_json, gender_a="", gender_b=""):
     nak_a, _, sign_a = _moon_nakshatra(chart_a_json)
     nak_b, _, sign_b = _moon_nakshatra(chart_b_json)
