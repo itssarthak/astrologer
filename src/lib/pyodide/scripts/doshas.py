@@ -9,6 +9,7 @@ def compute_doshas(chart_json):
                 "house": h["number"],
                 "sign": occ["sign"],
                 "nakshatra": occ.get("nakshatra", ""),
+                "aspects_receives": list((occ.get("aspects") or {}).get("receives", []) or []),
             }
 
     doshas = {}
@@ -47,11 +48,18 @@ def compute_doshas(chart_json):
             n = planets.get(node)
             if n and n["house"] == mars["house"]:
                 cancellations.append(f"{node} conjunct Mars")
+        # Jupiter aspecting Mars neutralises the dosha (benefic guard by aspect).
+        if any(a.get("from_planet") == "Jupiter" for a in mars.get("aspects_receives", [])):
+            cancellations.append("Jupiter aspects Mars")
         cancelled = bool(cancellations)
+
+        severity = ("full" if mars["house"] in {1, 4, 7, 8}
+                    else "partial" if mars["house"] in {2, 12} else None)
 
         doshas["manglik"] = {
             "present": present and not cancelled,
             "house": mars["house"],
+            "severity": severity,
             "cancelled": present and cancelled,
             "cancellation_reasons": cancellations if present else [],
             "text": (
@@ -104,6 +112,43 @@ def compute_doshas(chart_json):
         doshas["ganda_moola"] = {
             "present": present,
             "text": f"Ganda Moola Dosha — Moon in {moon.get('nakshatra')}" if present else "No Ganda Moola Dosha",
+        }
+
+    # --- Kalathra Dosha: a natural malefic occupies the 7th house (marriage) ---
+    MALEFICS = ("Mars", "Saturn", "Sun", "Rahu", "Ketu")
+    afflictors = [p for p in MALEFICS if planets.get(p) and planets[p]["house"] == 7]
+    present = bool(afflictors)
+    doshas["kalathra"] = {
+        "present": present,
+        "afflictors": afflictors,
+        "text": (f"Kalathra Dosha — strain on the marriage area from {', '.join(afflictors)}"
+                 if present else "No Kalathra Dosha"),
+    }
+
+    # --- Shrapit Dosha: Saturn conjunct Rahu ---
+    sat = planets.get("Saturn")
+    if sat and rahu:
+        present = sat["house"] == rahu["house"]
+        harsh = present and sat["house"] in {6, 8, 12}
+        doshas["shrapit"] = {
+            "present": present,
+            "text": (("Shrapit Dosha — Saturn conjunct Rahu"
+                      + (" in a difficult house" if harsh else ""))
+                     if present else "No Shrapit Dosha"),
+        }
+
+    # --- Shakata Dosha: Moon in the 6th/8th/12th from Jupiter (cancelled if Jupiter is in a kendra) ---
+    if jup and moon:
+        dist = ((moon["house"] - jup["house"]) % 12) + 1
+        present = dist in {6, 8, 12}
+        cancelled = present and jup["house"] in {1, 4, 7, 10}
+        doshas["shakata"] = {
+            "present": present and not cancelled,
+            "cancelled": cancelled,
+            "text": ("Shakata Dosha — fluctuating fortunes, effort that doesn't always stick"
+                     if (present and not cancelled)
+                     else "Shakata Dosha present but cancelled (Jupiter well-placed)" if present
+                     else "No Shakata Dosha"),
         }
 
     return doshas

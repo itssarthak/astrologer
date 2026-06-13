@@ -9,6 +9,7 @@ export const TOOL_LABELS = {
   get_today_transit:  { active: "Reading today's transits",        past: "Read today's transits" },
   match_profiles:     { active: 'Checking compatibility',    past: 'Checked compatibility' },
   compute_numerology: { active: 'Crunching the numbers',     past: 'Crunched the numbers' },
+  numerology_compatibility: { active: 'Checking number compatibility', past: 'Checked number compatibility' },
   geocode_place:      { active: 'Looking up the location',   past: 'Looked up the location' },
   compute_chart:      { active: 'Computing the birth chart', past: 'Computed a birth chart' },
   web_search:         { active: 'Searching the web',         past: 'Searched the web' },

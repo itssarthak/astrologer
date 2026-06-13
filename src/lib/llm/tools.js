@@ -2,7 +2,7 @@
 // an async `execute(args)` that runs in the browser — calling the in-browser Pyodide compute
 // functions, reading saved profiles, geocoding, or web searching. Returns stay concise so
 // they fit comfortably back into the model's context.
-import { computeChart, computeTransit, computeSynastry, computeNumerology, computeChartFacts } from '../pyodide/index'
+import { computeChart, computeTransit, computeSynastry, computeNumerology, computeNumberCompatibility, computeChartFacts } from '../pyodide/index'
 import { getProfiles, getActiveProfile } from '../storage/profiles'
 import { searchPlaces, fetchTimezoneOffset } from '../geocode'
 
@@ -137,17 +137,33 @@ export const TOOLS = [
   },
   {
     name: 'compute_numerology',
-    description: 'Compute a numerology profile (Chaldean primary + Pythagorean) from a full birth name and date of birth.',
+    description: 'Compute a numerology profile (Chaldean primary + Pythagorean) from a full birth name and date of birth. Returns the driver (mulank) and destiny (bhagyank) numbers with their ruling planets, the compound name number with its Cheiro meaning, and supports an optional everyday name.',
     parameters: {
       type: 'object',
       properties: {
         full_name: { type: 'string', description: 'Full birth name.' },
         dob: { type: 'string', description: 'Date of birth, YYYY-MM-DD.' },
+        name_in_use: { type: 'string', description: 'The name the person actually goes by, if different from the birth name. Optional.' },
       },
       required: ['full_name', 'dob'],
     },
-    async execute({ full_name, dob }) {
-      return computeNumerology(full_name, dob)
+    async execute({ full_name, dob, name_in_use }) {
+      return computeNumerology(full_name, dob, name_in_use ?? null)
+    },
+  },
+  {
+    name: 'numerology_compatibility',
+    description: "Compare two numerology numbers (1-9, e.g. two people's driver/mulank numbers) and return whether their ruling planets are friends, neutral, or enemies.",
+    parameters: {
+      type: 'object',
+      properties: {
+        number_a: { type: 'number', description: 'First number, 1-9.' },
+        number_b: { type: 'number', description: 'Second number, 1-9.' },
+      },
+      required: ['number_a', 'number_b'],
+    },
+    async execute({ number_a, number_b }) {
+      return computeNumberCompatibility(number_a, number_b)
     },
   },
   {

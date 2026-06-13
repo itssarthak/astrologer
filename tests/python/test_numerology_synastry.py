@@ -18,6 +18,79 @@ def test_numerology_destiny_has_both_systems():
     assert "chaldean" in result["destiny"]
     assert "pythagorean" in result["destiny"]
 
+def test_numerology_mulank_and_rulers():
+    r = compute_numerology("Sarthak Chhabra", "1996-11-22")
+    assert r["mulank"]["number"] == 4          # 22 -> 2+2 = 4
+    assert r["mulank"]["ruler"] == "Rahu"      # 4 is ruled by Rahu
+    assert r["bhagyank"]["number"] == r["life_path"]
+    assert r["bhagyank"]["ruler"] in ("Sun","Moon","Jupiter","Rahu","Mercury","Venus","Ketu","Saturn","Mars")
+
+
+def test_numerology_name_in_use_present_when_passed():
+    r = compute_numerology("Sarthak Chhabra", "1996-11-22", name_in_use="Sarthak")
+    assert "name_in_use" in r
+    assert "chaldean" in r["name_in_use"]["destiny"]
+
+
+def test_numerology_name_in_use_absent_when_not_passed():
+    r = compute_numerology("Sarthak Chhabra", "1996-11-22")
+    assert r.get("name_in_use") is None
+
+
+def test_numerology_compound_number_structure():
+    from numerology import CHEIRO_COMPOUND
+    r = compute_numerology("Sarthak Chhabra", "1996-11-22")
+    cn = r["name_compound"]
+    assert "raw" in cn and "compound" in cn and "single" in cn
+    assert cn["single"] == r["destiny"]["chaldean"]
+    assert isinstance(cn["compound"], int)
+    # When the raw total is already in/under the Cheiro band, compound IS the raw total.
+    if cn["raw"] <= 52:
+        assert cn["compound"] == cn["raw"]
+    assert cn["meaning"] == CHEIRO_COMPOUND.get(cn["compound"])
+
+
+def test_cheiro_meaning_lookup_for_known_compound():
+    from numerology import CHEIRO_COMPOUND, _compound_and_single
+    compound, single = _compound_and_single(23)
+    assert compound == 23 and single == 5
+    assert CHEIRO_COMPOUND[23].startswith("Royal Star of the Lion")
+
+
+def test_compound_and_single_pins_value():
+    from numerology import _compound_and_single, CHEIRO_COMPOUND
+    assert _compound_and_single(23) == (23, 5)        # already in 10-52 band
+    assert _compound_and_single(37) == (37, 1)        # in-band; meaning must exist
+    assert CHEIRO_COMPOUND[37]                          # row is present (not a hole)
+    c, s = _compound_and_single(137)                    # >52 -> reduce into band
+    assert c <= 52 and c in CHEIRO_COMPOUND
+
+
+def test_number_compatibility_neutral():
+    from numerology import compute_number_compatibility
+    # Saturn(8) and Jupiter(3) are neutral both ways in the Naisargika matrix.
+    assert compute_number_compatibility(8, 3)["relation"] == "neutral"
+
+
+def test_number_compatibility_friends_and_enemies():
+    from numerology import compute_number_compatibility
+    # 1 (Sun) and 3 (Jupiter) are natural friends.
+    r = compute_number_compatibility(1, 3)
+    assert r["relation"] == "friend"
+    # 1 (Sun) and 8 (Saturn) are natural enemies.
+    assert compute_number_compatibility(1, 8)["relation"] == "enemy"
+    # symmetric in label severity: enemy/friend determined per the matrix both ways
+    assert compute_number_compatibility(3, 1)["relation"] == "friend"
+
+
+def test_number_compatibility_json_roundtrips():
+    import json as _json
+    from numerology import compute_number_compatibility_json
+    parsed = _json.loads(compute_number_compatibility_json(2, 6))
+    assert parsed["a"] == 2 and parsed["b"] == 6
+    assert parsed["relation"] in ("friend", "neutral", "enemy")
+
+
 def test_guna_milan_total_in_range():
     result = compute_guna_milan("Shravana", "male", "Ashwini", "female")
     assert 0 <= result["total"] <= 36

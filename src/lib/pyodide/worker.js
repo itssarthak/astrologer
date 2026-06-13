@@ -19,6 +19,7 @@ const PY_FN = {
   computeYogasFallback: 'compute_yogas_json',
   computeDoshasFallback: 'compute_doshas_json',
   computeNumerology: 'compute_numerology_json',
+  computeNumberCompatibility: 'compute_number_compatibility_json',
   computeSynastry: 'compute_synastry_json',
   computeChartFacts: 'chart_facts_json',
 }
@@ -94,7 +95,7 @@ from chart import compute_chart_json
 from transit import compute_transit_json
 from yogas import compute_yogas_json
 from doshas import compute_doshas_json
-from numerology import compute_numerology_json
+from numerology import compute_numerology_json, compute_number_compatibility_json
 from synastry import compute_synastry_json
 from adapter import chart_facts_json
 `)
