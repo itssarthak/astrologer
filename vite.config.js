@@ -27,9 +27,13 @@ const copyPyScripts = {
   },
   configureServer(server) {
     server.watcher.add(PY_SCRIPT_SRC)
-    server.watcher.on('change', file => {
+    // Re-copy on edit AND on new files (a newly added module — e.g. from a branch switch —
+    // fires 'add', not 'change'; without this it would 404 in a running dev session).
+    const onPy = file => {
       if (file.startsWith(PY_SCRIPT_SRC) && file.endsWith('.py')) copyPyScriptsToPublic()
-    })
+    }
+    server.watcher.on('change', onPy)
+    server.watcher.on('add', onPy)
   },
 }
 

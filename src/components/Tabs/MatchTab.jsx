@@ -8,6 +8,7 @@ import { formatSynastryContext } from '../../lib/prompts/formatters'
 import { useReportBusy } from '../../contexts/BusyContext'
 import AddProfileModal from '../Sidebar/AddProfileModal'
 import ChatMessages from '../Chat/ChatMessages'
+import Markdown from '../Chat/Markdown'
 import ChatInput from '../Chat/ChatInput'
 import ChatToolbar from '../shared/ChatToolbar'
 import LoadingSpinner from '../shared/LoadingSpinner'
@@ -18,6 +19,15 @@ const LEAN_BADGE = {
   harmonious: 'bg-green-100 text-green-700',
   challenging: 'bg-red-100 text-red-600',
   mixed: 'bg-surface-2 text-text-2',
+}
+
+function FactorRow({ text, effect }) {
+  return (
+    <div className="flex items-start gap-2 text-xs leading-snug">
+      <span className={`mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0 ${EFFECT_DOT[effect]}`} />
+      <span className="text-text-2">{text}</span>
+    </div>
+  )
 }
 
 function OverlayRow({ o }) {
@@ -202,6 +212,35 @@ export default function MatchTab() {
                 <OverlaySection title={`${partnerProfile?.name} → ${activeProfile.name}`} overlays={synastryData.b_planets_in_a_houses ?? []} />
               </div>
             )}
+
+            {/* Strongest currents — the ranked cross-aspect + overlay digest */}
+            {((synastryData.top_supportive?.length > 0) || (synastryData.top_challenging?.length > 0)) && (
+              <div className="border-t border-border pt-3 flex flex-col gap-2">
+                <span className="text-sm font-semibold text-text">Strongest currents</span>
+                {(synastryData.top_supportive ?? []).map((s, i) => (
+                  <FactorRow key={`s${i}`} text={s} effect="supportive" />
+                ))}
+                {(synastryData.top_challenging ?? []).map((s, i) => (
+                  <FactorRow key={`c${i}`} text={s} effect="challenging" />
+                ))}
+              </div>
+            )}
+
+            {/* Marriage significators + current period */}
+            {synastryData.marriage_factors && (
+              <div className="border-t border-border pt-3 flex flex-col gap-1">
+                <span className="text-sm font-semibold text-text">Marriage significators</span>
+                <p className="text-xs text-text-2">
+                  <span className="font-medium">{activeProfile.name}:</span> {synastryData.marriage_factors.a?.summary ?? '—'}
+                </p>
+                <p className="text-xs text-text-2">
+                  <span className="font-medium">{partnerProfile?.name}:</span> {synastryData.marriage_factors.b?.summary ?? '—'}
+                </p>
+                {synastryData.dasha_overlap?.note && (
+                  <p className="text-xs text-muted mt-1">Current period: {synastryData.dasha_overlap.note}</p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -209,7 +248,7 @@ export default function MatchTab() {
       {(generatingRead || synastryRead) && (
         <div className="p-4 border-b border-border bg-surface overflow-y-auto flex-shrink-0 max-h-[40%]">
           <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">Compatibility Read</p>
-          <p className="text-sm text-text leading-relaxed whitespace-pre-wrap">{synastryRead || '...'}</p>
+          <div className="text-sm text-text leading-relaxed">{synastryRead ? <Markdown>{synastryRead}</Markdown> : '...'}</div>
         </div>
       )}
 
