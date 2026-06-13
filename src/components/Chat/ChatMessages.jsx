@@ -3,7 +3,7 @@ import ChatMessage from './ChatMessage'
 import ToolChips from './ToolChips'
 import LoadingSpinner from '../shared/LoadingSpinner'
 
-export default function ChatMessages({ messages, streaming, streamingContent = '', streamingTools = [] }) {
+export default function ChatMessages({ messages, streaming, streamingContent = '', streamingTools = [], emptyState = null }) {
   const bottomRef = useRef(null)
 
   useEffect(() => {
@@ -12,6 +12,8 @@ export default function ChatMessages({ messages, streaming, streamingContent = '
 
   return (
     <div className="flex-1 overflow-y-auto flex flex-col gap-3 p-4">
+      {/* Greeting before any conversation — only when nothing has been said and nothing is streaming */}
+      {messages.length === 0 && !streaming && emptyState}
       {messages.map((msg, i) => <ChatMessage key={msg.id ?? i} message={msg} />)}
       {streaming && (
         <div className="flex flex-col items-start gap-1">
