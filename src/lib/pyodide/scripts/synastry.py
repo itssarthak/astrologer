@@ -102,31 +102,49 @@ def _bhakoot_score(nak_boy, nak_girl):
     diff = abs(b - g)
     return 0 if diff in {6, 8} else 7
 
-def compute_guna_milan(nak_a_name, pada_a, nak_b_name, pada_b):
-    # Several kootas (varna, tara, graha maitri) are traditionally directional (groom -> bride).
-    # This app has no gender, so the score must NOT depend on which profile is active vs. the
-    # partner. Order the two nakshatras canonically so compute(A, B) == compute(B, A).
-    bi, gi = sorted([_nak_idx(nak_a_name), _nak_idx(nak_b_name)])
+# Gana koota points: (groom_gana, bride_gana) -> score. 0=Deva, 1=Manushya, 2=Rakshasa.
+# Directional — e.g. a Rakshasa groom with a Deva bride scores worse than the reverse.
+GANA_KOOTA = {
+    (0, 0): 6, (0, 1): 6, (0, 2): 0,
+    (1, 0): 5, (1, 1): 6, (1, 2): 0,
+    (2, 0): 1, (2, 1): 0, (2, 2): 6,
+}
 
-    varna = 1 if NAK_VARNA[gi] >= NAK_VARNA[bi] else 0
+def _varna_score(boy_i, girl_i):
+    # 1 point if the groom's varna is equal or higher than the bride's (lower index = higher).
+    return 1 if NAK_VARNA[boy_i] <= NAK_VARNA[girl_i] else 0
+
+def _gana_score(boy_i, girl_i):
+    return GANA_KOOTA[(NAK_GANA[boy_i], NAK_GANA[girl_i])]
+
+def compute_guna_milan(nak_a_name, gender_a, nak_b_name, gender_b):
+    ia, ib = _nak_idx(nak_a_name), _nak_idx(nak_b_name)
+
+    # Symmetric kootas — gender-independent, identical either way.
     vashya = 2  # simplified
-    tara = _tara_score(bi, gi)
-    yoni = 4 if NAK_YONI[bi] == NAK_YONI[gi] else (2 if abs(NAK_YONI[bi] - NAK_YONI[gi]) <= 3 else 0)
-    # Graha Maitri = mutual friendship of the two Moon-sign lords (symmetric):
-    # same lord or mutual friends -> 5, a one-way friendship -> 4, otherwise 0.
-    graha_a = NAK_GRAHA[bi]
-    graha_b = NAK_GRAHA[gi]
-    a_friend_b = graha_a in GRAHA_FRIEND.get(graha_b, set())
-    b_friend_a = graha_b in GRAHA_FRIEND.get(graha_a, set())
-    graha_maitri = (5 if graha_a == graha_b
-                    else 5 if (a_friend_b and b_friend_a)
-                    else 4 if (a_friend_b or b_friend_a)
+    tara = _tara_score(ia, ib)
+    yoni = 4 if NAK_YONI[ia] == NAK_YONI[ib] else (2 if abs(NAK_YONI[ia] - NAK_YONI[ib]) <= 3 else 0)
+    graha_x, graha_y = NAK_GRAHA[ia], NAK_GRAHA[ib]
+    x_friend = graha_x in GRAHA_FRIEND.get(graha_y, set())
+    y_friend = graha_y in GRAHA_FRIEND.get(graha_x, set())
+    graha_maitri = (5 if graha_x == graha_y
+                    else 5 if (x_friend and y_friend)
+                    else 4 if (x_friend or y_friend)
                     else 0)
-    gana_boy = NAK_GANA[bi]
-    gana_girl = NAK_GANA[gi]
-    gana = 6 if gana_boy == gana_girl else (3 if abs(gana_boy - gana_girl) == 1 else 0)
-    bhakoot = _bhakoot_score(bi, gi)
-    nadi = 8 if NAK_NADI[bi] != NAK_NADI[gi] else 0
+    bhakoot = _bhakoot_score(ia, ib)
+    nadi = 8 if NAK_NADI[ia] != NAK_NADI[ib] else 0
+
+    # Varna and Gana are genuinely directional (groom -> bride). Use the stated genders to pick
+    # the groom. For a same-sex or gender-unknown pair, average both assignments so the score
+    # stays well-defined and order-independent without faking a gender.
+    ga, gb = str(gender_a or "").lower(), str(gender_b or "").lower()
+    if ga == "male" and gb == "female":
+        varna, gana = _varna_score(ia, ib), _gana_score(ia, ib)
+    elif ga == "female" and gb == "male":
+        varna, gana = _varna_score(ib, ia), _gana_score(ib, ia)
+    else:
+        varna = (_varna_score(ia, ib) + _varna_score(ib, ia)) / 2
+        gana = (_gana_score(ia, ib) + _gana_score(ib, ia)) / 2
 
     total = varna + vashya + tara + yoni + graha_maitri + gana + bhakoot + nadi
     return {
@@ -182,17 +200,20 @@ def _overlay_tally(*overlay_lists):
                 else "mixed",
     }
 
-def compute_synastry(chart_a_json, chart_b_json):
-    nak_a, pada_a = _moon_nakshatra(chart_a_json)
-    nak_b, pada_b = _moon_nakshatra(chart_b_json)
+def compute_synastry(chart_a_json, chart_b_json, gender_a="", gender_b=""):
+    nak_a, _ = _moon_nakshatra(chart_a_json)
+    nak_b, _ = _moon_nakshatra(chart_b_json)
     a_in_b = compute_house_overlays(chart_b_json, chart_a_json)
     b_in_a = compute_house_overlays(chart_a_json, chart_b_json)
     return {
-        "guna_milan": compute_guna_milan(nak_a, pada_a, nak_b, pada_b),
+        "guna_milan": compute_guna_milan(nak_a, gender_a, nak_b, gender_b),
         "a_planets_in_b_houses": a_in_b,
         "b_planets_in_a_houses": b_in_a,
         "overlay_summary": _overlay_tally(a_in_b, b_in_a),
     }
 
-def compute_synastry_json(chart_a_str, chart_b_str):
-    return json.dumps(compute_synastry(json.loads(chart_a_str), json.loads(chart_b_str)), default=str)
+def compute_synastry_json(chart_a_str, chart_b_str, gender_a="", gender_b=""):
+    return json.dumps(
+        compute_synastry(json.loads(chart_a_str), json.loads(chart_b_str), gender_a, gender_b),
+        default=str,
+    )

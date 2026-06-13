@@ -19,20 +19,29 @@ def test_numerology_destiny_has_both_systems():
     assert "pythagorean" in result["destiny"]
 
 def test_guna_milan_total_in_range():
-    result = compute_guna_milan("Shravana", 3, "Ashwini", 1)
+    result = compute_guna_milan("Shravana", "male", "Ashwini", "female")
     assert 0 <= result["total"] <= 36
 
 def test_guna_milan_nadi_full_score_different_nadi():
-    result = compute_guna_milan("Ashwini", 1, "Rohini", 1)  # Vata vs Kapha
+    result = compute_guna_milan("Ashwini", "", "Rohini", "")  # Vata vs Kapha
     assert result["breakdown"]["nadi"]["score"] == 8
 
-def test_guna_milan_is_order_independent():
-    # The app has no gender, so the same pair must score the same regardless of which
-    # profile is active vs. partner (regression: A->B 31 vs B->A 27).
+def test_guna_milan_no_gender_is_order_independent():
+    # Without gender the directional kootas average both ways, so the same pair scores the
+    # same regardless of which profile is active vs. partner (regression: A->B 31 vs B->A 27).
     import itertools
     from synastry import NAKSHATRA_NAMES
     for a, b in itertools.combinations(NAKSHATRA_NAMES, 2):
-        assert compute_guna_milan(a, 1, b, 1)["total"] == compute_guna_milan(b, 1, a, 1)["total"], f"{a} vs {b}"
+        assert compute_guna_milan(a, "", b, "")["total"] == compute_guna_milan(b, "", a, "")["total"], f"{a} vs {b}"
+
+def test_guna_milan_with_gender_is_pair_consistent_and_directional():
+    # The score depends on the actual genders, NOT argument order.
+    assert compute_guna_milan("Rohini", "male", "Magha", "female")["total"] \
+        == compute_guna_milan("Magha", "female", "Rohini", "male")["total"]
+    # Swapping who is groom vs bride can change the directional Varna/Gana kootas.
+    mf = compute_guna_milan("Magha", "male", "Rohini", "female")["breakdown"]
+    fm = compute_guna_milan("Magha", "female", "Rohini", "male")["breakdown"]
+    assert (mf["varna"]["score"], mf["gana"]["score"]) != (fm["varna"]["score"], fm["gana"]["score"])
 
 def test_synastry_returns_guna_milan_and_overlays():
     chart_a = compute_chart("A", "1996-11-22", "13:06", 28.6139, 77.2090, 5.5, "Delhi")

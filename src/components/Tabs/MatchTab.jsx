@@ -81,7 +81,8 @@ export default function MatchTab() {
     setComputeError(null)
     try {
       // Pass the chart objects directly — computeSynastry stringifies them itself.
-      const result = await computeSynastry(activeProfile.chart, partnerProfile.chart)
+      // Genders make the Varna/Gana kootas directional (groom -> bride) when known.
+      const result = await computeSynastry(activeProfile.chart, partnerProfile.chart, activeProfile.gender, partnerProfile.gender)
       setSynastryData(result)
       await generateRead(result, partnerProfile)
     } catch (err) {

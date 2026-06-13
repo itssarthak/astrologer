@@ -2,10 +2,13 @@ import { useState } from 'react'
 import { useGeocode } from '../../hooks/useGeocode'
 import LoadingSpinner from './LoadingSpinner'
 
+const GENDERS = [['male', 'Male'], ['female', 'Female'], ['other', 'Other']]
+
 export default function BirthDetailsForm({ onSubmit, submitLabel = 'Continue', initialValues = {} }) {
   const [name, setName] = useState(initialValues.name ?? '')
   const [dob, setDob] = useState(initialValues.dob ?? '')
   const [time, setTime] = useState(initialValues.time ?? '')
+  const [gender, setGender] = useState(initialValues.gender ?? '')
   const [place, setPlace] = useState(initialValues.place ?? '')
   const [selectedPlace, setSelectedPlace] = useState(
     initialValues.lat ? { display_name: initialValues.place, lat: String(initialValues.lat), lon: String(initialValues.lon) } : null
@@ -35,6 +38,7 @@ export default function BirthDetailsForm({ onSubmit, submitLabel = 'Continue', i
         name,
         dob,
         time,
+        gender,
         place: selectedPlace.display_name,
         lat: parseFloat(selectedPlace.lat),
         lon: parseFloat(selectedPlace.lon),
@@ -66,6 +70,24 @@ export default function BirthDetailsForm({ onSubmit, submitLabel = 'Continue', i
         <input id="bf-time" type="time" value={time} onChange={e => setTime(e.target.value)}
           className="w-full px-3 py-2 rounded-lg border border-border bg-white text-text focus:outline-none focus:border-primary"
           required />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-semibold text-text-2 uppercase tracking-wide">
+          Gender <span className="text-muted normal-case font-normal">— for Kundali Match</span>
+        </label>
+        <div className="grid grid-cols-3 gap-2">
+          {GENDERS.map(([val, label]) => (
+            <button key={val} type="button" onClick={() => setGender(val)} aria-pressed={gender === val}
+              className={`py-2 rounded-lg border text-sm font-medium transition-colors ${
+                gender === val
+                  ? 'border-primary bg-primary-light text-primary'
+                  : 'border-border bg-white text-muted hover:border-border-strong'
+              }`}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-col gap-1 relative">

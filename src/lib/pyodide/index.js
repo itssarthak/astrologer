@@ -160,14 +160,14 @@ from numerology import compute_numerology_json
   return JSON.parse(result)
 }
 
-export async function computeSynastry(chartJsonA, chartJsonB) {
+export async function computeSynastry(chartJsonA, chartJsonB, genderA = '', genderB = '') {
   const py = await getPyodide()
   await py.runPythonAsync(`
 import sys; sys.path.insert(0, '/home/pyodide')
 from synastry import compute_synastry_json
 `)
   const result = py.globals.get('compute_synastry_json')(
-    JSON.stringify(chartJsonA), JSON.stringify(chartJsonB)
+    JSON.stringify(chartJsonA), JSON.stringify(chartJsonB), genderA ?? '', genderB ?? ''
   )
   return JSON.parse(result)
 }

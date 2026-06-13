@@ -90,7 +90,7 @@ export const TOOLS = [
       const b = findProfileByName(partner_name)
       if (!a?.chart) throw new Error('No active profile chart.')
       if (!b?.chart) throw new Error(`No saved profile named "${partner_name}".`)
-      const s = await computeSynastry(a.chart, b.chart)
+      const s = await computeSynastry(a.chart, b.chart, a.gender, b.gender)
       return {
         between: [a.name, b.name],
         guna_milan: { total: s.guna_milan.total, max: 36, verdict: s.guna_milan.verdict, breakdown: s.guna_milan.breakdown },
