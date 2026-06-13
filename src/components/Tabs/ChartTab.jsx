@@ -26,7 +26,7 @@ export default function ChartTab() {
 
   const handleSend = userMessage =>
     submit(userMessage, ({ onChunk }) =>
-      send({ userMessage, extraContext: formatChartContext(JSON.stringify(chart), yogas, doshas), onChunk }))
+      send({ userMessage, extraContext: formatChartContext(chart, yogas, doshas), onChunk }))
 
   if (!activeProfile?.chart) return (
     <div className="flex-1 flex items-center justify-center text-muted text-sm">Chart not yet computed</div>

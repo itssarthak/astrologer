@@ -34,28 +34,57 @@ Write today's transit read in this exact shape, plain English, no jargon/Sanskri
 Effects only — don't explain the astrological factors.`
 }
 
-export function formatChartContext(chartJson, yogas, doshas) {
-  const activeDoshas = Object.entries(doshas ?? {})
-    .filter(([, v]) => v.present)
-    .map(([k, v]) => `${k}: ${v.text}`)
+// Readable dignity labels for jyotishganit's raw dignity strings.
+const DIGNITY_LABEL = {
+  own_sign: 'own sign', deep_exaltation: 'deeply exalted', exalted: 'exalted',
+  deep_debilitation: 'deeply debilitated', debilitated: 'debilitated',
+  moolatrikona: 'moolatrikona', neutral: 'neutral',
+}
+
+// `chart` is the full chart OBJECT (not a JSON string). Builds the same picture the user sees on
+// the Chart tab — placements, current dasha, yogas, active doshas — so the LLM has it in context.
+export function formatChartContext(chart, yogas, doshas) {
+  const houses = chart?.d1Chart?.houses ?? []
+  const lagna = houses.find(h => h.number === 1)?.sign ?? houses[0]?.sign ?? 'unknown'
+
+  const placements = houses.flatMap(h =>
+    (h.occupants ?? []).map(o => {
+      const dig = DIGNITY_LABEL[o.dignities?.dignity] ?? o.dignities?.dignity ?? 'neutral'
+      const retro = o.motion_type === 'retrograde' ? ', retrograde' : ''
+      return `- ${o.celestialBody} in ${o.sign} (house ${h.number}), ${dig}${retro}`
+    })
+  ).join('\n') || 'No placements available'
+
+  const md = activeMahadasha(chart)
+  const dasha = md ? `${md.mdLord}${md.adLord ? ` › ${md.adLord}` : ''}` : 'unavailable'
+
+  const yogaList = (yogas ?? [])
+    .map(y => (y?.description ? `- ${y.name}: ${y.description}` : `- ${y?.name ?? y}`))
     .join('\n')
 
-  return `## Computed Birth Chart Data
+  const activeDoshas = Object.entries(doshas ?? {})
+    .filter(([, v]) => v?.present)
+    .map(([k, v]) => `- ${v.text ?? k}`)
+    .join('\n')
 
-### D1 Chart (Rasi)
-Lagna: ${chartJson?.d1Chart?.houses?.[0]?.sign ?? 'unknown'}
-Planets: ${JSON.stringify(chartJson?.d1Chart?.houses ?? [], null, 2).slice(0, 1500)}
+  return `## Computed Birth Chart (the same chart the user is viewing)
 
-### Active Yogas
-${(yogas ?? []).map(y => `- ${y.name} (${y.category})`).join('\n') || 'None detected'}
+### Ascendant
+${lagna}
 
-### Doshas
-${activeDoshas || 'None detected'}
+### Planetary placements (D1 / Rasi)
+${placements}
 
-### Current Dasha
-${JSON.stringify(chartJson?.dashas?.vimshottari ?? {}).slice(0, 300)}
+### Current dasha period
+${dasha}
 
-Interpret the chart. Plain English, effects only — no Sanskrit terms, no house numbers in your reply.`
+### Active yogas
+${yogaList || 'None detected'}
+
+### Active doshas
+${activeDoshas || 'None'}
+
+Interpret the chart for the user. Plain English, effects only — no Sanskrit terms, no house numbers in your reply.`
 }
 
 export function formatNumerologyContext(numerology) {
