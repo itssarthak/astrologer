@@ -124,12 +124,12 @@ export const TOOLS = [
       properties: { place: { type: 'string', description: 'A place name, e.g. "Jaipur, India".' } },
       required: ['place'],
     },
-    async execute({ place }) {
-      const results = await searchPlaces(place)
+    async execute({ place }, { signal } = {}) {
+      const results = await searchPlaces(place, { signal })
       if (!results.length) throw new Error(`No location found for "${place}".`)
       const top = results[0]
       const lat = parseFloat(top.lat), lon = parseFloat(top.lon)
-      const tz = await fetchTimezoneOffset(lat, lon)
+      const tz = await fetchTimezoneOffset(lat, lon, { signal })
       return { display_name: top.display_name, lat, lon, timezone_offset: tz }
     },
   },
@@ -146,11 +146,11 @@ export const TOOLS = [
       },
       required: ['name', 'dob', 'time', 'place'],
     },
-    async execute({ name, dob, time, place }) {
-      const results = await searchPlaces(place)
+    async execute({ name, dob, time, place }, { signal } = {}) {
+      const results = await searchPlaces(place, { signal })
       if (!results.length) throw new Error(`No location found for "${place}".`)
       const lat = parseFloat(results[0].lat), lon = parseFloat(results[0].lon)
-      const tz = await fetchTimezoneOffset(lat, lon)
+      const tz = await fetchTimezoneOffset(lat, lon, { signal })
       const chart = await computeChart(name, dob, time, lat, lon, tz, results[0].display_name)
       return { name, place: results[0].display_name, ...summarizeChart(chart) }
     },
@@ -163,9 +163,9 @@ export const TOOLS = [
       properties: { query: { type: 'string', description: 'Search query.' } },
       required: ['query'],
     },
-    async execute({ query }) {
+    async execute({ query }, { signal } = {}) {
       const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`
-      const resp = await fetch(url)
+      const resp = await fetch(url, { signal })
       if (!resp.ok) throw new Error('Web search failed.')
       const data = await resp.json()
       const related = (data.RelatedTopics ?? [])

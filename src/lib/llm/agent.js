@@ -6,10 +6,14 @@ import { TOOL_SCHEMAS, TOOLS_BY_NAME } from './tools'
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1'
 const MAX_TOOL_RESULT_CHARS = 6000
+// Final-answer rounds (after tools) often write a full interpretation; 2048 truncated them.
+const MAX_ANSWER_TOKENS = 4096
 
+// Parse tool-call arguments. On malformed JSON we return a sentinel (rather than silently
+// using {}) so the dispatch loop can feed a clear error back to the model.
 function safeJSON(s) {
   if (s && typeof s === 'object') return s
-  try { return JSON.parse(s || '{}') } catch { return {} }
+  try { return JSON.parse(s || '{}') } catch { return { __invalidArgs: String(s) } }
 }
 
 // ── OpenAI-compatible (OpenAI / OpenRouter / Custom) ──────────────────────────────
@@ -38,7 +42,7 @@ async function runOpenAIRound({ key, baseUrl, model, systemPrompt, log, signal }
       messages: toOpenAIMessages(systemPrompt, log),
       tools: TOOL_SCHEMAS.map(s => ({ type: 'function', function: s })),
       tool_choice: 'auto',
-      max_tokens: 2048,
+      max_tokens: MAX_ANSWER_TOKENS,
     }),
   })
   if (!resp.ok) {
@@ -77,7 +81,7 @@ async function runClaudeRound({ key, model, systemPrompt, log, signal }) {
     },
     body: JSON.stringify({
       model: model || 'claude-sonnet-4-6',
-      max_tokens: 2048,
+      max_tokens: MAX_ANSWER_TOKENS,
       system: systemPrompt,
       messages: toClaudeMessages(log),
       tools: TOOL_SCHEMAS.map(s => ({ name: s.name, description: s.description, input_schema: s.parameters })),
@@ -109,11 +113,12 @@ function toGeminiContents(log) {
 
 async function runGeminiRound({ key, model, systemPrompt, log, signal }) {
   const m = model || 'gemini-2.0-flash'
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`
+  // Key goes in the header, not the query string — query strings leak into history/proxy logs.
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`
   const resp = await fetch(url, {
     method: 'POST',
     signal,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents: toGeminiContents(log),
@@ -126,6 +131,9 @@ async function runGeminiRound({ key, model, systemPrompt, log, signal }) {
   }
   const parts = (await resp.json()).candidates?.[0]?.content?.parts ?? []
   const text = parts.filter(p => p.text).map(p => p.text).join('')
+  // Gemini matches functionResponse blocks to calls by name + order (it has no call ids), so we
+  // keep response order identical to call order in toGeminiContents. The synthetic id is for our
+  // own bookkeeping only.
   const toolCalls = parts
     .filter(p => p.functionCall)
     .map((p, i) => ({ id: `${p.functionCall.name}_${i}`, name: p.functionCall.name, args: p.functionCall.args ?? {} }))
@@ -177,9 +185,13 @@ export async function runAgent({ provider, key, baseUrl, model, systemPrompt, us
       try {
         const tool = TOOLS_BY_NAME[tc.name]
         if (!tool) throw new Error(`unknown tool ${tc.name}`)
-        const out = await tool.execute(tc.args ?? {})
+        if (tc.args?.__invalidArgs !== undefined) {
+          throw new Error(`could not parse the arguments you sent for ${tc.name} — resend them as valid JSON`)
+        }
+        const out = await tool.execute(tc.args ?? {}, { signal })
         content = typeof out === 'string' ? out : JSON.stringify(out)
       } catch (err) {
+        if (err.name === 'AbortError') throw err // user stopped — bubble up, don't feed back as a tool error
         content = `Error: ${err.message}`
       }
       if (content.length > MAX_TOOL_RESULT_CHARS) content = content.slice(0, MAX_TOOL_RESULT_CHARS) + '…(truncated)'
