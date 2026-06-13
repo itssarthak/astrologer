@@ -1,5 +1,8 @@
 import json
 
+from relationships import planet_relation
+from adapter import chart_facts
+
 NAKSHATRA_NAMES = [
     "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
     "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni",
@@ -223,7 +226,7 @@ def compute_guna_milan(nak_a_name, gender_a, nak_b_name, gender_b, sign_a="", si
         "verdict": "Strong" if total >= 24 else "Acceptable" if total >= 18 else "Weak",
     }
 
-def compute_house_overlays(chart_a, chart_b):
+def compute_house_overlays(chart_a, chart_b, facts_b=None):
     signs_a = [h["sign"] for h in chart_a["d1Chart"]["houses"]]
     sign_to_house_a = {s: i + 1 for i, s in enumerate(signs_a)}
 
@@ -235,13 +238,20 @@ def compute_house_overlays(chart_a, chart_b):
             house_in_a = sign_to_house_a.get(sign, 0)
             if house_in_a:
                 nature, effect, note = _classify_overlay(planet, house_in_a)
+                f = (facts_b or {}).get(planet, {})
+                strength = f.get("strength")
+                base = 1.5 if effect in ("supportive", "challenging") else 0.0
+                weight = round(base * {"strong": 1.5, "adequate": 1.0, "weak": 0.5}.get(strength, 1.0), 2)
                 overlays.append({
                     "planet": planet,
                     "falls_in_house": house_in_a,
                     "house_meaning": HOUSE_MEANING.get(house_in_a, ""),
                     "sign": sign,
+                    "dignity": f.get("dignity"),
+                    "strength": strength,
                     "nature": nature,
                     "effect": effect,
+                    "weight": weight,
                     "note": note,
                 })
     return overlays
@@ -260,16 +270,138 @@ def _overlay_tally(*overlay_lists):
                 else "mixed",
     }
 
+# Vedic graha-drishti angles (1-based, 1 = same sign). Every planet aspects the 7th; Mars also
+# the 4th & 8th, Jupiter the 5th & 9th, Saturn the 3rd & 10th. Rahu/Ketu: 5th, 7th, 9th (common).
+ASPECT_ANGLES = {
+    "Mars": {4, 7, 8}, "Jupiter": {5, 7, 9}, "Saturn": {3, 7, 10},
+    "Rahu": {5, 7, 9}, "Ketu": {5, 7, 9},
+}
+DEFAULT_ASPECT = {7}
+# Romantic/relationship-salient planets, used only to flag a higher-signal note.
+_AFFECTION = {"Venus", "Moon"}
+
+
+def _aspect_effect(from_planet, weight_strength):
+    """benefic caster -> supportive, malefic -> challenging; strength scales the weight."""
+    nature = ("benefic" if from_planet in BENEFIC_PLANETS
+              else "malefic" if from_planet in MALEFIC_PLANETS else "neutral")
+    effect = "supportive" if nature == "benefic" else "challenging" if nature == "malefic" else "neutral"
+    w = {"strong": 1.5, "adequate": 1.0, "weak": 0.5}.get(weight_strength, 1.0)
+    return nature, effect, round(w if effect != "neutral" else 0.0, 2)
+
+
+def _cross_one_direction(facts_from, owner, facts_to, out):
+    for pf, ff in facts_from.items():
+        ia = ff.get("sign_idx", -1)
+        if ia < 0:
+            continue
+        angles = ASPECT_ANGLES.get(pf, DEFAULT_ASPECT)
+        for pt, ft in facts_to.items():
+            ib = ft.get("sign_idx", -1)
+            if ib < 0:
+                continue
+            dist = ((ib - ia) % 12) + 1
+            if dist == 1:
+                continue  # conjunction handled once, separately
+            if dist in angles:
+                nature, effect, weight = _aspect_effect(pf, ff.get("strength"))
+                note = f"{owner}'s {pf} aspects their {pt}"
+                if pf == "Saturn" and pt in _AFFECTION:
+                    note = f"{owner}'s Saturn restrains their {pt} — can feel heavy in affection"
+                elif pf in ("Jupiter", "Venus") and pt in _AFFECTION:
+                    note = f"{owner}'s {pf} warms their {pt} — affection and ease"
+                out.append({"from": pf, "from_owner": owner, "to": pt, "type": "aspect",
+                            "dignity": ff.get("dignity"), "strength": ff.get("strength"),
+                            "nature": nature, "effect": effect, "weight": weight, "note": note})
+
+
+def cross_aspects(facts_a, facts_b):
+    """All planet->planet graha-drishti between the two charts, both directions, plus
+    same-sign conjunctions (listed once). facts_* are adapter planet-fact dicts (need sign_idx,
+    dignity, strength)."""
+    out = []
+    _cross_one_direction(facts_a, "A", facts_b, out)
+    _cross_one_direction(facts_b, "B", facts_a, out)
+    # Conjunctions (same sign) — list each unordered pair once.
+    seen = set()
+    for pa, fa in facts_a.items():
+        for pb, fb in facts_b.items():
+            if fa.get("sign_idx", -2) == fb.get("sign_idx", -1):
+                key = tuple(sorted((f"A:{pa}", f"B:{pb}")))
+                if key in seen:
+                    continue
+                seen.add(key)
+                na = pa in BENEFIC_PLANETS or pb in BENEFIC_PLANETS
+                ma = pa in MALEFIC_PLANETS or pb in MALEFIC_PLANETS
+                effect = "challenging" if ma and not na else "supportive" if na and not ma else "neutral"
+                out.append({"from": pa, "from_owner": "A", "to": pb, "type": "conjunction",
+                            "nature": "mixed", "effect": effect, "weight": 1.0 if effect != "neutral" else 0.0,
+                            "note": f"{pa} and {pb} sit together — fused energies"})
+    return out
+
+def marriage_factors(facts, lords):
+    """Relationship-significant condition for one chart: the 7th lord and the love karakas."""
+    l7 = lords.get(7)
+    l7f = facts.get(l7, {}) if l7 else {}
+    venus = facts.get("Venus", {})
+    jup = facts.get("Jupiter", {})
+    return {
+        "seventh_lord": l7,
+        "seventh_lord_strength": l7f.get("strength"),
+        "seventh_lord_house": l7f.get("house"),
+        "venus_strength": venus.get("strength"),
+        "venus_dignity": venus.get("dignity"),
+        "jupiter_strength": jup.get("strength"),
+        "summary": (
+            f"7th lord {l7 or '—'} is {l7f.get('strength','unknown')}; "
+            f"Venus is {venus.get('strength','unknown')}, Jupiter {jup.get('strength','unknown')}"
+        ),
+    }
+
+def dasha_overlap(maha_a, maha_b):
+    """Compatibility of the two people's current Mahadasha lords."""
+    if not maha_a or not maha_b:
+        return {"a_maha": maha_a, "b_maha": maha_b, "relation": "unknown",
+                "note": "current period unavailable for one or both"}
+    rel = planet_relation(maha_a, maha_b)
+    note = {
+        "friend": "Both are running periods whose lords are natural friends — easy timing alignment.",
+        "neutral": "Their current period lords are neutral to each other — neither helps nor hinders.",
+        "enemy": "Their current period lords are natural enemies — timing/priorities may clash now.",
+    }[rel]
+    return {"a_maha": maha_a, "b_maha": maha_b, "relation": rel, "note": note}
+
+def _digest(items, effect):
+    """Top weighted items of one effect, as short strings, highest weight first."""
+    picked = sorted((i for i in items if i.get("effect") == effect),
+                    key=lambda i: i.get("weight", 0), reverse=True)
+    return [i["note"] for i in picked[:5]]
+
+
 def compute_synastry(chart_a_json, chart_b_json, gender_a="", gender_b=""):
     nak_a, _, sign_a = _moon_nakshatra(chart_a_json)
     nak_b, _, sign_b = _moon_nakshatra(chart_b_json)
-    a_in_b = compute_house_overlays(chart_b_json, chart_a_json)
-    b_in_a = compute_house_overlays(chart_a_json, chart_b_json)
+
+    fa = chart_facts(chart_a_json)   # {lagna, lords, planets(with strength), dasha}
+    fb = chart_facts(chart_b_json)
+    planets_a, planets_b = fa["planets"], fb["planets"]
+
+    a_in_b = compute_house_overlays(chart_b_json, chart_a_json, planets_a)  # A's planets in B's houses
+    b_in_a = compute_house_overlays(chart_a_json, chart_b_json, planets_b)
+    crosses = cross_aspects(planets_a, planets_b)
+
+    all_items = a_in_b + b_in_a + crosses
     return {
         "guna_milan": compute_guna_milan(nak_a, gender_a, nak_b, gender_b, sign_a, sign_b),
         "a_planets_in_b_houses": a_in_b,
         "b_planets_in_a_houses": b_in_a,
-        "overlay_summary": _overlay_tally(a_in_b, b_in_a),
+        "cross_aspects": crosses,
+        "marriage_factors": {"a": marriage_factors(planets_a, fa["lords"]),
+                             "b": marriage_factors(planets_b, fb["lords"])},
+        "dasha_overlap": dasha_overlap(fa["dasha"].get("maha"), fb["dasha"].get("maha")),
+        "overlay_summary": _overlay_tally(a_in_b, b_in_a, crosses),
+        "top_supportive": _digest(all_items, "supportive"),
+        "top_challenging": _digest(all_items, "challenging"),
     }
 
 def compute_synastry_json(chart_a_str, chart_b_str, gender_a="", gender_b=""):

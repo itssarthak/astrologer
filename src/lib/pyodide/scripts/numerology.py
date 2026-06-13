@@ -1,6 +1,8 @@
 import json
 from datetime import datetime
 
+from relationships import planet_relation
+
 # Chaldean letter values (primary system)
 CHALDEAN = {
     'A': 1, 'I': 1, 'J': 1, 'Q': 1, 'Y': 1,
@@ -114,39 +116,12 @@ CHEIRO_COMPOUND = {
 }
 
 
-# Naisargika (natural) planetary friendships (BPHS). 'friend'/'enemy'/'neutral' only.
-# Rahu follows Saturn's set and Ketu follows Mars's set (standard convention).
-_NAISARGIKA = {
-    "Sun":     {"friend": {"Moon", "Mars", "Jupiter"},   "enemy": {"Venus", "Saturn"}},
-    "Moon":    {"friend": {"Sun", "Mercury"},            "enemy": set()},
-    "Mars":    {"friend": {"Sun", "Moon", "Jupiter"},    "enemy": {"Mercury"}},
-    "Mercury": {"friend": {"Sun", "Venus"},              "enemy": {"Moon"}},
-    "Jupiter": {"friend": {"Sun", "Moon", "Mars"},       "enemy": {"Mercury", "Venus"}},
-    "Venus":   {"friend": {"Mercury", "Saturn"},         "enemy": {"Sun", "Moon"}},
-    "Saturn":  {"friend": {"Mercury", "Venus"},          "enemy": {"Sun", "Moon", "Mars"}},
-    "Rahu":    {"friend": {"Mercury", "Venus", "Saturn"},"enemy": {"Sun", "Moon", "Mars"}},
-    "Ketu":    {"friend": {"Sun", "Moon", "Jupiter"},    "enemy": {"Mercury"}},
-}
-
-
-def _planet_relation(p_a, p_b):
-    """friend | enemy | neutral between two planets (max severity of the two directions:
-    enemy dominates, then friend, else neutral)."""
-    a = _NAISARGIKA.get(p_a, {})
-    b = _NAISARGIKA.get(p_b, {})
-    if p_b in a.get("enemy", set()) or p_a in b.get("enemy", set()):
-        return "enemy"
-    if p_b in a.get("friend", set()) or p_a in b.get("friend", set()):
-        return "friend"
-    return "neutral"
-
-
 def compute_number_compatibility(a, b):
     """Compatibility between two numerology numbers (1-9) via their ruling planets."""
     a = a if a <= 9 else _reduce(a, keep_master=False)
     b = b if b <= 9 else _reduce(b, keep_master=False)
     pa, pb = PLANET_RULER.get(a), PLANET_RULER.get(b)
-    relation = _planet_relation(pa, pb) if pa and pb else "neutral"
+    relation = planet_relation(pa, pb) if pa and pb else "neutral"
     return {"a": a, "b": b, "rulers": [pa, pb], "relation": relation}
 
 

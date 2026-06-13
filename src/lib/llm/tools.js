@@ -113,7 +113,7 @@ export const TOOLS = [
   },
   {
     name: 'match_profiles',
-    description: 'Run Kundali Match (synastry) between the active profile and another saved profile: Guna Milan score and the planetary house-overlay analysis (which placements are supportive vs challenging).',
+    description: 'Run Kundali Match (deep synastry) between the active profile and another saved profile: Guna Milan score, the planetary house-overlay analysis (which placements are supportive vs challenging), planet-to-planet cross-aspects between the two charts, dignity-weighted strengths and strains, each person\'s 7th-lord and Venus/Jupiter karaka read, and current-dasha-period compatibility.',
     parameters: {
       type: 'object',
       properties: { partner_name: { type: 'string', description: 'Name of the other saved profile to match against the active profile.' } },
@@ -125,13 +125,18 @@ export const TOOLS = [
       if (!a?.chart) throw new Error('No active profile chart.')
       if (!b?.chart) throw new Error(`No saved profile named "${partner_name}".`)
       const s = await computeSynastry(a.chart, b.chart, a.gender, b.gender)
+      const mf = s.marriage_factors ?? {}
       return {
         between: [a.name, b.name],
         guna_milan: { total: s.guna_milan.total, max: 36, verdict: s.guna_milan.verdict, breakdown: s.guna_milan.breakdown },
         overlay_summary: s.overlay_summary,
-        notable_overlays: [...(s.a_planets_in_b_houses ?? []), ...(s.b_planets_in_a_houses ?? [])]
-          .filter(o => o.effect !== 'neutral')
-          .map(o => `${o.planet} → H${o.falls_in_house} (${o.house_meaning}): ${o.effect}`),
+        top_supportive: (s.top_supportive ?? []).slice(0, 5),
+        top_challenging: (s.top_challenging ?? []).slice(0, 5),
+        marriage_factors: {
+          [a.name]: mf.a?.summary,
+          [b.name]: mf.b?.summary,
+        },
+        dasha: s.dasha_overlap?.note,
       }
     },
   },
