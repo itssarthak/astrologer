@@ -82,7 +82,7 @@ def _gaja_kesari(ctx):
 
 
 def _sunapha(ctx):
-    """A planet other than the Sun (and not a node) in the 2nd from the Moon."""
+    """A planet other than the Sun or Moon (and not a node) in the 2nd/12th from the Moon."""
     moon = planet_in(ctx, "Moon")
     if not moon:
         return False
@@ -90,7 +90,7 @@ def _sunapha(ctx):
 
 
 def _anapha(ctx):
-    """A planet other than the Sun (and not a node) in the 12th from the Moon."""
+    """A planet other than the Sun or Moon (and not a node) in the 2nd/12th from the Moon."""
     moon = planet_in(ctx, "Moon")
     if not moon:
         return False
@@ -147,7 +147,7 @@ def _budha_aditya(ctx):
 
 
 def _vesi(ctx):
-    """A planet other than the Moon (and not a node) in the 2nd from the Sun."""
+    """A planet other than the Sun or Moon (and not a node) in the 2nd/12th from the Sun."""
     sun = planet_in(ctx, "Sun")
     if not sun:
         return False
@@ -155,7 +155,7 @@ def _vesi(ctx):
 
 
 def _vasi(ctx):
-    """A planet other than the Moon (and not a node) in the 12th from the Sun."""
+    """A planet other than the Sun or Moon (and not a node) in the 2nd/12th from the Sun."""
     sun = planet_in(ctx, "Sun")
     if not sun:
         return False
@@ -198,8 +198,11 @@ def _adhi(ctx):
     if not moon:
         return False
     target = {((moon["house"] - 1 + off) % 12) + 1 for off in (5, 6, 7)}  # 6th,7th,8th
-    count = sum(1 for b in BENEFICS
-                if planet_in(ctx, b) and planet_in(ctx, b)["house"] in target)
+    count = 0
+    for b in BENEFICS:
+        p = planet_in(ctx, b)
+        if p and p["house"] in target:
+            count += 1
     return count >= 2
 
 
@@ -212,7 +215,7 @@ def _kesari(ctx):
 
 
 def _lakshmi(ctx):
-    """Venus strong (own/exalted) AND the 9th lord strong in a kendra or trikona."""
+    """Venus strong (own/moolatrikona/exalted) AND the 9th lord strong in a kendra or trikona."""
     venus = planet_in(ctx, "Venus")
     lord9_name = ctx["lords"].get(9)
     lord9 = planet_in(ctx, lord9_name) if lord9_name else None
