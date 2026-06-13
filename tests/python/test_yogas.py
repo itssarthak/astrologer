@@ -7,6 +7,7 @@ from yogas import (_budha_aditya, _vesi, _vasi, _ubhayachari)
 from yogas import (_chandra_mangal, _adhi, _kesari, _lakshmi, _dharma_karmadhipati)
 from yogas import _aspects, _parivartana, _associated, OWNED_SIGNS
 from yogas import _raja_kendra_trikona
+from yogas import _viparita
 
 
 def test_context_shape(sarthak_chart):
@@ -253,3 +254,22 @@ def test_raja_ignores_shared_lord_pair():
                lords={1: "Saturn", 4: "Saturn", 7: "Saturn", 10: "Saturn",
                       5: "Saturn", 9: "Saturn"})
     assert _raja_kendra_trikona(ctx) is False
+
+
+def test_viparita_harsha_6th_lord_in_dusthana():
+    # 6th lord (Mars) sits in a dusthana (H8) -> Harsha.
+    ctx = _ctx({"Mars": {"house": 8}}, lords={6: "Mars"})
+    assert _viparita(ctx, 6) is True
+
+
+def test_viparita_absent_when_lord_in_good_house():
+    ctx = _ctx({"Mars": {"house": 10}}, lords={6: "Mars"})
+    assert _viparita(ctx, 6) is False
+
+
+def test_viparita_sarala_and_vimala():
+    # 8th lord in H12 -> Sarala; 12th lord in H6 -> Vimala.
+    ctx = _ctx({"Saturn": {"house": 12}, "Jupiter": {"house": 6}},
+               lords={8: "Saturn", 12: "Jupiter"})
+    assert _viparita(ctx, 8) is True
+    assert _viparita(ctx, 12) is True

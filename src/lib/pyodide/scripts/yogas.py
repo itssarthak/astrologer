@@ -313,6 +313,27 @@ YOGA_RULES.append({
 })
 
 
+def _viparita(ctx, lord_house):
+    """Viparita Raja yoga: the lord of a dusthana (6/8/12) is itself placed in a
+    dusthana (6/8/12) — adversity turning to advantage."""
+    lord = ctx["lords"].get(lord_house)
+    p = ctx["planets"].get(lord) if lord else None
+    return bool(p and p["house"] in DUSTHANAS)
+
+
+YOGA_RULES.extend([
+    {"id": "viparita_harsha", "name": "Harsha (Viparita Raja)", "category": "Viparita Raja",
+     "description": "The 6th lord falls in a dusthana — enemies, debts and health troubles turn into strength; you outlast your obstacles.",
+     "detect": (lambda ctx: _viparita(ctx, 6))},
+    {"id": "viparita_sarala", "name": "Sarala (Viparita Raja)", "category": "Viparita Raja",
+     "description": "The 8th lord falls in a dusthana — resilience through crises; long life and recovery from setbacks.",
+     "detect": (lambda ctx: _viparita(ctx, 8))},
+    {"id": "viparita_vimala", "name": "Vimala (Viparita Raja)", "category": "Viparita Raja",
+     "description": "The 12th lord falls in a dusthana — losses convert to gains; thrift and good conduct bring quiet prosperity.",
+     "detect": (lambda ctx: _viparita(ctx, 12))},
+])
+
+
 def compute_yogas(chart_json):
     """Run every registered rule; return active yogas as {name, category, description}."""
     ctx = _context(chart_json)
