@@ -3,7 +3,7 @@ import { useState, useContext, useEffect } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { PyodideContext } from '../../contexts/PyodideContext'
 import { useLLM } from '../../hooks/useLLM'
-import { getHistory, clearHistory } from '../../lib/storage/chat'
+import { useChatThread } from '../../hooks/useChatThread'
 import { formatSynastryContext } from '../../lib/prompts/formatters'
 import { useReportBusy } from '../../contexts/BusyContext'
 import AddProfileModal from '../Sidebar/AddProfileModal'
@@ -55,23 +55,24 @@ export default function MatchTab() {
   const [computing, setComputing] = useState(false)
   const [computeError, setComputeError] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [messages, setMessages] = useState(() =>
-    activeProfile ? getHistory(activeProfile.id, 'match') : []
-  )
-  const [streamingContent, setStreamingContent] = useState('')
   const [synastryRead, setSynastryRead] = useState('')
   const [generatingRead, setGeneratingRead] = useState(false)
+  // Match resets extra synastry state on profile change (below), so it opts out of the
+  // hook's reset effect and drives the message reload itself.
+  const { messages, streamingContent, setStreamingContent, reload, clearChat, submit } =
+    useChatThread(activeProfile, 'match', { resetOnProfileChange: false })
   useReportBusy(streaming || generatingRead || computing)
 
   // When the active profile changes, reload its conversation and reset the match — the
   // partner selection and synastry are computed relative to the (old) active profile.
   useEffect(() => {
-    setMessages(activeProfile ? getHistory(activeProfile.id, 'match') : [])
+    reload()
     setStreamingContent('')
     setPartnerProfileId('')
     setSynastryData(null)
     setSynastryRead('')
     setComputeError(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeProfile?.id])
 
   const otherProfiles = profiles.filter(p => p.id !== activeProfile?.id)
@@ -105,7 +106,7 @@ export default function MatchTab() {
         extraContext,
         onChunk: chunk => setSynastryRead(prev => prev + chunk),
       })
-      setMessages(getHistory(activeProfile.id, 'match'))
+      reload()
       setSynastryRead('')
     } catch {
       // The computed card still shows the overlays; useLLM surfaces the error.
@@ -114,27 +115,17 @@ export default function MatchTab() {
     }
   }
 
-  const handleSend = async userMessage => {
-    const extraContext = synastryData ? formatSynastryContext(synastryData, activeProfile, partnerProfile) : ''
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }])
-    setStreamingContent('')
-    try {
-      await send({ userMessage, extraContext, onChunk: chunk => setStreamingContent(prev => prev + chunk) })
-      setMessages(getHistory(activeProfile.id, 'match'))
-      setStreamingContent('')
-    } catch {
-      setStreamingContent('')
-    }
-  }
+  const handleSend = userMessage =>
+    submit(userMessage, ({ onChunk }) =>
+      send({ userMessage, extraContext: synastryData ? formatSynastryContext(synastryData, activeProfile, partnerProfile) : '', onChunk }))
 
   // Refresh recomputes the synastry for the selected partner; with none selected there's
   // nothing to recompute, so it just re-syncs the conversation from storage.
   const refresh = () => {
     if (computing || streaming || generatingRead) return
     if (partnerProfileId) handleCompute()
-    else setMessages(getHistory(activeProfile.id, 'match'))
+    else reload()
   }
-  const clearChat = () => { clearHistory(activeProfile.id, 'match'); setMessages([]) }
 
   if (!activeProfile) return <div className="flex-1 flex items-center justify-center text-muted text-sm">No profile selected</div>
 

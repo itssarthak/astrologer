@@ -1,8 +1,8 @@
 // src/components/Tabs/ChartTab.jsx
-import { useState, useContext, useEffect } from 'react'
+import { useState, useContext } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { useLLM } from '../../hooks/useLLM'
-import { getHistory, clearHistory } from '../../lib/storage/chat'
+import { useChatThread } from '../../hooks/useChatThread'
 import { formatChartContext, activeMahadasha } from '../../lib/prompts/formatters'
 import { useReportBusy } from '../../contexts/BusyContext'
 import KundliChart from '../Kundli/KundliChart'
@@ -17,38 +17,16 @@ export default function ChartTab() {
   const { send, streaming, error, stop } = useLLM(activeProfile, 'chart')
   useReportBusy(streaming)
   const [subTab, setSubTab] = useState('D1')
-  const [messages, setMessages] = useState(() =>
-    activeProfile ? getHistory(activeProfile.id, 'chart') : []
-  )
-  const [streamingContent, setStreamingContent] = useState('')
-
-  // Reload this tab's conversation when the active profile changes — chats are per-profile.
-  useEffect(() => {
-    setMessages(activeProfile ? getHistory(activeProfile.id, 'chart') : [])
-    setStreamingContent('')
-  }, [activeProfile?.id])
+  const { messages, streamingContent, reload, clearChat, submit } = useChatThread(activeProfile, 'chart')
 
   const chart = activeProfile?.chart
   const yogas = activeProfile?.yogas ?? []
   const doshas = activeProfile?.doshas ?? {}
   const d9Chart = chart?.divisionalCharts?.d9 ?? null
 
-  const handleSend = async userMessage => {
-    const chartJson = JSON.stringify(chart)
-    const extraContext = formatChartContext(chartJson, yogas, doshas)
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }])
-    setStreamingContent('')
-    try {
-      await send({ userMessage, extraContext, onChunk: chunk => setStreamingContent(prev => prev + chunk) })
-      setMessages(getHistory(activeProfile.id, 'chart'))
-      setStreamingContent('')
-    } catch {
-      setStreamingContent('')
-    }
-  }
-
-  const reload = () => setMessages(getHistory(activeProfile.id, 'chart'))
-  const clearChat = () => { clearHistory(activeProfile.id, 'chart'); setMessages([]) }
+  const handleSend = userMessage =>
+    submit(userMessage, ({ onChunk }) =>
+      send({ userMessage, extraContext: formatChartContext(JSON.stringify(chart), yogas, doshas), onChunk }))
 
   if (!activeProfile?.chart) return (
     <div className="flex-1 flex items-center justify-center text-muted text-sm">Chart not yet computed</div>

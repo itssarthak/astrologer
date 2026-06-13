@@ -3,7 +3,7 @@ import { useState, useContext, useEffect, useRef } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { PyodideContext } from '../../contexts/PyodideContext'
 import { useLLM } from '../../hooks/useLLM'
-import { getHistory, clearHistory } from '../../lib/storage/chat'
+import { useChatThread } from '../../hooks/useChatThread'
 import { getTodayTransit, saveTodayTransit } from '../../lib/storage/today'
 import { useReportBusy } from '../../contexts/BusyContext'
 import { formatTransitContext } from '../../lib/prompts/formatters'
@@ -21,10 +21,10 @@ export default function TodayTab() {
   const [transitError, setTransitError] = useState(null)
   const [llmRead, setLlmRead] = useState('')
   const [generating, setGenerating] = useState(false)
-  const [messages, setMessages] = useState(() =>
-    activeProfile ? getHistory(activeProfile.id, 'today') : []
-  )
-  const [streamingContent, setStreamingContent] = useState('')
+  // Today drives its own per-day compute effect (below), so it opts out of the hook's
+  // profile-change reset and reloads messages itself.
+  const { messages, streamingContent, reload, clearChat, submit } =
+    useChatThread(activeProfile, 'today', { resetOnProfileChange: false })
   const computedForRef = useRef(null)
   useReportBusy(streaming || generating || computing)
 
@@ -40,7 +40,7 @@ export default function TodayTab() {
     if (cached) {
       // Already computed today — show the saved transit + existing read, no recompute.
       setTransitData(cached)
-      setMessages(getHistory(activeProfile.id, 'today'))
+      reload()
       return
     }
     computeToday()
@@ -71,8 +71,6 @@ export default function TodayTab() {
     computeToday()
   }
 
-  const clearChat = () => { clearHistory(activeProfile.id, 'today'); setMessages([]) }
-
   const generateRead = async transit => {
     setGenerating(true)
     setLlmRead('')
@@ -83,25 +81,16 @@ export default function TodayTab() {
         extraContext,
         onChunk: chunk => setLlmRead(prev => prev + chunk),
       })
-      setMessages(getHistory(activeProfile.id, 'today'))
+      reload()
       setLlmRead('')
     } finally {
       setGenerating(false)
     }
   }
 
-  const handleSend = async userMessage => {
-    const extraContext = transitData ? formatTransitContext(transitData, activeProfile.chart) : ''
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }])
-    setStreamingContent('')
-    try {
-      await send({ userMessage, extraContext, onChunk: chunk => setStreamingContent(prev => prev + chunk) })
-      setMessages(getHistory(activeProfile.id, 'today'))
-      setStreamingContent('')
-    } catch {
-      setStreamingContent('')
-    }
-  }
+  const handleSend = userMessage =>
+    submit(userMessage, ({ onChunk }) =>
+      send({ userMessage, extraContext: transitData ? formatTransitContext(transitData, activeProfile.chart) : '', onChunk }))
 
   if (!activeProfile) return <div className="flex-1 flex items-center justify-center text-muted text-sm">No profile selected</div>
 
