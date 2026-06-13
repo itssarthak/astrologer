@@ -98,6 +98,11 @@ export function formatSynastryContext(synastryData, profileA, profileB) {
     ? `${overlay_summary.supportive} supportive · ${overlay_summary.challenging} challenging · ${overlay_summary.neutral} neutral — overall ${overlay_summary.lean}`
     : ''
 
+  const supportive = (synastryData.top_supportive ?? []).map(s => `- ${s}`).join('\n')
+  const challenging = (synastryData.top_challenging ?? []).map(s => `- ${s}`).join('\n')
+  const mf = synastryData.marriage_factors ?? {}
+  const dasha = synastryData.dasha_overlap?.note ?? ''
+
   return `## Computed Synastry Data: ${profileA.name} ↔ ${profileB.name}
 
 ### Guna Milan (Ashtakoota)
@@ -112,5 +117,18 @@ ${tally}
 ${a_planets_in_b_houses.map(fmt).join('\n')}
 
 ### How ${profileB.name}'s planets land in ${profileA.name}'s life areas
-${b_planets_in_a_houses.map(fmt).join('\n')}`
+${b_planets_in_a_houses.map(fmt).join('\n')}
+
+### Strongest supportive factors
+${supportive || '—'}
+
+### Strongest strains
+${challenging || '—'}
+
+### Marriage significators
+${profileA.name}: ${mf.a?.summary ?? '—'}
+${profileB.name}: ${mf.b?.summary ?? '—'}
+
+### Current period
+${dasha}`
 }
