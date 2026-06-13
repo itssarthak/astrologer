@@ -2,7 +2,7 @@
 // an async `execute(args)` that runs in the browser — calling the in-browser Pyodide compute
 // functions, reading saved profiles, geocoding, or web searching. Returns stay concise so
 // they fit comfortably back into the model's context.
-import { computeChart, computeTransit, computeSynastry, computeNumerology, computeChartFacts } from '../pyodide/index'
+import { computeChart, computeTransit, computeSynastry, computeNumerology, computeNumberCompatibility, computeChartFacts } from '../pyodide/index'
 import { getProfiles, getActiveProfile } from '../storage/profiles'
 import { searchPlaces, fetchTimezoneOffset } from '../geocode'
 
@@ -149,6 +149,21 @@ export const TOOLS = [
     },
     async execute({ full_name, dob, name_in_use }) {
       return computeNumerology(full_name, dob, name_in_use ?? null)
+    },
+  },
+  {
+    name: 'numerology_compatibility',
+    description: "Compare two numerology numbers (1-9, e.g. two people's driver/mulank numbers) and return whether their ruling planets are friends, neutral, or enemies.",
+    parameters: {
+      type: 'object',
+      properties: {
+        number_a: { type: 'number', description: 'First number, 1-9.' },
+        number_b: { type: 'number', description: 'Second number, 1-9.' },
+      },
+      required: ['number_a', 'number_b'],
+    },
+    async execute({ number_a, number_b }) {
+      return computeNumberCompatibility(number_a, number_b)
     },
   },
   {

@@ -57,15 +57,13 @@ def _name_numbers(name):
 
 
 def _compound_and_single(total):
-    """Return (compound, single): `single` is the fully reduced 1-9 (or master) value;
-    `compound` is the last >9 value in the reduction chain (Cheiro's compound number),
-    or `total` itself when total is already a single digit."""
-    n = total
-    prev = total
-    while n > 9 and n not in MASTER:
-        prev = n
-        n = sum(int(d) for d in str(n))
-    return (prev if total > 9 else total), n
+    """single = the fully reduced 1-9 value (master numbers 11/22/33 kept);
+    compound = Cheiro's compound number — the total itself when <= 52, otherwise
+    the total reduced by repeated digit-sum to the first value <= 52."""
+    compound = total
+    while compound > 52:
+        compound = sum(int(d) for d in str(compound))
+    return compound, _reduce(total)
 
 
 # Cheiro's compound-number meanings (10-52). Numbers above 52 reduce back into this range.
@@ -145,6 +143,8 @@ def _planet_relation(p_a, p_b):
 
 def compute_number_compatibility(a, b):
     """Compatibility between two numerology numbers (1-9) via their ruling planets."""
+    a = a if a <= 9 else _reduce(a, keep_master=False)
+    b = b if b <= 9 else _reduce(b, keep_master=False)
     pa, pb = PLANET_RULER.get(a), PLANET_RULER.get(b)
     relation = _planet_relation(pa, pb) if pa and pb else "neutral"
     return {"a": a, "b": b, "rulers": [pa, pb], "relation": relation}

@@ -38,12 +38,16 @@ def test_numerology_name_in_use_absent_when_not_passed():
 
 
 def test_numerology_compound_number_structure():
+    from numerology import CHEIRO_COMPOUND
     r = compute_numerology("Sarthak Chhabra", "1996-11-22")
     cn = r["name_compound"]
     assert "raw" in cn and "compound" in cn and "single" in cn
     assert cn["single"] == r["destiny"]["chaldean"]
-    # compound is the 2-digit predecessor of the single (or the raw if already single)
     assert isinstance(cn["compound"], int)
+    # When the raw total is already in/under the Cheiro band, compound IS the raw total.
+    if cn["raw"] <= 52:
+        assert cn["compound"] == cn["raw"]
+    assert cn["meaning"] == CHEIRO_COMPOUND.get(cn["compound"])
 
 
 def test_cheiro_meaning_lookup_for_known_compound():
@@ -51,6 +55,21 @@ def test_cheiro_meaning_lookup_for_known_compound():
     compound, single = _compound_and_single(23)
     assert compound == 23 and single == 5
     assert CHEIRO_COMPOUND[23].startswith("Royal Star of the Lion")
+
+
+def test_compound_and_single_pins_value():
+    from numerology import _compound_and_single, CHEIRO_COMPOUND
+    assert _compound_and_single(23) == (23, 5)        # already in 10-52 band
+    assert _compound_and_single(37) == (37, 1)        # in-band; meaning must exist
+    assert CHEIRO_COMPOUND[37]                          # row is present (not a hole)
+    c, s = _compound_and_single(137)                    # >52 -> reduce into band
+    assert c <= 52 and c in CHEIRO_COMPOUND
+
+
+def test_number_compatibility_neutral():
+    from numerology import compute_number_compatibility
+    # Saturn(8) and Jupiter(3) are neutral both ways in the Naisargika matrix.
+    assert compute_number_compatibility(8, 3)["relation"] == "neutral"
 
 
 def test_number_compatibility_friends_and_enemies():

@@ -77,6 +77,10 @@ export async function computeNumerology(fullName, dob, nameInUse = null) {
   return compute('computeNumerology', [fullName, dob, nameInUse])
 }
 
+export async function computeNumberCompatibility(a, b) {
+  return compute('computeNumberCompatibility', [a, b])
+}
+
 export async function computeSynastry(chartJsonA, chartJsonB, genderA = '', genderB = '') {
   return compute('computeSynastry', [asJson(chartJsonA), asJson(chartJsonB), genderA ?? '', genderB ?? ''])
 }

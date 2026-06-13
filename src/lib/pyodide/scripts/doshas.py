@@ -121,7 +121,7 @@ def compute_doshas(chart_json):
     doshas["kalathra"] = {
         "present": present,
         "afflictors": afflictors,
-        "text": (f"Kalathra Dosha — {', '.join(afflictors)} stress the marriage area"
+        "text": (f"Kalathra Dosha — strain on the marriage area from {', '.join(afflictors)}"
                  if present else "No Kalathra Dosha"),
     }
 
