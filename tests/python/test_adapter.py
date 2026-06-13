@@ -22,3 +22,17 @@ def test_planet_facts_types(sarthak_chart):
     assert isinstance(s["conjuncts"], list)
     assert isinstance(s["aspects_gives"], list)
     assert s["is_strong"] == (s["meets"] == "Yes")
+
+
+from adapter import lagna_sign, house_lords
+
+
+def test_lagna_sign(sarthak_chart):
+    assert lagna_sign(sarthak_chart) == "Aquarius"  # known Aquarius lagna
+
+
+def test_house_lords(sarthak_chart):
+    lords = house_lords(sarthak_chart)
+    assert len(lords) == 12
+    assert lords[1] == "Saturn"   # Aquarius (H1) -> Saturn
+    assert lords[5] == "Mercury"  # Gemini (5th from Aquarius) -> Mercury
