@@ -1,5 +1,6 @@
 # tests/python/test_adapter.py
-from adapter import planet_facts, lagna_sign, house_lords, current_dasha_chain, divisional_positions
+import json as _json
+from adapter import planet_facts, lagna_sign, house_lords, current_dasha_chain, divisional_positions, chart_facts, chart_facts_json
 
 
 def test_planet_facts_has_core_fields(sarthak_chart):
@@ -62,3 +63,18 @@ def test_divisional_d9(sarthak_chart):
 def test_divisional_unknown_returns_error(sarthak_chart):
     res = divisional_positions(sarthak_chart, "d99")
     assert "error" in res
+
+
+def test_chart_facts_aggregates(sarthak_chart):
+    cf = chart_facts(sarthak_chart, ref_date="2020-01-01")
+    assert cf["lagna"] == "Aquarius"
+    assert cf["planets"]["Saturn"]["sign"]
+    assert cf["planets"]["Saturn"]["strength"] in {"strong", "adequate", "weak", "unknown"}
+    assert set(cf["dasha"].keys()) == {"maha", "antar", "pratyantar"}
+    assert cf["lords"][1] == "Saturn"
+
+
+def test_chart_facts_json_roundtrips(sarthak_chart):
+    s = chart_facts_json(_json.dumps(sarthak_chart), "2020-01-01")
+    parsed = _json.loads(s)
+    assert parsed["lagna"] == "Aquarius"

@@ -7,6 +7,7 @@ jyotishganit JSON. Extraction only — no astrological interpretation here.
 """
 import json
 from datetime import datetime
+from dignity import strength_label
 
 SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
          "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
@@ -107,3 +108,22 @@ def divisional_positions(chart_json, varga):
         "ascendant": dv.get("ascendant"),
         "placements": placements,
     }
+
+
+def chart_facts(chart_json, ref_date=None):
+    """Aggregate the full internal facts view consumed by tools and rule modules."""
+    planets = planet_facts(chart_json)
+    for name, f in planets.items():
+        f["strength"] = strength_label(f)
+    return {
+        "lagna": lagna_sign(chart_json),
+        "lords": house_lords(chart_json),
+        "planets": planets,
+        "dasha": current_dasha_chain(chart_json, ref_date),
+    }
+
+
+def chart_facts_json(chart_json_str, ref_date=None):
+    """Worker entry point: accepts JSON string, returns JSON string."""
+    rd = ref_date or None
+    return json.dumps(chart_facts(json.loads(chart_json_str), rd), default=str)
