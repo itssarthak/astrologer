@@ -106,6 +106,10 @@ export default function BirthDetailsForm({ onSubmit, submitLabel = 'Continue', i
             ))}
           </ul>
         )}
+        {/* Typing clears the selection, which disables submit — say why. */}
+        {place && !selectedPlace && !loading && results.length === 0 && (
+          <p className="text-xs text-muted">Pick your birth place from the suggestions to continue.</p>
+        )}
       </div>
 
       <button type="submit" disabled={submitting || !selectedPlace}
