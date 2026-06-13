@@ -87,6 +87,18 @@ def test_dasha_chain_before_first_period_clamps_to_first(sarthak_chart):
     assert chain["maha"] == "Ketu"  # Ketu is the earliest (balance-at-birth) mahadasha
 
 
+def test_dignity_normalized_to_canonical(sarthak_chart):
+    from adapter import planet_facts
+    pf = planet_facts(sarthak_chart)
+    # jyotishganit raw vocabulary must never leak through the adapter.
+    for name, f in pf.items():
+        assert f["dignity"] not in ("own_sign", "deep_exaltation", "deep_debilitation"), \
+            f"{name} leaked raw dignity {f['dignity']!r}"
+        assert f["dignity"] in ("exalted", "debilitated", "moolatrikona", "own", "neutral")
+    # Sarthak's Jupiter is in its own sign (Sagittarius) -> must normalize to 'own'.
+    assert pf["Jupiter"]["dignity"] == "own"
+
+
 def test_tanya_moon_nakshatra_smoke(tanya_chart):
     # Parity smoke anchor from the WhatsApp astro skill (DOB 11 Jul 1998 19:10 IST, Agra).
     facts = planet_facts(tanya_chart)

@@ -5,6 +5,11 @@ from yogas import _mahapurusha_present
 from yogas import (_gaja_kesari, _sunapha, _anapha, _durudhara, _kemadruma)
 from yogas import (_budha_aditya, _vesi, _vasi, _ubhayachari)
 from yogas import (_chandra_mangal, _adhi, _kesari, _lakshmi, _dharma_karmadhipati)
+from yogas import _aspects, _parivartana, _associated, OWNED_SIGNS
+from yogas import _raja_kendra_trikona
+from yogas import _viparita
+from yogas import _neecha_bhanga, EXALTED_IN_SIGN
+from yogas import _dhana
 
 
 def test_context_shape(sarthak_chart):
@@ -20,6 +25,13 @@ def test_registry_entries_well_formed():
     for r in YOGA_RULES:
         assert set(r.keys()) >= {"id", "name", "category", "description", "detect"}
         assert callable(r["detect"])
+
+
+def test_registry_has_all_new_families():
+    ids = {r["id"] for r in YOGA_RULES}
+    assert {"raja_kendra_trikona", "viparita_harsha", "viparita_sarala",
+            "viparita_vimala", "neecha_bhanga", "dhana_2_11"} <= ids
+    assert len(YOGA_RULES) == 25  # 19 from P1a + 6 new
 
 
 def test_compute_yogas_returns_named_list(sarthak_chart):
@@ -190,3 +202,130 @@ def test_compute_yogas_json_roundtrips(sarthak_chart):
     from yogas import compute_yogas_json
     parsed = _json.loads(compute_yogas_json(_json.dumps(sarthak_chart)))
     assert isinstance(parsed, list)
+
+
+def test_owned_signs_map():
+    assert set(OWNED_SIGNS["Mars"]) == {"Aries", "Scorpio"}
+    assert OWNED_SIGNS["Sun"] == ["Leo"]
+
+
+def test_aspects_reads_receives():
+    # B (Mars) records that it receives an aspect from A (Saturn).
+    ctx = _ctx({"Saturn": {"house": 1}, "Mars": {"house": 7}})
+    ctx["planets"]["Mars"]["aspects_receives"] = [{"from_planet": "Saturn", "aspect_type": "7"}]
+    assert _aspects(ctx, "Saturn", "Mars") is True
+    assert _aspects(ctx, "Mars", "Saturn") is False
+
+
+def test_parivartana_detects_sign_exchange():
+    # Mars in Venus's sign (Libra) and Venus in Mars's sign (Aries) -> exchange.
+    ctx = _ctx({"Mars": {"house": 1, "sign": "Libra"}, "Venus": {"house": 7, "sign": "Aries"}})
+    assert _parivartana(ctx, "Mars", "Venus") is True
+    ctx2 = _ctx({"Mars": {"house": 1, "sign": "Libra"}, "Venus": {"house": 7, "sign": "Taurus"}})
+    assert _parivartana(ctx2, "Mars", "Venus") is False
+
+
+def test_associated_conjunction_aspect_exchange():
+    # Conjunction (same house)
+    ctx = _ctx({"Mars": {"house": 5}, "Venus": {"house": 5}})
+    assert _associated(ctx, "Mars", "Venus") is True
+    # Mutual aspect
+    ctx2 = _ctx({"Mars": {"house": 1}, "Venus": {"house": 7}})
+    ctx2["planets"]["Mars"]["aspects_receives"] = [{"from_planet": "Venus"}]
+    ctx2["planets"]["Venus"]["aspects_receives"] = [{"from_planet": "Mars"}]
+    assert _associated(ctx2, "Mars", "Venus") is True
+    # One-sided aspect only -> not associated
+    ctx3 = _ctx({"Mars": {"house": 1}, "Venus": {"house": 7}})
+    ctx3["planets"]["Mars"]["aspects_receives"] = [{"from_planet": "Venus"}]
+    assert _associated(ctx3, "Mars", "Venus") is False
+    # Same planet -> never self-associated
+    assert _associated(ctx, "Mars", "Mars") is False
+
+
+def test_raja_fires_when_kendra_and_trikona_lords_conjoin():
+    # lords: 10 (kendra) = Mars, 9 (trikona) = Jupiter; both in H5 -> conjunction.
+    ctx = _ctx({"Mars": {"house": 5}, "Jupiter": {"house": 5}},
+               lords={1: "Saturn", 4: "Venus", 7: "Sun", 10: "Mars",
+                      5: "Mercury", 9: "Jupiter"})
+    assert _raja_kendra_trikona(ctx) is True
+
+
+def test_raja_absent_when_no_association():
+    ctx = _ctx({"Mars": {"house": 5}, "Jupiter": {"house": 8}},
+               lords={1: "Saturn", 4: "Venus", 7: "Sun", 10: "Mars",
+                      5: "Mercury", 9: "Jupiter"})
+    assert _raja_kendra_trikona(ctx) is False
+
+
+def test_raja_ignores_shared_lord_pair():
+    # If the only kendra/trikona lord overlap is the same planet (lagna lord), no yoga from self-pair.
+    ctx = _ctx({"Saturn": {"house": 1}},
+               lords={1: "Saturn", 4: "Saturn", 7: "Saturn", 10: "Saturn",
+                      5: "Saturn", 9: "Saturn"})
+    assert _raja_kendra_trikona(ctx) is False
+
+
+def test_viparita_harsha_6th_lord_in_dusthana():
+    # 6th lord (Mars) sits in a dusthana (H8) -> Harsha.
+    ctx = _ctx({"Mars": {"house": 8}}, lords={6: "Mars"})
+    assert _viparita(ctx, 6) is True
+
+
+def test_viparita_absent_when_lord_in_good_house():
+    ctx = _ctx({"Mars": {"house": 10}}, lords={6: "Mars"})
+    assert _viparita(ctx, 6) is False
+
+
+def test_viparita_sarala_and_vimala():
+    # 8th lord in H12 -> Sarala; 12th lord in H6 -> Vimala.
+    ctx = _ctx({"Saturn": {"house": 12}, "Jupiter": {"house": 6}},
+               lords={8: "Saturn", 12: "Jupiter"})
+    assert _viparita(ctx, 8) is True
+    assert _viparita(ctx, 12) is True
+
+
+def test_neecha_bhanga_via_dispositor_in_kendra_from_lagna():
+    # Sun debilitated in Libra; dispositor of Libra is Venus; Venus in a kendra (H4) from lagna.
+    ctx = _ctx({"Sun": {"house": 7, "sign": "Libra", "dignity": "debilitated"},
+                "Venus": {"house": 4, "sign": "Cancer"}})
+    assert _neecha_bhanga(ctx) is True
+
+
+def test_neecha_bhanga_via_exaltation_lord_in_kendra():
+    # Sun debilitated in Libra; the planet exalted in Libra is Saturn; Saturn in kendra (H10).
+    ctx = _ctx({"Sun": {"house": 7, "sign": "Libra", "dignity": "debilitated"},
+                "Venus": {"house": 3, "sign": "Gemini"},
+                "Saturn": {"house": 10, "sign": "Capricorn"}})
+    assert EXALTED_IN_SIGN["Libra"] == "Saturn"
+    assert _neecha_bhanga(ctx) is True
+
+
+def test_neecha_bhanga_absent_when_no_cancellation():
+    # Sun debilitated in Libra; dispositor Venus and exalt-lord Saturn both in non-kendra, non-Moon-kendra houses.
+    ctx = _ctx({"Sun": {"house": 7, "sign": "Libra", "dignity": "debilitated"},
+                "Venus": {"house": 3, "sign": "Gemini"},
+                "Saturn": {"house": 6, "sign": "Virgo"}})
+    assert _neecha_bhanga(ctx) is False
+
+
+def test_neecha_bhanga_absent_when_no_debilitated_planet():
+    ctx = _ctx({"Sun": {"house": 1, "sign": "Aquarius", "dignity": "neutral"}})
+    assert _neecha_bhanga(ctx) is False
+
+
+def test_dhana_fires_when_2nd_and_11th_lords_associate():
+    # 2nd lord (Jupiter) and 11th lord (Mars) conjoin in H1.
+    ctx = _ctx({"Jupiter": {"house": 1}, "Mars": {"house": 1}},
+               lords={2: "Jupiter", 11: "Mars"})
+    assert _dhana(ctx) is True
+
+
+def test_dhana_absent_when_no_association():
+    ctx = _ctx({"Jupiter": {"house": 1}, "Mars": {"house": 6}},
+               lords={2: "Jupiter", 11: "Mars"})
+    assert _dhana(ctx) is False
+
+
+def test_dhana_absent_when_same_lord():
+    ctx = _ctx({"Jupiter": {"house": 1}}, lords={2: "Jupiter", 11: "Jupiter"})
+    assert _dhana(ctx) is False

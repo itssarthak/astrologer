@@ -6,13 +6,56 @@ strength, graha-drishti aspects and conjunctions; we read those (never recompute
 Clean-room implementations from classical (BPHS) definitions.
 """
 import json
-from adapter import planet_facts, house_lords, lagna_sign, SIGN_IDX
+from adapter import planet_facts, house_lords, lagna_sign, SIGN_IDX, SIGN_LORD
 
 KENDRAS = {1, 4, 7, 10}
 TRIKONAS = {1, 5, 9}
 DUSTHANAS = {6, 8, 12}
 NODES = {"Rahu", "Ketu"}
 STRONG_DIGNITIES = {"exalted", "moolatrikona", "own"}
+
+# planet -> the signs it rules (inverse of adapter.SIGN_LORD).
+OWNED_SIGNS = {}
+for _sign, _lord in SIGN_LORD.items():
+    OWNED_SIGNS.setdefault(_lord, []).append(_sign)
+
+# The planet exalted in each sign (signs with no exaltation are omitted).
+EXALTED_IN_SIGN = {
+    "Aries": "Sun", "Taurus": "Moon", "Cancer": "Jupiter", "Virgo": "Mercury",
+    "Libra": "Saturn", "Capricorn": "Mars", "Pisces": "Venus",
+}
+
+
+def _aspects(ctx, giver, receiver):
+    """True if `giver` casts a graha-drishti onto `receiver` (read from the
+    receiver's pre-computed aspects_receives — jyotishganit already resolved drishti)."""
+    pr = ctx["planets"].get(receiver)
+    if not pr:
+        return False
+    return any(e.get("from_planet") == giver for e in pr.get("aspects_receives", []))
+
+
+def _parivartana(ctx, a, b):
+    """Sign exchange (parivartana): a sits in a sign b rules AND b sits in a sign a rules."""
+    pa, pb = ctx["planets"].get(a), ctx["planets"].get(b)
+    if not pa or not pb:
+        return False
+    return pa["sign"] in OWNED_SIGNS.get(b, []) and pb["sign"] in OWNED_SIGNS.get(a, [])
+
+
+def _associated(ctx, a, b):
+    """Classical 'association' of two planets: conjunction (same house),
+    mutual aspect, or sign exchange. Two distinct planets only."""
+    if a == b:
+        return False
+    pa, pb = ctx["planets"].get(a), ctx["planets"].get(b)
+    if not pa or not pb:
+        return False
+    if pa["house"] == pb["house"]:
+        return True
+    if _aspects(ctx, a, b) and _aspects(ctx, b, a):
+        return True
+    return _parivartana(ctx, a, b)
 
 
 def _context(chart_json):
@@ -82,7 +125,7 @@ def _gaja_kesari(ctx):
 
 
 def _sunapha(ctx):
-    """A planet other than the Sun or Moon (and not a node) in the 2nd/12th from the Moon."""
+    """A planet other than the Sun or Moon (and not a node) in the 2nd from the Moon."""
     moon = planet_in(ctx, "Moon")
     if not moon:
         return False
@@ -90,7 +133,7 @@ def _sunapha(ctx):
 
 
 def _anapha(ctx):
-    """A planet other than the Sun or Moon (and not a node) in the 2nd/12th from the Moon."""
+    """A planet other than the Sun or Moon (and not a node) in the 12th from the Moon."""
     moon = planet_in(ctx, "Moon")
     if not moon:
         return False
@@ -147,7 +190,7 @@ def _budha_aditya(ctx):
 
 
 def _vesi(ctx):
-    """A planet other than the Sun or Moon (and not a node) in the 2nd/12th from the Sun."""
+    """A planet other than the Sun or Moon (and not a node) in the 2nd from the Sun."""
     sun = planet_in(ctx, "Sun")
     if not sun:
         return False
@@ -155,7 +198,7 @@ def _vesi(ctx):
 
 
 def _vasi(ctx):
-    """A planet other than the Sun or Moon (and not a node) in the 2nd/12th from the Sun."""
+    """A planet other than the Sun or Moon (and not a node) in the 12th from the Sun."""
     sun = planet_in(ctx, "Sun")
     if not sun:
         return False
@@ -254,6 +297,97 @@ YOGA_RULES.extend([
      "description": "Luck meets effort — a powerful combination for career rise and recognition.",
      "detect": _dharma_karmadhipati},
 ])
+
+
+def _raja_kendra_trikona(ctx):
+    """Generalized Raja yoga: any kendra lord (1/4/7/10) associated with any
+    trikona lord (1/5/9). The lagna lord rules both, so same-planet pairs are skipped."""
+    lords = ctx["lords"]
+    kendra_lords = {lords.get(h) for h in (1, 4, 7, 10)} - {None}
+    trikona_lords = {lords.get(h) for h in (1, 5, 9)} - {None}
+    for k in kendra_lords:
+        for t in trikona_lords:
+            if k != t and _associated(ctx, k, t):
+                return True
+    return False
+
+
+YOGA_RULES.append({
+    "id": "raja_kendra_trikona", "name": "Raja Yoga", "category": "Raja",
+    "description": "A kendra lord and a trikona lord join forces — the classic marker of rise in status, authority and worldly success.",
+    "detect": _raja_kendra_trikona,
+})
+
+
+def _viparita(ctx, lord_house):
+    """Viparita Raja yoga: the lord of a dusthana (6/8/12) is itself placed in a
+    dusthana (6/8/12) — adversity turning to advantage."""
+    lord = ctx["lords"].get(lord_house)
+    p = ctx["planets"].get(lord) if lord else None
+    return bool(p and p["house"] in DUSTHANAS)
+
+
+YOGA_RULES.extend([
+    {"id": "viparita_harsha", "name": "Harsha (Viparita Raja)", "category": "Viparita Raja",
+     "description": "The 6th lord falls in a dusthana — enemies, debts and health troubles turn into strength; you outlast your obstacles.",
+     "detect": (lambda ctx: _viparita(ctx, 6))},
+    {"id": "viparita_sarala", "name": "Sarala (Viparita Raja)", "category": "Viparita Raja",
+     "description": "The 8th lord falls in a dusthana — resilience through crises; long life and recovery from setbacks.",
+     "detect": (lambda ctx: _viparita(ctx, 8))},
+    {"id": "viparita_vimala", "name": "Vimala (Viparita Raja)", "category": "Viparita Raja",
+     "description": "The 12th lord falls in a dusthana — losses convert to gains; thrift and good conduct bring quiet prosperity.",
+     "detect": (lambda ctx: _viparita(ctx, 12))},
+])
+
+
+def _kendra_from(ctx, planet, anchor_house):
+    """True if `planet` sits in a kendra (1/4/7/10) counted from anchor_house."""
+    p = ctx["planets"].get(planet)
+    return bool(p and house_distance(anchor_house, p["house"]) in KENDRAS)
+
+
+def _neecha_bhanga(ctx):
+    """Neecha Bhanga Raja yoga: a planet is debilitated, but its weakness is cancelled
+    because either the dispositor of its sign OR the planet exalted in that sign sits in
+    a kendra from the lagna or from the Moon."""
+    moon = ctx["planets"].get("Moon")
+    moon_house = moon["house"] if moon else None
+    for name, p in ctx["planets"].items():
+        if name in NODES or p["dignity"] != "debilitated":
+            continue
+        rescuers = [r for r in (SIGN_LORD.get(p["sign"]), EXALTED_IN_SIGN.get(p["sign"])) if r]
+        for r in rescuers:
+            rp = ctx["planets"].get(r)
+            if not rp:
+                continue
+            if rp["house"] in KENDRAS:  # kendra from the lagna (house is lagna-relative)
+                return True
+            if moon_house and _kendra_from(ctx, r, moon_house):
+                return True
+    return False
+
+
+YOGA_RULES.append({
+    "id": "neecha_bhanga", "name": "Neecha Bhanga Raja Yoga", "category": "Raja (cancellation)",
+    "description": "A debilitated planet's weakness is cancelled — an early struggle in that area of life tends to reverse into notable strength and success later.",
+    "detect": _neecha_bhanga,
+})
+
+
+def _dhana(ctx):
+    """Dhana (wealth) yoga: the lord of the 2nd (accumulated wealth) and the lord of
+    the 11th (gains/income) are associated — conjunction, mutual aspect, or exchange."""
+    l2, l11 = ctx["lords"].get(2), ctx["lords"].get(11)
+    if not l2 or not l11 or l2 == l11:
+        return False
+    return _associated(ctx, l2, l11)
+
+
+YOGA_RULES.append({
+    "id": "dhana_2_11", "name": "Dhana Yoga", "category": "Dhana",
+    "description": "The lords of wealth (2nd) and gains (11th) combine — strong support for accumulating money and assets through the right channels.",
+    "detect": _dhana,
+})
 
 
 def compute_yogas(chart_json):
