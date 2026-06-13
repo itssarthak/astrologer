@@ -125,5 +125,4 @@ def chart_facts(chart_json, ref_date=None):
 
 def chart_facts_json(chart_json_str, ref_date=None):
     """Worker entry point: accepts JSON string, returns JSON string."""
-    rd = ref_date or None
-    return json.dumps(chart_facts(json.loads(chart_json_str), rd), default=str)
+    return json.dumps(chart_facts(json.loads(chart_json_str), ref_date), default=str)
