@@ -62,7 +62,8 @@ export const TOOLS = [
         planets,
         // Full running period, not just the mahadasha label.
         dasha: [d.maha, d.antar, d.pratyantar].filter(Boolean).join(' → '),
-        yogas: (profile.yogas ?? []).map(y => y.name ?? y).slice(0, 12),
+        yogas: (profile.yogas ?? []).slice(0, 12).map(y =>
+          y?.description ? `${y.name} — ${y.description}` : (y?.name ?? y)),
         doshas: Object.entries(profile.doshas ?? {}).filter(([, v]) => v?.present).map(([k]) => k),
       }
     },
