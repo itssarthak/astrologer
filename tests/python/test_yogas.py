@@ -166,3 +166,10 @@ def test_dharma_karmadhipati_fires_9th_10th_lords_conjunct():
     ctx2 = _ctx({"Jupiter": {"house": 5}, "Mars": {"house": 8}},
                 lords={9: "Jupiter", 10: "Mars"})
     assert _dharma_karmadhipati(ctx2) is False
+
+
+def test_kemadruma_broken_by_planet_in_kendra():
+    # Moon isolated (H5, nothing in 2nd/12th from it), BUT Jupiter sits in a kendra (H1)
+    # from the lagna -> Kemadruma must NOT fire.
+    ctx = _ctx({"Moon": {"house": 5}, "Jupiter": {"house": 1}})
+    assert _kemadruma(ctx) is False

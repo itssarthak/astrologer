@@ -112,12 +112,11 @@ def _kemadruma(ctx):
              + _planets_in_house_from(ctx, moon["house"], 12, exclude={"Sun", "Moon"} | NODES))
     if flank:
         return False
-    lagna_kendras = {((ctx["lagna_idx"] + off) % 12) + 1 for off in (0, 3, 6, 9)}
     # any non-Moon classical planet in a kendra house breaks Kemadruma
     for name, p in ctx["planets"].items():
         if name in ({"Moon"} | NODES):
             continue
-        if p["house"] in lagna_kendras:
+        if p["house"] in KENDRAS:
             return False
     return True
 
