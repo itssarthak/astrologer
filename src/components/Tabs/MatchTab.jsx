@@ -2,7 +2,7 @@
 import { useState, useContext, useEffect } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { PyodideContext } from '../../contexts/PyodideContext'
-import { useLLM } from '../../hooks/useLLM'
+import { useChat } from '../../hooks/useChat'
 import { useChatThread } from '../../hooks/useChatThread'
 import { formatSynastryContext } from '../../lib/prompts/formatters'
 import { useReportBusy } from '../../contexts/BusyContext'
@@ -49,7 +49,7 @@ function OverlaySection({ title, overlays }) {
 export default function MatchTab() {
   const { activeProfile, profiles } = useContext(ProfilesContext)
   const { computeSynastry } = useContext(PyodideContext)
-  const { send, streaming, error, stop } = useLLM(activeProfile, 'match')
+  const { send, streaming, error, stop } = useChat(activeProfile, 'match')
   const [partnerProfileId, setPartnerProfileId] = useState('')
   const [synastryData, setSynastryData] = useState(null)
   const [computing, setComputing] = useState(false)
@@ -109,7 +109,7 @@ export default function MatchTab() {
       reload()
       setSynastryRead('')
     } catch {
-      // The computed card still shows the overlays; useLLM surfaces the error.
+      // The computed card still shows the overlays; useChat surfaces the error.
     } finally {
       setGeneratingRead(false)
     }

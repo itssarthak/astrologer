@@ -1,7 +1,7 @@
 // src/components/Tabs/ChatTab.jsx
 import { useContext } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
-import { useAgent } from '../../hooks/useAgent'
+import { useChat } from '../../hooks/useChat'
 import { useChatThread } from '../../hooks/useChatThread'
 import { useReportBusy } from '../../contexts/BusyContext'
 import ChatMessages from '../Chat/ChatMessages'
@@ -12,12 +12,12 @@ import { toolLabelActive } from '../../lib/llm/toolLabels'
 
 export default function ChatTab() {
   const { activeProfile } = useContext(ProfilesContext)
-  const { send, stop, busy, error, toolEvent, liveTools } = useAgent(activeProfile, 'chat')
+  const { send, stop, busy, error, toolEvent, liveTools } = useChat(activeProfile, 'chat')
   useReportBusy(busy)
   const { messages, streamingContent, reload, clearChat, submit } = useChatThread(activeProfile, 'chat')
 
   const handleSend = userMessage =>
-    submit(userMessage, ({ onText }) => send({ userMessage, onText }))
+    submit(userMessage, ({ onChunk }) => send({ userMessage, onChunk }))
 
   if (!activeProfile) return <div className="flex-1 flex items-center justify-center text-muted text-sm">No profile selected</div>
 

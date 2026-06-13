@@ -2,7 +2,7 @@
 import { useState, useContext, useEffect, useRef } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { PyodideContext } from '../../contexts/PyodideContext'
-import { useLLM } from '../../hooks/useLLM'
+import { useChat } from '../../hooks/useChat'
 import { useChatThread } from '../../hooks/useChatThread'
 import { getTodayTransit, saveTodayTransit } from '../../lib/storage/today'
 import { useReportBusy } from '../../contexts/BusyContext'
@@ -15,7 +15,7 @@ import LoadingSpinner from '../shared/LoadingSpinner'
 export default function TodayTab() {
   const { activeProfile } = useContext(ProfilesContext)
   const { isReady, computeTransit } = useContext(PyodideContext)
-  const { send, streaming, error, stop } = useLLM(activeProfile, 'today')
+  const { send, streaming, error, stop } = useChat(activeProfile, 'today')
   const [transitData, setTransitData] = useState(null)
   const [computing, setComputing] = useState(false)
   const [transitError, setTransitError] = useState(null)

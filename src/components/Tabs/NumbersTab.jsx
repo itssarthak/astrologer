@@ -1,7 +1,7 @@
 // src/components/Tabs/NumbersTab.jsx
 import { useContext } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
-import { useLLM } from '../../hooks/useLLM'
+import { useChat } from '../../hooks/useChat'
 import { useChatThread } from '../../hooks/useChatThread'
 import { formatNumerologyContext } from '../../lib/prompts/formatters'
 import { useReportBusy } from '../../contexts/BusyContext'
@@ -19,7 +19,7 @@ const NUM_LABELS = {
 
 export default function NumbersTab() {
   const { activeProfile } = useContext(ProfilesContext)
-  const { send, streaming, error, stop } = useLLM(activeProfile, 'numbers')
+  const { send, streaming, error, stop } = useChat(activeProfile, 'numbers')
   useReportBusy(streaming)
   const { messages, streamingContent, reload, clearChat, submit } = useChatThread(activeProfile, 'numbers')
 

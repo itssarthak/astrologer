@@ -24,14 +24,7 @@ ${JSON.stringify(transitData.panchanga, null, 2)}
 ### Planetary Positions → Natal Houses
 ${planets}
 
-${dasha}
-
-Write today's transit read in this exact shape, plain English, no jargon/Sanskrit/house numbers:
-1. A single one-line summary of the day's overall feel.
-2. 2–3 short "•" bullets on what's most active and how it may feel.
-3. "Do today:" one practical thing the energy supports.
-4. "Avoid today:" one thing to be careful with.
-Effects only — don't explain the astrological factors.`
+${dasha}`
 }
 
 // Readable dignity labels for jyotishganit's raw dignity strings.
@@ -82,9 +75,7 @@ ${dasha}
 ${yogaList || 'None detected'}
 
 ### Active doshas
-${activeDoshas || 'None'}
-
-Interpret the chart for the user. Plain English, effects only — no Sanskrit terms, no house numbers in your reply.`
+${activeDoshas || 'None'}`
 }
 
 export function formatNumerologyContext(numerology) {
@@ -94,10 +85,7 @@ Life Path: ${numerology.life_path}
 Destiny: Chaldean ${numerology.destiny.chaldean} / Pythagorean ${numerology.destiny.pythagorean}
 Soul Urge: Chaldean ${numerology.soul_urge.chaldean} / Pythagorean ${numerology.soul_urge.pythagorean}
 Personality: Chaldean ${numerology.personality.chaldean} / Pythagorean ${numerology.personality.pythagorean}
-Personal Year: ${numerology.personal_year}
-
-Interpret this numerology profile. Use Chaldean as primary and Pythagorean as cross-check.
-Plain English only — explain what each number means for this person's life.`
+Personal Year: ${numerology.personal_year}`
 }
 
 export function formatSynastryContext(synastryData, profileA, profileB) {
@@ -124,11 +112,5 @@ ${tally}
 ${a_planets_in_b_houses.map(fmt).join('\n')}
 
 ### How ${profileB.name}'s planets land in ${profileA.name}'s life areas
-${b_planets_in_a_houses.map(fmt).join('\n')}
-
-Interpret this compatibility in plain English:
-1. Lead with the overall picture — the Guna Milan score AND whether the planetary overlays lean harmonious or challenging.
-2. Explain how each person's key planets affect the other's life areas. Be explicit about where it is SUPPORTIVE (one person's planets help the other) versus CHALLENGING (they interfere or create friction), and what that feels like day to day.
-3. Be honest about the hard spots and what to watch for, then close with the genuine strengths.
-Talk about the people and the relationship, not the astrological mechanics. This is the Match tab, so a compatibility framing is expected here.`
+${b_planets_in_a_houses.map(fmt).join('\n')}`
 }
