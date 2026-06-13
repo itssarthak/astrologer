@@ -196,13 +196,17 @@ export const TOOLS = [
   },
   {
     name: 'get_today_transit',
-    description: "Compute today's planetary transits against the active profile's natal chart (which planets are hitting which natal houses now, plus the panchanga).",
-    parameters: { type: 'object', properties: {}, required: [] },
-    async execute() {
+    description: "Compute planetary transits against the active profile's natal chart (which planets are hitting which natal houses, plus the panchanga). Defaults to today, but accepts an optional `date` (YYYY-MM-DD) to cast the transit for any future or past day — use it for \"what about <future/past date>\" questions.",
+    parameters: {
+      type: 'object',
+      properties: { date: { type: 'string', description: 'Optional date (YYYY-MM-DD) to compute the transit for. Omit for today.' } },
+      required: [],
+    },
+    async execute({ date } = {}) {
       const p = getActiveProfile()
       if (!p?.chart) throw new Error('No active profile chart to compute transits against.')
       const lagna = p.chart?.d1Chart?.houses?.find(h => h.number === 1)?.sign
-      const t = await computeTransit(lagna, p.lat, p.lon, p.timezone_offset)
+      const t = await computeTransit(lagna, p.lat, p.lon, p.timezone_offset, date ?? null)
       if (t.error) throw new Error(t.error)
       return {
         date: t.date,

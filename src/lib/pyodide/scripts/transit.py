@@ -6,10 +6,11 @@ SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
          "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
 
 
-def compute_transit(natal_lagna_sign, lat, lon, tz_offset):
+def compute_transit(natal_lagna_sign, lat, lon, tz_offset, on_date=None):
     """
-    Casts a chart for the current moment and maps each planet to the natal house
-    it occupies (based on natal lagna sign).
+    Casts a chart for the current moment (or, if on_date YYYY-MM-DD is given, for that
+    date at 12:00 local — a noon midpoint) and maps each planet to the natal house it
+    occupies (based on natal lagna sign).
     Returns: dict with date, panchanga, planets list
     """
     # Guard a missing/unknown lagna up front so we return a structured error the JS layer
@@ -18,9 +19,10 @@ def compute_transit(natal_lagna_sign, lat, lon, tz_offset):
     if natal_lagna_sign not in SIGNS:
         return {"error": f"Unknown natal lagna sign: {natal_lagna_sign!r}"}
 
-    now = datetime.now()
+    # Reference moment: now by default, else the requested date at local noon.
+    ref = datetime.now() if not on_date else datetime.strptime(on_date, "%Y-%m-%d").replace(hour=12, minute=0)
     chart = calculate_birth_chart(
-        birth_date=now,
+        birth_date=ref,
         latitude=lat,
         longitude=lon,
         timezone_offset=tz_offset,
@@ -47,13 +49,13 @@ def compute_transit(natal_lagna_sign, lat, lon, tz_offset):
             })
 
     return {
-        "date": now.strftime("%Y-%m-%d"),
-        "time": now.strftime("%H:%M"),
+        "date": ref.strftime("%Y-%m-%d"),
+        "time": ref.strftime("%H:%M"),
         "panchanga": js["panchanga"],
         "planets": planets,
     }
 
 
-def compute_transit_json(natal_lagna_sign, lat, lon, tz_offset):
+def compute_transit_json(natal_lagna_sign, lat, lon, tz_offset, on_date=None):
     """Returns JSON string for Pyodide JS."""
-    return json.dumps(compute_transit(natal_lagna_sign, lat, lon, tz_offset), default=str)
+    return json.dumps(compute_transit(natal_lagna_sign, lat, lon, tz_offset, on_date), default=str)
