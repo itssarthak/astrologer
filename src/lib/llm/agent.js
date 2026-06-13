@@ -82,7 +82,9 @@ async function runClaudeRound({ key, model, systemPrompt, log, signal }) {
     body: JSON.stringify({
       model: model || 'claude-sonnet-4-6',
       max_tokens: MAX_ANSWER_TOKENS,
-      system: systemPrompt,
+      // Cache the system prompt — the agentic loop re-sends it every round, so caching it
+      // meaningfully cuts cost + latency across the tool-call rounds.
+      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
       messages: toClaudeMessages(log),
       tools: TOOL_SCHEMAS.map(s => ({ name: s.name, description: s.description, input_schema: s.parameters })),
     }),

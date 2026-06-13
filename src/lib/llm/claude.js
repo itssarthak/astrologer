@@ -12,7 +12,9 @@ export async function claudeChat({ key, messages, systemPrompt, onChunk, signal,
     body: JSON.stringify({
       model,
       max_tokens: 2048,
-      system: systemPrompt,
+      // Cache the (large, stable) system prompt so repeat turns in a conversation skip
+      // re-processing it — cuts cost + latency on Anthropic.
+      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
       messages,
       stream: true,
     }),
