@@ -12,6 +12,23 @@ function planetLines(facts) {
     `${name}: ${f.sign} (H${f.house}), ${f.dignity}, ${f.strength}${f.retrograde ? ', retrograde' : ''}`)
 }
 
+// Sarvashtakavarga bindu strength band for a sign (per-sign SAV is roughly 25-40):
+// >=30 strong, 25-29 average, <25 weak.
+export function savBand(bindu) {
+  if (bindu >= 30) return 'strong'
+  if (bindu >= 25) return 'average'
+  return 'weak'
+}
+
+// Render one transit planet line, annotated with the natal SAV bindu of the sign it's
+// transiting (and a quick strength read). `sav` is the natal sign→bindu map; the suffix
+// is omitted when it's missing (older charts) or has no entry for the sign.
+export function transitLine(x, sav) {
+  const base = `${x.planet} in ${x.sign} → natal H${x.natal_house}${x.retrograde ? ' (retro)' : ''}`
+  const bindu = sav?.[x.sign]
+  return bindu == null ? base : `${base} · SAV ${bindu} (${savBand(bindu)})`
+}
+
 function findProfileByName(name) {
   if (!name) return getActiveProfile()
   const profiles = getProfiles()
@@ -196,18 +213,25 @@ export const TOOLS = [
   },
   {
     name: 'get_today_transit',
-    description: "Compute today's planetary transits against the active profile's natal chart (which planets are hitting which natal houses now, plus the panchanga).",
-    parameters: { type: 'object', properties: {}, required: [] },
-    async execute() {
+    description: "Compute planetary transits against the active profile's natal chart (which planets are hitting which natal houses, plus the panchanga). Each transiting planet is annotated with the natal Sarvashtakavarga (SAV) bindu of the sign it's in and a strength read (strong/average/weak) so you can weigh how favourable the transit is. Defaults to today, but accepts an optional `date` (YYYY-MM-DD) to cast the transit for any future or past day — use it for \"what about <future/past date>\" questions.",
+    parameters: {
+      type: 'object',
+      properties: { date: { type: 'string', description: 'Optional date (YYYY-MM-DD) to compute the transit for. Omit for today.' } },
+      required: [],
+    },
+    async execute({ date } = {}) {
       const p = getActiveProfile()
       if (!p?.chart) throw new Error('No active profile chart to compute transits against.')
       const lagna = p.chart?.d1Chart?.houses?.find(h => h.number === 1)?.sign
-      const t = await computeTransit(lagna, p.lat, p.lon, p.timezone_offset)
+      const t = await computeTransit(lagna, p.lat, p.lon, p.timezone_offset, date ?? null)
       if (t.error) throw new Error(t.error)
+      // Annotate each transiting planet with the natal SAV bindu for the sign it's in,
+      // so the model can weigh transit strength (high bindu → better results).
+      const sav = p.chart?.ashtakavarga?.sav
       return {
         date: t.date,
         panchanga: t.panchanga,
-        planets: (t.planets ?? []).map(x => `${x.planet} in ${x.sign} → natal H${x.natal_house}${x.retrograde ? ' (retro)' : ''}`),
+        planets: (t.planets ?? []).map(x => transitLine(x, sav)),
       }
     },
   },

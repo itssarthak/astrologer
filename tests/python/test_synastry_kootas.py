@@ -157,3 +157,27 @@ def test_vashya_unknown_sign_falls_back_to_neutral():
 
 def test_vashya_is_symmetric_for_known_signs():
     assert vashya("Cancer", "Pisces") == vashya("Pisces", "Cancer")
+
+
+def test_cross_aspect_tightness_scales_weight():
+    from synastry import cross_aspects
+    # Two Venus-Mars 7th aspects, identical except degree closeness.
+    tight = cross_aspects({"Venus": {"sign_idx": 0, "sign_degrees": 10.0, "dignity": "neutral", "strength": "adequate"}},
+                          {"Mars": {"sign_idx": 6, "sign_degrees": 11.0, "dignity": "neutral", "strength": "adequate"}})
+    loose = cross_aspects({"Venus": {"sign_idx": 0, "sign_degrees": 2.0, "dignity": "neutral", "strength": "adequate"}},
+                          {"Mars": {"sign_idx": 6, "sign_degrees": 14.0, "dignity": "neutral", "strength": "adequate"}})
+    tv = next(x for x in tight if x["from"] == "Venus" and x["to"] == "Mars")
+    lv = next(x for x in loose if x["from"] == "Venus" and x["to"] == "Mars")
+    assert tv["tightness"] == "tight"      # 1.0 deg apart
+    # orb_within_sign takes the shortest wheel separation, so a 23-deg raw gap folds to 7
+    # ("active"); use a within-band 12-deg gap to land in the loose/noted territory.
+    assert lv["tightness"] in ("loose", "noted")  # 12 deg apart -> noted
+    assert tv["weight"] > lv["weight"]     # tighter aspect weighs more
+
+
+def test_cross_aspect_missing_degrees_defaults_safely():
+    from synastry import cross_aspects
+    res = cross_aspects({"Jupiter": {"sign_idx": 0, "dignity": "neutral", "strength": "adequate"}},
+                        {"Moon": {"sign_idx": 6, "dignity": "neutral", "strength": "adequate"}})
+    j = next(x for x in res if x["from"] == "Jupiter")
+    assert "tightness" in j and "weight" in j   # no crash when sign_degrees absent

@@ -11,7 +11,7 @@ import { resolve } from 'path'
 const PY_SCRIPT_SRC = resolve(__dirname, 'src/lib/pyodide/scripts')
 const PY_SCRIPT_DEST = resolve(__dirname, 'public/pyodide-scripts')
 // Keep in sync with the scripts array in src/lib/pyodide/worker.js.
-const PY_SCRIPTS = ['chart', 'transit', 'yogas', 'doshas', 'relationships', 'numerology', 'synastry', 'dignity', 'adapter']
+const PY_SCRIPTS = ['chart', 'transit', 'yogas', 'doshas', 'relationships', 'numerology', 'synastry', 'dignity', 'adapter', 'aspects']
 
 function copyPyScriptsToPublic() {
   mkdirSync(PY_SCRIPT_DEST, { recursive: true })

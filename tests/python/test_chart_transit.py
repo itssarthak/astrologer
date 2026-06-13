@@ -35,3 +35,10 @@ def test_transit_natal_house_in_range():
     result = compute_transit("Aquarius", 28.6139, 77.2090, 5.5)
     for p in result["planets"]:
         assert 1 <= p["natal_house"] <= 12, f"House {p['natal_house']} out of range for {p['planet']}"
+
+def test_transit_on_arbitrary_date():
+    # An explicit on_date casts the transit chart for that date (noon midpoint),
+    # not "now". The returned date echoes the requested date.
+    result = compute_transit("Aquarius", 28.6139, 77.2090, 5.5, on_date="2030-01-01")
+    assert result["date"] == "2030-01-01"
+    assert len(result["planets"]) >= 9

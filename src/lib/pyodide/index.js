@@ -61,8 +61,8 @@ export async function computeChart(name, dob, time, lat, lon, tzOffset, location
   return compute('computeChart', [name, dob, time, lat, lon, tzOffset, locationName])
 }
 
-export async function computeTransit(natalLagnaSign, lat, lon, tzOffset) {
-  return compute('computeTransit', [natalLagnaSign, lat, lon, tzOffset])
+export async function computeTransit(natalLagnaSign, lat, lon, tzOffset, onDate = null) {
+  return compute('computeTransit', [natalLagnaSign, lat, lon, tzOffset, onDate])
 }
 
 export async function computeYogasFallback(chartJson) {
