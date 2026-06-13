@@ -293,6 +293,26 @@ YOGA_RULES.extend([
 ])
 
 
+def _raja_kendra_trikona(ctx):
+    """Generalized Raja yoga: any kendra lord (1/4/7/10) associated with any
+    trikona lord (1/5/9). The lagna lord rules both, so same-planet pairs are skipped."""
+    lords = ctx["lords"]
+    kendra_lords = {lords.get(h) for h in (1, 4, 7, 10)} - {None}
+    trikona_lords = {lords.get(h) for h in (1, 5, 9)} - {None}
+    for k in kendra_lords:
+        for t in trikona_lords:
+            if k != t and _associated(ctx, k, t):
+                return True
+    return False
+
+
+YOGA_RULES.append({
+    "id": "raja_kendra_trikona", "name": "Raja Yoga", "category": "Raja",
+    "description": "A kendra lord and a trikona lord join forces — the classic marker of rise in status, authority and worldly success.",
+    "detect": _raja_kendra_trikona,
+})
+
+
 def compute_yogas(chart_json):
     """Run every registered rule; return active yogas as {name, category, description}."""
     ctx = _context(chart_json)

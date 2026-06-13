@@ -6,6 +6,7 @@ from yogas import (_gaja_kesari, _sunapha, _anapha, _durudhara, _kemadruma)
 from yogas import (_budha_aditya, _vesi, _vasi, _ubhayachari)
 from yogas import (_chandra_mangal, _adhi, _kesari, _lakshmi, _dharma_karmadhipati)
 from yogas import _aspects, _parivartana, _associated, OWNED_SIGNS
+from yogas import _raja_kendra_trikona
 
 
 def test_context_shape(sarthak_chart):
@@ -229,3 +230,26 @@ def test_associated_conjunction_aspect_exchange():
     assert _associated(ctx3, "Mars", "Venus") is False
     # Same planet -> never self-associated
     assert _associated(ctx, "Mars", "Mars") is False
+
+
+def test_raja_fires_when_kendra_and_trikona_lords_conjoin():
+    # lords: 10 (kendra) = Mars, 9 (trikona) = Jupiter; both in H5 -> conjunction.
+    ctx = _ctx({"Mars": {"house": 5}, "Jupiter": {"house": 5}},
+               lords={1: "Saturn", 4: "Venus", 7: "Sun", 10: "Mars",
+                      5: "Mercury", 9: "Jupiter"})
+    assert _raja_kendra_trikona(ctx) is True
+
+
+def test_raja_absent_when_no_association():
+    ctx = _ctx({"Mars": {"house": 5}, "Jupiter": {"house": 8}},
+               lords={1: "Saturn", 4: "Venus", 7: "Sun", 10: "Mars",
+                      5: "Mercury", 9: "Jupiter"})
+    assert _raja_kendra_trikona(ctx) is False
+
+
+def test_raja_ignores_shared_lord_pair():
+    # If the only kendra/trikona lord overlap is the same planet (lagna lord), no yoga from self-pair.
+    ctx = _ctx({"Saturn": {"house": 1}},
+               lords={1: "Saturn", 4: "Saturn", 7: "Saturn", 10: "Saturn",
+                      5: "Saturn", 9: "Saturn"})
+    assert _raja_kendra_trikona(ctx) is False
