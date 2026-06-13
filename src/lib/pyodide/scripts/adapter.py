@@ -6,6 +6,7 @@ This is the single source of truth for chart shape: every downstream rule module
 jyotishganit JSON. Extraction only — no astrological interpretation here.
 """
 import json
+from datetime import datetime
 
 SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
          "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
@@ -61,14 +62,11 @@ def house_lords(chart_json):
     return {i + 1: SIGN_LORD[SIGNS[(lagna_i + i) % 12]] for i in range(12)}
 
 
-from datetime import datetime
-
-
 def _active_period(periods, ref):
     """Given {name: {start, end, <subkey>?}}, return (name, node) whose [start,end) holds ref.
     Dates are 'YYYY-MM-DD' strings — lexicographic compare is correct for ISO dates."""
     for name, node in (periods or {}).items():
-        if node.get("start", "9999") <= ref < node.get("end", "0000"):
+        if node.get("start", "9999") <= ref < node.get("end", "9999"):
             return name, node
     # ref past the last end (e.g. tree truncated) -> fall back to the last period.
     if periods:

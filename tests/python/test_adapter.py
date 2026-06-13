@@ -1,7 +1,5 @@
 # tests/python/test_adapter.py
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../src/lib/pyodide/scripts'))
-from adapter import planet_facts
+from adapter import planet_facts, lagna_sign, house_lords, current_dasha_chain, divisional_positions
 
 
 def test_planet_facts_has_core_fields(sarthak_chart):
@@ -24,9 +22,6 @@ def test_planet_facts_types(sarthak_chart):
     assert s["is_strong"] == (s["meets"] == "Yes")
 
 
-from adapter import lagna_sign, house_lords
-
-
 def test_lagna_sign(sarthak_chart):
     assert lagna_sign(sarthak_chart) == "Aquarius"  # known Aquarius lagna
 
@@ -38,11 +33,9 @@ def test_house_lords(sarthak_chart):
     assert lords[5] == "Mercury"  # Gemini (5th from Aquarius) -> Mercury
 
 
-from adapter import current_dasha_chain
-
-
 def test_dasha_chain_for_known_date(sarthak_chart):
     # 1996-03-10 falls in the birth Ketu mahadasha / Ketu antardasha.
+    # (natal dasha balance begins before physical birth — standard Vimshottari)
     chain = current_dasha_chain(sarthak_chart, ref_date="1996-03-10")
     assert chain["maha"] == "Ketu"
     assert chain["antar"] == "Ketu"
@@ -53,9 +46,6 @@ def test_dasha_chain_keys(sarthak_chart):
     chain = current_dasha_chain(sarthak_chart, ref_date="2003-01-01")
     assert set(chain.keys()) == {"maha", "antar", "pratyantar"}
     assert chain["maha"] in {"Ketu", "Venus"}  # near the Ketu->Venus boundary (2003-03-08)
-
-
-from adapter import divisional_positions
 
 
 def test_divisional_d9(sarthak_chart):
