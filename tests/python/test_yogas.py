@@ -27,6 +27,13 @@ def test_registry_entries_well_formed():
         assert callable(r["detect"])
 
 
+def test_registry_has_all_new_families():
+    ids = {r["id"] for r in YOGA_RULES}
+    assert {"raja_kendra_trikona", "viparita_harsha", "viparita_sarala",
+            "viparita_vimala", "neecha_bhanga", "dhana_2_11"} <= ids
+    assert len(YOGA_RULES) == 25  # 19 from P1a + 6 new
+
+
 def test_compute_yogas_returns_named_list(sarthak_chart):
     result = compute_yogas(sarthak_chart)
     assert isinstance(result, list)

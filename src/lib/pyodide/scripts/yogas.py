@@ -125,7 +125,7 @@ def _gaja_kesari(ctx):
 
 
 def _sunapha(ctx):
-    """A planet other than the Sun or Moon (and not a node) in the 2nd/12th from the Moon."""
+    """A planet other than the Sun or Moon (and not a node) in the 2nd from the Moon."""
     moon = planet_in(ctx, "Moon")
     if not moon:
         return False
@@ -133,7 +133,7 @@ def _sunapha(ctx):
 
 
 def _anapha(ctx):
-    """A planet other than the Sun or Moon (and not a node) in the 2nd/12th from the Moon."""
+    """A planet other than the Sun or Moon (and not a node) in the 12th from the Moon."""
     moon = planet_in(ctx, "Moon")
     if not moon:
         return False
@@ -190,7 +190,7 @@ def _budha_aditya(ctx):
 
 
 def _vesi(ctx):
-    """A planet other than the Sun or Moon (and not a node) in the 2nd/12th from the Sun."""
+    """A planet other than the Sun or Moon (and not a node) in the 2nd from the Sun."""
     sun = planet_in(ctx, "Sun")
     if not sun:
         return False
@@ -198,7 +198,7 @@ def _vesi(ctx):
 
 
 def _vasi(ctx):
-    """A planet other than the Sun or Moon (and not a node) in the 2nd/12th from the Sun."""
+    """A planet other than the Sun or Moon (and not a node) in the 12th from the Sun."""
     sun = planet_in(ctx, "Sun")
     if not sun:
         return False
