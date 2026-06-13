@@ -260,6 +260,75 @@ def _overlay_tally(*overlay_lists):
                 else "mixed",
     }
 
+# Vedic graha-drishti angles (1-based, 1 = same sign). Every planet aspects the 7th; Mars also
+# the 4th & 8th, Jupiter the 5th & 9th, Saturn the 3rd & 10th. Rahu/Ketu: 5th, 7th, 9th (common).
+ASPECT_ANGLES = {
+    "Mars": {4, 7, 8}, "Jupiter": {5, 7, 9}, "Saturn": {3, 7, 10},
+    "Rahu": {5, 7, 9}, "Ketu": {5, 7, 9},
+}
+DEFAULT_ASPECT = {7}
+# Romantic/relationship-salient planets, used only to flag a higher-signal note.
+_AFFECTION = {"Venus", "Moon"}
+
+
+def _aspect_effect(from_planet, weight_strength):
+    """benefic caster -> supportive, malefic -> challenging; strength scales the weight."""
+    nature = ("benefic" if from_planet in BENEFIC_PLANETS
+              else "malefic" if from_planet in MALEFIC_PLANETS else "neutral")
+    effect = "supportive" if nature == "benefic" else "challenging" if nature == "malefic" else "neutral"
+    w = {"strong": 1.5, "adequate": 1.0, "weak": 0.5}.get(weight_strength, 1.0)
+    return nature, effect, round(w if effect != "neutral" else 0.0, 2)
+
+
+def _cross_one_direction(facts_from, owner, facts_to, out):
+    for pf, ff in facts_from.items():
+        ia = ff.get("sign_idx", -1)
+        if ia < 0:
+            continue
+        angles = ASPECT_ANGLES.get(pf, DEFAULT_ASPECT)
+        for pt, ft in facts_to.items():
+            ib = ft.get("sign_idx", -1)
+            if ib < 0:
+                continue
+            dist = ((ib - ia) % 12) + 1
+            if dist == 1:
+                continue  # conjunction handled once, separately
+            if dist in angles:
+                nature, effect, weight = _aspect_effect(pf, ff.get("strength"))
+                note = f"{owner}'s {pf} aspects their {pt}"
+                if pf == "Saturn" and pt in _AFFECTION:
+                    note = f"{owner}'s Saturn restrains their {pt} — can feel heavy in affection"
+                elif pf in ("Jupiter", "Venus") and pt in _AFFECTION:
+                    note = f"{owner}'s {pf} warms their {pt} — affection and ease"
+                out.append({"from": pf, "from_owner": owner, "to": pt, "type": "aspect",
+                            "dignity": ff.get("dignity"), "strength": ff.get("strength"),
+                            "nature": nature, "effect": effect, "weight": weight, "note": note})
+
+
+def cross_aspects(facts_a, facts_b):
+    """All planet->planet graha-drishti between the two charts, both directions, plus
+    same-sign conjunctions (listed once). facts_* are adapter planet-fact dicts (need sign_idx,
+    dignity, strength)."""
+    out = []
+    _cross_one_direction(facts_a, "A", facts_b, out)
+    _cross_one_direction(facts_b, "B", facts_a, out)
+    # Conjunctions (same sign) — list each unordered pair once.
+    seen = set()
+    for pa, fa in facts_a.items():
+        for pb, fb in facts_b.items():
+            if fa.get("sign_idx", -2) == fb.get("sign_idx", -1):
+                key = tuple(sorted((f"A:{pa}", f"B:{pb}")))
+                if key in seen:
+                    continue
+                seen.add(key)
+                na = pa in BENEFIC_PLANETS or pb in BENEFIC_PLANETS
+                ma = pa in MALEFIC_PLANETS or pb in MALEFIC_PLANETS
+                effect = "challenging" if ma and not na else "supportive" if na and not ma else "neutral"
+                out.append({"from": pa, "from_owner": "A", "to": pb, "type": "conjunction",
+                            "nature": "mixed", "effect": effect, "weight": 1.0 if effect != "neutral" else 0.0,
+                            "note": f"{pa} and {pb} sit together — fused energies"})
+    return out
+
 def compute_synastry(chart_a_json, chart_b_json, gender_a="", gender_b=""):
     nak_a, _, sign_a = _moon_nakshatra(chart_a_json)
     nak_b, _, sign_b = _moon_nakshatra(chart_b_json)
