@@ -6,19 +6,10 @@ import { computeChart, computeTransit, computeSynastry, computeNumerology, compu
 import { getProfiles, getActiveProfile } from '../storage/profiles'
 import { searchPlaces, fetchTimezoneOffset } from '../geocode'
 
-function summarizeChart(chart) {
-  const houses = chart?.d1Chart?.houses ?? []
-  const ascendant = houses.find(h => h.number === 1)?.sign ?? 'unknown'
-  const planets = []
-  for (const h of houses) {
-    for (const occ of h.occupants ?? []) {
-      const parts = [`${occ.celestialBody} in ${occ.sign} (H${h.number})`]
-      if (occ.nakshatra) parts.push(occ.nakshatra)
-      if (occ.motion_type === 'retrograde') parts.push('retrograde')
-      planets.push(parts.join(', '))
-    }
-  }
-  return { ascendant, planets }
+// Format the dignity/strength-annotated planet lines shared by get_chart and compute_chart.
+function planetLines(facts) {
+  return Object.entries(facts.planets).map(([name, f]) =>
+    `${name}: ${f.sign} (H${f.house}), ${f.dignity}, ${f.strength}${f.retrograde ? ', retrograde' : ''}`)
 }
 
 function findProfileByName(name) {
@@ -53,8 +44,7 @@ export const TOOLS = [
       if (!profile?.chart) throw new Error(`No saved chart found for "${profile_name ?? 'active profile'}".`)
       const facts = await computeChartFacts(profile.chart)
       // Strength-annotated planets the model can weight (was: name+sign only).
-      const planets = Object.entries(facts.planets).map(([name, f]) =>
-        `${name}: ${f.sign} (H${f.house}), ${f.dignity}, ${f.strength}${f.retrograde ? ', retrograde' : ''}`)
+      const planets = planetLines(facts)
       const d = facts.dasha
       return {
         name: profile.name,
@@ -303,7 +293,7 @@ export const TOOLS = [
   },
   {
     name: 'compute_chart',
-    description: 'Compute a fresh natal chart for ANY person (not necessarily a saved profile) from their birth details. The place is geocoded automatically. Returns a chart summary.',
+    description: 'Compute a fresh natal chart for ANY person (not necessarily a saved profile) from their birth details. The place is geocoded automatically. Returns the same format as get_chart — ascendant, placements with dignity and strength, and the current dasha period chain.',
     parameters: {
       type: 'object',
       properties: {
@@ -320,7 +310,15 @@ export const TOOLS = [
       const lat = parseFloat(results[0].lat), lon = parseFloat(results[0].lon)
       const tz = await fetchTimezoneOffset(lat, lon, { signal })
       const chart = await computeChart(name, dob, time, lat, lon, tz, results[0].display_name)
-      return { name, place: results[0].display_name, ...summarizeChart(chart) }
+      const facts = await computeChartFacts(chart)
+      const d = facts.dasha
+      return {
+        name,
+        place: results[0].display_name,
+        ascendant: facts.lagna,
+        planets: planetLines(facts),
+        dasha: [d.maha, d.antar, d.pratyantar].filter(Boolean).join(' → '),
+      }
     },
   },
   {
