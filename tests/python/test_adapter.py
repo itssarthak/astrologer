@@ -36,3 +36,20 @@ def test_house_lords(sarthak_chart):
     assert len(lords) == 12
     assert lords[1] == "Saturn"   # Aquarius (H1) -> Saturn
     assert lords[5] == "Mercury"  # Gemini (5th from Aquarius) -> Mercury
+
+
+from adapter import current_dasha_chain
+
+
+def test_dasha_chain_for_known_date(sarthak_chart):
+    # 1996-03-10 falls in the birth Ketu mahadasha / Ketu antardasha.
+    chain = current_dasha_chain(sarthak_chart, ref_date="1996-03-10")
+    assert chain["maha"] == "Ketu"
+    assert chain["antar"] == "Ketu"
+    assert chain["pratyantar"] is not None
+
+
+def test_dasha_chain_keys(sarthak_chart):
+    chain = current_dasha_chain(sarthak_chart, ref_date="2003-01-01")
+    assert set(chain.keys()) == {"maha", "antar", "pratyantar"}
+    assert chain["maha"] in {"Ketu", "Venus"}  # near the Ketu->Venus boundary (2003-03-08)
