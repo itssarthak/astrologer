@@ -19,9 +19,59 @@ NAK_GANA = [
 NAK_NADI = [
     0,1,2,2,1,0,0,1,2,2,1,0,0,1,2,2,1,0,0,1,2,2,1,0,0,1,2
 ]  # 0=Vata, 1=Pitta, 2=Kapha
-NAK_YONI = [
-    0,14,7,3,5,10,8,12,13,1,2,2,12,9,11,9,10,15,15,4,4,11,6,6,3,5,0
+# Yoni koota — each nakshatra maps to one of 14 animal yonis; compatibility comes from the
+# classical animal-pair table (same yoni 4, friendly 3, neutral 2, inimical 1, sworn enemy 0).
+YONI_ANIMALS = [
+    "Horse", "Elephant", "Sheep", "Serpent", "Dog", "Cat", "Rat",
+    "Cow", "Buffalo", "Tiger", "Deer", "Monkey", "Mongoose", "Lion",
 ]
+# nakshatra index (0=Ashwini..26=Revati) -> yoni animal index
+NAK_YONI = [
+    0, 1, 2, 3, 3, 4, 5, 2, 5, 6, 6, 7, 8, 9, 8, 9, 10, 10, 4, 11, 12, 11, 13, 0, 13, 7, 1,
+]
+# Symmetric 14x14 yoni compatibility points (rows/cols follow YONI_ANIMALS). Diagonal = 4
+# (same yoni); the seven sworn-enemy pairs = 0. Validated for symmetry at import below.
+YONI_KOOTA = [
+    [4, 2, 2, 3, 2, 2, 2, 1, 0, 1, 3, 3, 2, 1],  # Horse
+    [2, 4, 3, 3, 2, 2, 2, 2, 3, 2, 3, 3, 2, 0],  # Elephant
+    [2, 3, 4, 2, 1, 2, 1, 3, 3, 1, 2, 0, 3, 2],  # Sheep
+    [3, 3, 2, 4, 2, 1, 1, 1, 1, 2, 2, 2, 0, 2],  # Serpent
+    [2, 2, 1, 2, 4, 2, 1, 2, 2, 1, 0, 2, 1, 1],  # Dog
+    [2, 2, 2, 1, 2, 4, 0, 2, 2, 1, 3, 3, 2, 1],  # Cat
+    [2, 2, 1, 1, 1, 0, 4, 2, 2, 2, 2, 2, 2, 1],  # Rat
+    [1, 2, 3, 1, 2, 2, 2, 4, 3, 0, 3, 2, 2, 1],  # Cow
+    [0, 3, 3, 1, 2, 2, 2, 3, 4, 2, 2, 2, 2, 1],  # Buffalo
+    [1, 2, 1, 2, 1, 1, 2, 0, 2, 4, 2, 2, 2, 1],  # Tiger
+    [3, 3, 2, 2, 0, 3, 2, 3, 2, 2, 4, 2, 2, 1],  # Deer
+    [3, 3, 0, 2, 2, 3, 2, 2, 2, 2, 2, 4, 2, 3],  # Monkey
+    [2, 2, 3, 0, 1, 2, 2, 2, 2, 2, 2, 2, 4, 2],  # Mongoose
+    [1, 0, 2, 2, 1, 1, 1, 1, 1, 1, 1, 3, 2, 4],  # Lion
+]
+# Fail loudly on a typo rather than silently scoring asymmetrically.
+assert all(
+    YONI_KOOTA[i][j] == YONI_KOOTA[j][i]
+    for i in range(14) for j in range(14)
+), "YONI_KOOTA must be symmetric"
+
+# Vashya koota — group each moon sign (rashi) into one of five vashya classes, then score the
+# class pair (out of 2). Same class is fully compatible; a predator/prey pair (lion vs a
+# quadruped) scores 0; the rest are neutral.
+SIGN_NAMES = [
+    "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+    "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+]
+SIGN_INDEX = {s: i for i, s in enumerate(SIGN_NAMES)}
+# 0=Chatushpada(quadruped) 1=Manava(human) 2=Jalachara(watery) 3=Vanachara(wild) 4=Keeta(insect)
+SIGN_VASHYA = [0, 0, 1, 2, 3, 1, 1, 4, 1, 2, 1, 2]
+VASHYA_CLASS_SCORE = [
+    #Q  M  J  V  K
+    [2, 1, 1, 0, 1],  # Chatushpada
+    [1, 2, 1, 1, 1],  # Manava
+    [1, 1, 2, 1, 1],  # Jalachara
+    [0, 1, 1, 2, 1],  # Vanachara
+    [1, 1, 1, 1, 2],  # Keeta
+]
+
 NAK_GRAHA = [
     4,3,0,1,2,5,4,0,1,3,5,0,1,2,5,4,2,1,4,3,0,1,2,5,4,0,3
 ]  # 0=Sun,1=Moon,2=Mars,3=Merc,4=Jup,5=Ven,6=Sat
@@ -78,8 +128,18 @@ def _moon_nakshatra(chart_json):
     for h in chart_json["d1Chart"]["houses"]:
         for occ in h.get("occupants", []):
             if occ["celestialBody"] == "Moon":
-                return occ.get("nakshatra", ""), occ.get("pada", 1)
-    return "", 1
+                return occ.get("nakshatra", ""), occ.get("pada", 1), occ.get("sign", "")
+    return "", 1, ""
+
+def _yoni_score(nak_a, nak_b):
+    return YONI_KOOTA[NAK_YONI[nak_a]][NAK_YONI[nak_b]]
+
+def _vashya_score(sign_a, sign_b):
+    # Needs the moon rashi; if a sign is missing/unknown, fall back to a neutral 1.
+    ia, ib = SIGN_INDEX.get(sign_a), SIGN_INDEX.get(sign_b)
+    if ia is None or ib is None:
+        return 1
+    return VASHYA_CLASS_SCORE[SIGN_VASHYA[ia]][SIGN_VASHYA[ib]]
 
 def _nak_idx(name):
     return NAKSHATRA_INDEX.get(name, 0)
@@ -117,13 +177,13 @@ def _varna_score(boy_i, girl_i):
 def _gana_score(boy_i, girl_i):
     return GANA_KOOTA[(NAK_GANA[boy_i], NAK_GANA[girl_i])]
 
-def compute_guna_milan(nak_a_name, gender_a, nak_b_name, gender_b):
+def compute_guna_milan(nak_a_name, gender_a, nak_b_name, gender_b, sign_a="", sign_b=""):
     ia, ib = _nak_idx(nak_a_name), _nak_idx(nak_b_name)
 
     # Symmetric kootas — gender-independent, identical either way.
-    vashya = 2  # simplified
+    vashya = _vashya_score(sign_a, sign_b)
     tara = _tara_score(ia, ib)
-    yoni = 4 if NAK_YONI[ia] == NAK_YONI[ib] else (2 if abs(NAK_YONI[ia] - NAK_YONI[ib]) <= 3 else 0)
+    yoni = _yoni_score(ia, ib)
     graha_x, graha_y = NAK_GRAHA[ia], NAK_GRAHA[ib]
     x_friend = graha_x in GRAHA_FRIEND.get(graha_y, set())
     y_friend = graha_y in GRAHA_FRIEND.get(graha_x, set())
@@ -201,12 +261,12 @@ def _overlay_tally(*overlay_lists):
     }
 
 def compute_synastry(chart_a_json, chart_b_json, gender_a="", gender_b=""):
-    nak_a, _ = _moon_nakshatra(chart_a_json)
-    nak_b, _ = _moon_nakshatra(chart_b_json)
+    nak_a, _, sign_a = _moon_nakshatra(chart_a_json)
+    nak_b, _, sign_b = _moon_nakshatra(chart_b_json)
     a_in_b = compute_house_overlays(chart_b_json, chart_a_json)
     b_in_a = compute_house_overlays(chart_a_json, chart_b_json)
     return {
-        "guna_milan": compute_guna_milan(nak_a, gender_a, nak_b, gender_b),
+        "guna_milan": compute_guna_milan(nak_a, gender_a, nak_b, gender_b, sign_a, sign_b),
         "a_planets_in_b_houses": a_in_b,
         "b_planets_in_a_houses": b_in_a,
         "overlay_summary": _overlay_tally(a_in_b, b_in_a),

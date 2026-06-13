@@ -19,6 +19,12 @@ def test_chart_includes_divisional_charts():
         f"Expected 'd9' key; got keys: {list(result['divisionalCharts'].keys())}"
     )
 
+def test_transit_unknown_lagna_returns_error_not_exception():
+    # An unexpected/missing lagna must yield a structured error, not raise ValueError.
+    result = compute_transit("NotASign", 28.6139, 77.2090, 5.5)
+    assert "error" in result
+    assert "NotASign" in result["error"]
+
 def test_transit_returns_12_planets():
     result = compute_transit("Aquarius", 28.6139, 77.2090, 5.5)
     assert len(result["planets"]) >= 9  # Sun through Ketu minimum

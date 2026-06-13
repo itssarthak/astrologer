@@ -65,6 +65,20 @@ test('search sets error on fetch failure', async () => {
   expect(result.current.results).toEqual([])
 })
 
+test('a newer search aborts the previous in-flight request', async () => {
+  const signals = []
+  global.fetch.mockImplementation((url, opts) => {
+    signals.push(opts.signal)
+    return new Promise(() => {}) // never resolves — simulates an in-flight request
+  })
+  const { result } = renderHook(() => useGeocode())
+  await act(async () => { result.current.search('Delh'); await vi.advanceTimersByTimeAsync(400) })
+  await act(async () => { result.current.search('Delhi'); await vi.advanceTimersByTimeAsync(400) })
+  expect(signals).toHaveLength(2)
+  expect(signals[0].aborted).toBe(true)   // the older request was cancelled
+  expect(signals[1].aborted).toBe(false)  // the newest request is live
+})
+
 test('clear empties results', async () => {
   global.fetch.mockResolvedValueOnce({ ok: true, json: async () => [{ display_name: 'Delhi' }] })
   const { result } = renderHook(() => useGeocode())

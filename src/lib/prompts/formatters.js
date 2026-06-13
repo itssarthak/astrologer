@@ -76,7 +76,7 @@ export function formatSynastryContext(synastryData, profileA, profileB) {
   const breakdown = Object.entries(guna_milan.breakdown)
     .map(([k, v]) => `  ${k}: ${v.score}/${v.max}`)
     .join('\n')
-  const fmt = o => `- ${o.planet} → their H${o.falls_in_house} (${o.house_meaning}) — ${o.effect.toUpperCase()}: ${o.note}`
+  const fmt = o => `- ${o.planet} → their H${o.falls_in_house} (${o.house_meaning ?? ''}) — ${(o.effect ?? 'neutral').toUpperCase()}: ${o.note ?? ''}`
   const tally = overlay_summary
     ? `${overlay_summary.supportive} supportive · ${overlay_summary.challenging} challenging · ${overlay_summary.neutral} neutral — overall ${overlay_summary.lean}`
     : ''

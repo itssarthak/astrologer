@@ -12,6 +12,12 @@ def compute_transit(natal_lagna_sign, lat, lon, tz_offset):
     it occupies (based on natal lagna sign).
     Returns: dict with date, panchanga, planets list
     """
+    # Guard a missing/unknown lagna up front so we return a structured error the JS layer
+    # can surface, rather than raising ValueError deep in an unhandled promise rejection —
+    # and before doing the expensive chart computation below.
+    if natal_lagna_sign not in SIGNS:
+        return {"error": f"Unknown natal lagna sign: {natal_lagna_sign!r}"}
+
     now = datetime.now()
     chart = calculate_birth_chart(
         birth_date=now,

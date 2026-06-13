@@ -1,4 +1,4 @@
-import { createContext, useState, useCallback } from 'react'
+import { createContext, useState, useCallback, useMemo } from 'react'
 import {
   getProfiles, saveProfile, deleteProfile,
   getActiveProfileId, setActiveProfileId,
@@ -10,7 +10,10 @@ export function ProfilesProvider({ children }) {
   const [profiles, setProfiles] = useState(() => getProfiles())
   const [activeProfileId, setActiveId] = useState(() => getActiveProfileId())
 
-  const activeProfile = profiles.find(p => p.id === activeProfileId) ?? null
+  const activeProfile = useMemo(
+    () => profiles.find(p => p.id === activeProfileId) ?? null,
+    [profiles, activeProfileId],
+  )
 
   const addProfile = useCallback(profile => {
     saveProfile(profile)
@@ -37,13 +40,13 @@ export function ProfilesProvider({ children }) {
     setActiveId(id)
   }, [])
 
-  const refreshProfiles = useCallback(() => {
-    setProfiles(getProfiles())
-    setActiveId(getActiveProfileId())
-  }, [])
+  const value = useMemo(
+    () => ({ profiles, activeProfile, activeProfileId, addProfile, updateProfile, removeProfile, switchProfile }),
+    [profiles, activeProfile, activeProfileId, addProfile, updateProfile, removeProfile, switchProfile],
+  )
 
   return (
-    <ProfilesContext.Provider value={{ profiles, activeProfile, activeProfileId, addProfile, updateProfile, removeProfile, switchProfile, refreshProfiles }}>
+    <ProfilesContext.Provider value={value}>
       {children}
     </ProfilesContext.Provider>
   )

@@ -99,12 +99,16 @@ export default function BirthDetailsForm({ onSubmit, submitLabel = 'Continue', i
         {results.length > 0 && !selectedPlace && (
           <ul className="absolute top-full left-0 right-0 z-20 bg-white border border-border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
             {results.map((r, i) => (
-              <li key={i} onClick={() => handleSelectPlace(r)}
+              <li key={r.place_id ?? `${r.lat},${r.lon}` ?? i} onClick={() => handleSelectPlace(r)}
                 className="px-3 py-2 text-sm text-text hover:bg-primary-light cursor-pointer border-b border-border last:border-0">
                 {r.display_name}
               </li>
             ))}
           </ul>
+        )}
+        {/* Typing clears the selection, which disables submit — say why. */}
+        {place && !selectedPlace && !loading && results.length === 0 && (
+          <p className="text-xs text-muted">Pick your birth place from the suggestions to continue.</p>
         )}
       </div>
 

@@ -19,6 +19,7 @@ const toolCallResponse = (name, args) => ({
   choices: [{ message: { role: 'assistant', content: null, tool_calls: [{ id: 'call_1', type: 'function', function: { name, arguments: JSON.stringify(args) } }] } }],
 })
 const finalResponse = text => ({ choices: [{ message: { role: 'assistant', content: text } }] })
+const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 async function seed(page) {
   await page.addInitScript(([profiles, key]) => {
@@ -78,6 +79,32 @@ test('agent calls get_chart and the real chart summary flows back', async ({ pag
   await expect(page.getByText('Fetched the birth chart')).toBeVisible()
   // The executed tool returned the REAL ascendant from the fixture (Virgo) into round 2
   expect(JSON.stringify(capture.bodies[1])).toContain('Virgo')
+})
+
+test('tool chip appears while the tool runs, before the completion arrives', async ({ page }) => {
+  await seed(page)
+  // Round 1 -> tool call; round 2 (the completion) is delayed so the tool-running phase is observable.
+  let calls = 0
+  await page.route(`${LLM}/**`, async route => {
+    calls += 1
+    if (calls === 1) {
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(toolCallResponse('get_chart', { profile_name: 'Alice' })) })
+    } else {
+      await sleep(3000)
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(finalResponse('Alice has a Virgo ascendant.')) })
+    }
+  })
+
+  await page.goto(BASE)
+  await page.locator('textarea').fill("What's Alice's ascendant?")
+  await page.locator('textarea').press('Enter')
+
+  // The chip is visible WHILE the tool runs — i.e. before the completion text shows.
+  await expect(page.getByText('Fetched the birth chart')).toBeVisible({ timeout: 2500 })
+  await expect(page.getByText('Alice has a Virgo ascendant.')).not.toBeVisible()
+  // …and it remains once the answer lands.
+  await expect(page.getByText('Alice has a Virgo ascendant.')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Fetched the birth chart')).toBeVisible()
 })
 
 test('agent calls a Pyodide compute tool (match_profiles)', async ({ page }) => {

@@ -52,12 +52,25 @@ describe('formatSynastryContext', () => {
           bhakoot: { score: 7, max: 7 },
         },
       },
-      a_planets_in_b_houses: [{ planet: 'Jupiter', falls_in_house: 7, sign: 'Libra' }],
+      a_planets_in_b_houses: [{
+        planet: 'Jupiter', falls_in_house: 7, sign: 'Libra',
+        house_meaning: 'partnership', effect: 'supportive', note: 'Jupiter blesses their partnership',
+      }],
       b_planets_in_a_houses: [],
     }
     const result = formatSynastryContext(synastry, { name: 'Sarthak' }, { name: 'Tanya' })
     expect(result).toContain('Sarthak')
     expect(result).toContain('Tanya')
     expect(result).toContain('26/36')
+    expect(result).toContain('SUPPORTIVE')
+  })
+
+  it('does not crash when overlay objects are missing optional fields', () => {
+    const synastry = {
+      guna_milan: { total: 18, verdict: 'Average', breakdown: { nadi: { score: 8, max: 8 } } },
+      a_planets_in_b_houses: [{ planet: 'Mars', falls_in_house: 4 }],
+      b_planets_in_a_houses: [],
+    }
+    expect(() => formatSynastryContext(synastry, { name: 'A' }, { name: 'B' })).not.toThrow()
   })
 })

@@ -1,8 +1,8 @@
 // src/components/Tabs/NumbersTab.jsx
-import { useState, useContext, useEffect } from 'react'
+import { useContext } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { useLLM } from '../../hooks/useLLM'
-import { getHistory, clearHistory } from '../../lib/storage/chat'
+import { useChatThread } from '../../hooks/useChatThread'
 import { formatNumerologyContext } from '../../lib/prompts/formatters'
 import { useReportBusy } from '../../contexts/BusyContext'
 import ChatMessages from '../Chat/ChatMessages'
@@ -21,34 +21,13 @@ export default function NumbersTab() {
   const { activeProfile } = useContext(ProfilesContext)
   const { send, streaming, error, stop } = useLLM(activeProfile, 'numbers')
   useReportBusy(streaming)
-  const [messages, setMessages] = useState(() =>
-    activeProfile ? getHistory(activeProfile.id, 'numbers') : []
-  )
-  const [streamingContent, setStreamingContent] = useState('')
-
-  // Reload this tab's conversation when the active profile changes — chats are per-profile.
-  useEffect(() => {
-    setMessages(activeProfile ? getHistory(activeProfile.id, 'numbers') : [])
-    setStreamingContent('')
-  }, [activeProfile?.id])
+  const { messages, streamingContent, reload, clearChat, submit } = useChatThread(activeProfile, 'numbers')
 
   const numerology = activeProfile?.numerology
 
-  const handleSend = async userMessage => {
-    const extraContext = numerology ? formatNumerologyContext(numerology) : ''
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }])
-    setStreamingContent('')
-    try {
-      await send({ userMessage, extraContext, onChunk: chunk => setStreamingContent(prev => prev + chunk) })
-      setMessages(getHistory(activeProfile.id, 'numbers'))
-      setStreamingContent('')
-    } catch {
-      setStreamingContent('')
-    }
-  }
-
-  const reload = () => setMessages(getHistory(activeProfile.id, 'numbers'))
-  const clearChat = () => { clearHistory(activeProfile.id, 'numbers'); setMessages([]) }
+  const handleSend = userMessage =>
+    submit(userMessage, ({ onChunk }) =>
+      send({ userMessage, extraContext: numerology ? formatNumerologyContext(numerology) : '', onChunk }))
 
   if (!activeProfile) return <div className="flex-1 flex items-center justify-center text-muted text-sm">No profile selected</div>
 

@@ -67,11 +67,21 @@ export default function StepComputing({ birthData }) {
   }
 
   const waitForPyodide = () => new Promise((resolve, reject) => {
+    const failed = new Error('Python engine failed to load. Check your internet connection and reload.')
     if (isReadyRef.current) { resolve(); return }
-    if (statusRef.current === 'error') { reject(new Error('Python engine failed to load. Check your internet connection and reload.')); return }
+    if (statusRef.current === 'error') { reject(failed); return }
+    // Cap the wait so a silent CDN stall (status stuck on 'loading', never 'error') surfaces an
+    // error + reload instead of an indefinite spinner.
+    const TIMEOUT_MS = 120_000
+    let elapsed = 0
     const interval = setInterval(() => {
+      elapsed += 200
       if (isReadyRef.current) { clearInterval(interval); resolve() }
-      else if (statusRef.current === 'error') { clearInterval(interval); reject(new Error('Python engine failed to load. Check your internet connection and reload.')) }
+      else if (statusRef.current === 'error') { clearInterval(interval); reject(failed) }
+      else if (elapsed >= TIMEOUT_MS) {
+        clearInterval(interval)
+        reject(new Error('Loading the Python engine timed out. Check your connection and reload.'))
+      }
     }, 200)
   })
 

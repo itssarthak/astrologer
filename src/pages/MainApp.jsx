@@ -10,6 +10,7 @@ import ChartTab from '../components/Tabs/ChartTab'
 import NumbersTab from '../components/Tabs/NumbersTab'
 import MatchTab from '../components/Tabs/MatchTab'
 import GitHubLink from '../components/shared/GitHubLink'
+import ErrorBoundary from '../components/shared/ErrorBoundary'
 import { BusyProvider } from '../contexts/BusyContext'
 import { trackEvent } from '../lib/analytics'
 
@@ -63,9 +64,11 @@ export default function MainApp() {
           <GitHubLink />
         </div>
 
-        {/* Tab content */}
+        {/* Tab content — boundary keyed on the tab so switching tabs clears any error */}
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-          <TabContent />
+          <ErrorBoundary key={activeTab}>
+            <TabContent />
+          </ErrorBoundary>
         </div>
 
         {/* Bottom nav (mobile) */}

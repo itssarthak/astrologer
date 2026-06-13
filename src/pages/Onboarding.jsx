@@ -7,11 +7,15 @@ import StepBirthDetails from '../components/Onboarding/StepBirthDetails'
 import StepComputing from '../components/Onboarding/StepComputing'
 import GitHubLink from '../components/shared/GitHubLink'
 
-const TOTAL = 4
-
 export default function Onboarding() {
   const [step, setStep] = useState(1)
   const [birthData, setBirthData] = useState(null)
+  // Returning users who already have a key skip the API-key step, so the progress indicator
+  // is over a 3-step sequence, not 4. Capture this at mount so it doesn't shift mid-flow when
+  // a fresh user saves their key.
+  const [stepIds] = useState(() => (getApiKey() ? [1, 3, 4] : [1, 2, 3, 4]))
+  const total = stepIds.length
+  const position = stepIds.indexOf(step) + 1
 
   const afterWelcome = () => setStep(getApiKey() ? 3 : 2)
 
@@ -22,8 +26,8 @@ export default function Onboarding() {
       </div>
       <div className="w-full max-w-md">
         <div className="flex justify-center gap-2 mb-6">
-          {Array.from({ length: TOTAL }).map((_, i) => (
-            <div key={i} className={`w-2 h-2 rounded-full transition-colors ${i + 1 <= step ? 'bg-primary' : 'bg-border'}`} />
+          {Array.from({ length: total }).map((_, i) => (
+            <div key={i} className={`w-2 h-2 rounded-full transition-colors ${i + 1 <= position ? 'bg-primary' : 'bg-border'}`} />
           ))}
         </div>
 
@@ -35,7 +39,7 @@ export default function Onboarding() {
         </div>
 
         <p className="text-center text-xs text-muted mt-4">
-          Step {step} of {TOTAL}
+          Step {position} of {total}
         </p>
       </div>
     </div>

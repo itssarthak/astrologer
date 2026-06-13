@@ -8,7 +8,7 @@ def lambda_handler(event, context):
     Event body (JSON):
     {
       "name": str, "dob": "YYYY-MM-DD", "time": "HH:MM",
-      "lat": float, "lon": float, "tz_offset": float
+      "lat": float, "lon": float, "tz_offset" | "timezone_offset": float
     }
 
     Response body (JSON):
@@ -32,7 +32,11 @@ def lambda_handler(event, context):
         time_str = body["time"]     # "HH:MM"
         lat = float(body["lat"])
         lon = float(body["lon"])
-        tz_offset = float(body["tz_offset"])
+        # The web client sends "timezone_offset"; accept either spelling.
+        if "tz_offset" in body:
+            tz_offset = float(body["tz_offset"])
+        else:
+            tz_offset = float(body["timezone_offset"])
     except (KeyError, ValueError) as e:
         return {
             "statusCode": 400,

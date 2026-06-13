@@ -13,24 +13,50 @@ def compute_doshas(chart_json):
 
     doshas = {}
 
-    # --- Mangal (Mars) Dosha: Mars in H1/2/4/7/8/12 ---
+    # --- Mangal (Mars) Dosha: Mars in H1/2/4/7/8/12 from the lagna ---
+    # House-specific benign signs where Mars in a manglik house does NOT cause the dosha
+    # (own/friendly/exalted placements), per the classical cancellation rules.
+    MANGLIK_BENIGN_SIGN = {
+        1: {"Aries", "Scorpio"},
+        2: {"Gemini", "Virgo"},
+        4: {"Aries", "Scorpio"},
+        7: {"Cancer", "Capricorn"},
+        8: {"Sagittarius", "Pisces"},
+        12: {"Taurus", "Libra"},
+    }
     mars = planets.get("Mars")
     if mars:
         manglik_houses = {1, 2, 4, 7, 8, 12}
         present = mars["house"] in manglik_houses
-        # Cancellations: Mars in own sign (Aries/Scorpio) or exalted (Capricorn)
-        cancelled = mars["sign"] in {"Aries", "Scorpio", "Capricorn"}
-        rahu = planets.get("Rahu")
-        if rahu and rahu["house"] == mars["house"]:
-            cancelled = True  # mutual Manglik cancellation heuristic
+
+        # Cancellations:
+        #  - Mars in its own sign (Aries/Scorpio) or exalted (Capricorn)
+        #  - Mars in a house-specific benign sign (table above)
+        #  - Mars conjunct or with a benefic guard (Jupiter / Moon) in the same house
+        #  - Mars conjunct the lunar nodes (Rahu/Ketu) — neutralising heuristic
+        cancellations = []
+        if mars["sign"] in {"Aries", "Scorpio", "Capricorn"}:
+            cancellations.append("Mars in own/exalted sign")
+        if mars["sign"] in MANGLIK_BENIGN_SIGN.get(mars["house"], set()):
+            cancellations.append("Mars in a benign sign for this house")
+        for guard in ("Jupiter", "Moon"):
+            g = planets.get(guard)
+            if g and g["house"] == mars["house"]:
+                cancellations.append(f"{guard} conjunct Mars")
+        for node in ("Rahu", "Ketu"):
+            n = planets.get(node)
+            if n and n["house"] == mars["house"]:
+                cancellations.append(f"{node} conjunct Mars")
+        cancelled = bool(cancellations)
 
         doshas["manglik"] = {
             "present": present and not cancelled,
             "house": mars["house"],
-            "cancelled": cancelled,
+            "cancelled": present and cancelled,
+            "cancellation_reasons": cancellations if present else [],
             "text": (
                 "Mangal Dosha present" if (present and not cancelled)
-                else "Mangal Dosha present but neutralised" if present
+                else f"Mangal Dosha present but neutralised ({', '.join(cancellations)})" if present
                 else "No Mangal Dosha"
             ),
         }

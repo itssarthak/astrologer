@@ -14,13 +14,14 @@ export default function StepWelcome({ onNext }) {
       </div>
 
       <div className="rounded-xl p-4 bg-dark-bg text-gold flex flex-col gap-2">
-        <div className="flex items-center gap-2 font-bold text-sm">🔒 100% private by design</div>
+        <div className="flex items-center gap-2 font-bold text-sm">🔒 Private by design</div>
         <p className="text-xs text-gold/80 leading-relaxed">
-          Your birth data never leaves your device — no accounts, no cloud storage. We use only
-          anonymous usage analytics; your chart, details, and API keys stay private.
+          Your profiles, charts, and API keys are stored only in your browser — no accounts, no
+          cloud. To answer you we send your questions to the AI provider you choose and birth
+          places to a geocoding service; nothing is sold or stored by us, and analytics is anonymous.
         </p>
         <div className="flex flex-wrap gap-1.5 mt-1">
-          {['No sign-up', 'No cloud storage', 'Anonymous analytics', 'Open source'].map(p => (
+          {['No sign-up', 'Stored in your browser', 'Anonymous analytics', 'Open source'].map(p => (
             <span key={p} className="px-2 py-0.5 rounded-full text-xs border border-gold/30 bg-white/10 text-gold/90">{p}</span>
           ))}
         </div>

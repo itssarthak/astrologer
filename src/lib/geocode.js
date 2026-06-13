@@ -8,15 +8,15 @@ const TIMEAPI = import.meta.env.DEV
   ? '/api/timeapi/api/timezone/coordinate'
   : 'https://timeapi.io/api/timezone/coordinate'
 
-export async function searchPlaces(query) {
+export async function searchPlaces(query, { signal } = {}) {
   const url = `${NOMINATIM}?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`
-  const resp = await fetch(url, { headers: { 'Accept-Language': 'en' } })
+  const resp = await fetch(url, { headers: { 'Accept-Language': 'en' }, signal })
   if (!resp.ok) throw new Error('Geocoding failed')
   return resp.json()
 }
 
-export async function fetchTimezoneOffset(lat, lon) {
-  const resp = await fetch(`${TIMEAPI}?latitude=${lat}&longitude=${lon}`)
+export async function fetchTimezoneOffset(lat, lon, { signal } = {}) {
+  const resp = await fetch(`${TIMEAPI}?latitude=${lat}&longitude=${lon}`, { signal })
   if (!resp.ok) throw new Error('Timezone lookup failed')
   const data = await resp.json()
   if (data.currentUtcOffset?.seconds != null) return data.currentUtcOffset.seconds / 3600

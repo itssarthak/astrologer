@@ -19,7 +19,12 @@ export function useLLM(profile, tab) {
     const history = getHistory(profile.id, tab)
 
     appendMessage(profile.id, tab, { role: 'user', content: userMessage })
-    const messages = [...history, { role: 'user', content: userMessage }]
+    // Send only role/content — stored messages carry an `id` (and chat tabs may carry `tools`)
+    // that providers must not receive.
+    const messages = [
+      ...history.map(m => ({ role: m.role, content: m.content })),
+      { role: 'user', content: userMessage },
+    ]
 
     const controller = new AbortController()
     abortRef.current = controller
