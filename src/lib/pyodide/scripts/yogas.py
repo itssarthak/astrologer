@@ -35,7 +35,34 @@ def planet_in(ctx, planet):
     return ctx["planets"].get(planet)
 
 
-YOGA_RULES = []  # populated by later tasks
+_MAHAPURUSHA = {
+    "Mars": ("Ruchaka", "Bold, disciplined, commanding — natural drive and physical courage."),
+    "Mercury": ("Bhadra", "Sharp intellect and communication — quick, articulate, business-minded."),
+    "Jupiter": ("Hamsa", "Wise, principled, respected — a teacher's grace and good fortune."),
+    "Venus": ("Malavya", "Charm, comfort, and an eye for beauty — refined and well-liked."),
+    "Saturn": ("Sasa", "Patient, hard-working, authoritative — slow-built, durable success."),
+}
+
+
+def _mahapurusha_present(ctx, planet):
+    """One of the five Pancha Mahapurusha yogas: the planet sits in its own/
+    moolatrikona/exalted sign AND in a kendra (1/4/7/10) from the lagna."""
+    p = planet_in(ctx, planet)
+    if not p:
+        return False
+    return p["house"] in KENDRAS and p["dignity"] in STRONG_DIGNITIES
+
+
+YOGA_RULES = []  # populated below
+
+for _planet, (_name, _desc) in _MAHAPURUSHA.items():
+    YOGA_RULES.append({
+        "id": f"mahapurusha_{_name.lower()}",
+        "name": _name,
+        "category": "Pancha Mahapurusha",
+        "description": _desc,
+        "detect": (lambda p: (lambda ctx: _mahapurusha_present(ctx, p)))(_planet),
+    })
 
 
 def compute_yogas(chart_json):
