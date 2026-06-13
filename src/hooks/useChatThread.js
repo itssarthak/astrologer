@@ -6,9 +6,9 @@ import { getHistory, clearHistory } from '../lib/storage/chat'
 // tabs only differ in their provider-specific send and any extra panels.
 //
 // Each tab calls submit(userMessage, runSend) where runSend({ onText, onChunk }) performs the
-// actual provider call — useAgent streams via onText (full replacement), useLLM via onChunk
-// (append). After the send resolves, the thread re-syncs from storage (where the provider hook
-// persisted both turns).
+// actual provider call via the unified useChat hook, which streams via onChunk (append). The
+// onText callback (full replacement) is still provided and is harmless. After the send resolves,
+// the thread re-syncs from storage (where useChat persisted both turns).
 //
 // resetOnProfileChange: tabs that manage messages through their own effect (Today computes once
 // per day; Match resets extra synastry state) pass false and drive setMessages themselves.
