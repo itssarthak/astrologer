@@ -13,6 +13,15 @@ SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
          "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
 SIGN_IDX = {s: i for i, s in enumerate(SIGNS)}
 
+# jyotishganit emits a wider raw dignity vocabulary; collapse it to the canonical
+# set the rule modules and dignity.py expect. (deep_* magnitude is conveyed
+# separately by shadbala strength, so collapsing it here loses nothing downstream.)
+_DIGNITY_CANON = {
+    "deep_exaltation": "exalted",
+    "deep_debilitation": "debilitated",
+    "own_sign": "own",
+}
+
 
 def planet_facts(chart_json):
     """planet name -> normalized fact dict (sign, house, strength, aspects, ...)."""
@@ -22,6 +31,7 @@ def planet_facts(chart_json):
             sb = (occ.get("shadbala") or {}).get("Shadbala", {})
             meets = sb.get("MeetsRequirement", "No")
             asp = occ.get("aspects") or {}
+            raw_dignity = (occ.get("dignities") or {}).get("dignity", "neutral")
             out[occ["celestialBody"]] = {
                 "sign": occ["sign"],
                 "sign_idx": SIGN_IDX.get(occ["sign"], -1),
@@ -30,7 +40,7 @@ def planet_facts(chart_json):
                 "nakshatra": occ.get("nakshatra", ""),
                 "pada": occ.get("pada", 1),
                 "retrograde": occ.get("motion_type", "direct") == "retrograde",
-                "dignity": (occ.get("dignities") or {}).get("dignity", "neutral"),
+                "dignity": _DIGNITY_CANON.get(raw_dignity, raw_dignity),
                 "rupas": sb.get("Rupas"),
                 "min_required": sb.get("MinRequired"),
                 "meets": meets,
