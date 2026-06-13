@@ -10,7 +10,7 @@ import { resolve } from 'path'
 // at runtime. Copied at build time AND watched in dev, so edits never serve stale.
 const PY_SCRIPT_SRC = resolve(__dirname, 'src/lib/pyodide/scripts')
 const PY_SCRIPT_DEST = resolve(__dirname, 'public/pyodide-scripts')
-const PY_SCRIPTS = ['chart', 'transit', 'yogas', 'doshas', 'numerology', 'synastry']
+const PY_SCRIPTS = ['chart', 'transit', 'yogas', 'doshas', 'numerology', 'synastry', 'dignity', 'aspects', 'adapter']
 
 function copyPyScriptsToPublic() {
   mkdirSync(PY_SCRIPT_DEST, { recursive: true })

@@ -80,3 +80,7 @@ export async function computeNumerology(fullName, dob) {
 export async function computeSynastry(chartJsonA, chartJsonB, genderA = '', genderB = '') {
   return compute('computeSynastry', [asJson(chartJsonA), asJson(chartJsonB), genderA ?? '', genderB ?? ''])
 }
+
+export async function computeChartFacts(chartJson, refDate = null) {
+  return compute('computeChartFacts', [asJson(chartJson), refDate])
+}
