@@ -53,3 +53,22 @@ def test_dasha_chain_keys(sarthak_chart):
     chain = current_dasha_chain(sarthak_chart, ref_date="2003-01-01")
     assert set(chain.keys()) == {"maha", "antar", "pratyantar"}
     assert chain["maha"] in {"Ketu", "Venus"}  # near the Ketu->Venus boundary (2003-03-08)
+
+
+from adapter import divisional_positions
+
+
+def test_divisional_d9(sarthak_chart):
+    d9 = divisional_positions(sarthak_chart, "d9")
+    assert d9["varga"] == "d9"
+    assert d9["ascendant"]  # navamsa lagna sign present
+    # Every classical planet should be placed somewhere in the varga.
+    placed = {p["planet"] for p in d9["placements"]}
+    assert {"Sun", "Moon", "Saturn"}.issubset(placed)
+    for p in d9["placements"]:
+        assert set(p.keys()) >= {"planet", "sign", "house"}
+
+
+def test_divisional_unknown_returns_error(sarthak_chart):
+    res = divisional_positions(sarthak_chart, "d99")
+    assert "error" in res
