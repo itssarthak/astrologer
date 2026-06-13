@@ -35,6 +35,7 @@ export function useAgent(profile, tab) {
     appendMessage(profile.id, tab, { role: 'user', content: userMessage })
     const controller = new AbortController()
     abortRef.current = controller
+    const usedTools = []
     setBusy(true)
     setError(null)
     setToolEvent(null)
@@ -49,10 +50,14 @@ export function useAgent(profile, tab) {
         userMessage,
         history,
         onText,
-        onToolEvent: e => setToolEvent(e.status === 'done' ? null : e),
+        onToolEvent: e => {
+          if (e.status === 'running') usedTools.push(e.name)
+          setToolEvent(e.status === 'done' ? null : e)
+        },
         signal: controller.signal,
       })
-      appendMessage(profile.id, tab, { role: 'assistant', content: text })
+      // Record which tools were called so they can be shown in the chat thread.
+      appendMessage(profile.id, tab, { role: 'assistant', content: text, tools: usedTools.length ? usedTools : undefined })
       return text
     } catch (err) {
       if (err.name === 'AbortError') return '' // stopped by the user — no error

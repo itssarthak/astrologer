@@ -74,6 +74,8 @@ test('agent calls get_chart and the real chart summary flows back', async ({ pag
   await page.locator('textarea').press('Enter')
 
   await expect(page.getByText('Alice has a Virgo ascendant.')).toBeVisible({ timeout: 15_000 })
+  // The tool call is shown in the chat thread as a chip
+  await expect(page.getByText('Fetched the birth chart')).toBeVisible()
   // The executed tool returned the REAL ascendant from the fixture (Virgo) into round 2
   expect(JSON.stringify(capture.bodies[1])).toContain('Virgo')
 })
@@ -89,6 +91,8 @@ test('agent calls a Pyodide compute tool (match_profiles)', async ({ page }) => 
   await page.locator('textarea').press('Enter')
 
   await expect(page.getByText('You two are broadly compatible.')).toBeVisible({ timeout: 150_000 })
+  // The tool call is shown in the chat thread
+  await expect(page.getByText('Checked compatibility')).toBeVisible()
   // The real synastry result (guna_milan) was computed in-browser and fed back
   expect(JSON.stringify(capture.bodies[1])).toContain('guna_milan')
 })
