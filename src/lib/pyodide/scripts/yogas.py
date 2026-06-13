@@ -184,6 +184,76 @@ YOGA_RULES.extend([
 ])
 
 
+BENEFICS = {"Mercury", "Jupiter", "Venus"}
+
+
+def _chandra_mangal(ctx):
+    """Moon and Mars in the same house — drive directed at wealth/security."""
+    moon, mars = planet_in(ctx, "Moon"), planet_in(ctx, "Mars")
+    return bool(moon and mars and moon["house"] == mars["house"])
+
+
+def _adhi(ctx):
+    """Two or more natural benefics in the 6th/7th/8th from the Moon."""
+    moon = planet_in(ctx, "Moon")
+    if not moon:
+        return False
+    target = {((moon["house"] - 1 + off) % 12) + 1 for off in (5, 6, 7)}  # 6th,7th,8th
+    count = sum(1 for b in BENEFICS
+                if planet_in(ctx, b) and planet_in(ctx, b)["house"] in target)
+    return count >= 2
+
+
+def _kesari(ctx):
+    """Jupiter strong (own/moolatrikona/exalted) in a kendra (1/4/7/10) from the lagna."""
+    jup = planet_in(ctx, "Jupiter")
+    if not jup:
+        return False
+    return jup["house"] in KENDRAS and jup["dignity"] in STRONG_DIGNITIES
+
+
+def _lakshmi(ctx):
+    """Venus strong (own/exalted) AND the 9th lord strong in a kendra or trikona."""
+    venus = planet_in(ctx, "Venus")
+    lord9_name = ctx["lords"].get(9)
+    lord9 = planet_in(ctx, lord9_name) if lord9_name else None
+    if not (venus and lord9):
+        return False
+    return venus["dignity"] in STRONG_DIGNITIES \
+        and lord9["house"] in (KENDRAS | TRIKONAS) \
+        and lord9["dignity"] in STRONG_DIGNITIES
+
+
+def _dharma_karmadhipati(ctx):
+    """The 9th and 10th lords conjunct in the same house (a strong Raja yoga)."""
+    l9, l10 = ctx["lords"].get(9), ctx["lords"].get(10)
+    if not l9 or not l10 or l9 == l10:
+        return False
+    p9, p10 = planet_in(ctx, l9), planet_in(ctx, l10)
+    if not p9 or not p10:
+        return False
+    return p9["house"] == p10["house"]
+
+
+YOGA_RULES.extend([
+    {"id": "chandra_mangal", "name": "Chandra-Mangal", "category": "Chandra",
+     "description": "A strong money drive — earning power and ambition, sometimes intense about finances.",
+     "detect": _chandra_mangal},
+    {"id": "adhi", "name": "Adhi", "category": "Chandra",
+     "description": "Leadership and prosperity — well-supported, healthy, and trusted with responsibility.",
+     "detect": _adhi},
+    {"id": "kesari", "name": "Kesari", "category": "Jupiter",
+     "description": "A strong, well-placed Jupiter — sound judgment, optimism and protection in life.",
+     "detect": _kesari},
+    {"id": "lakshmi", "name": "Lakshmi", "category": "Raja",
+     "description": "Wealth and grace — comfort, beauty and good fortune through the year's blessings.",
+     "detect": _lakshmi},
+    {"id": "dharma_karmadhipati", "name": "Dharma-Karmadhipati", "category": "Raja",
+     "description": "Luck meets effort — a powerful combination for career rise and recognition.",
+     "detect": _dharma_karmadhipati},
+])
+
+
 def compute_yogas(chart_json):
     """Run every registered rule; return active yogas as {name, category, description}."""
     ctx = _context(chart_json)

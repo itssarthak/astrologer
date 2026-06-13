@@ -4,6 +4,7 @@ from yogas import _context, compute_yogas, YOGA_RULES
 from yogas import _mahapurusha_present
 from yogas import (_gaja_kesari, _sunapha, _anapha, _durudhara, _kemadruma)
 from yogas import (_budha_aditya, _vesi, _vasi, _ubhayachari)
+from yogas import (_chandra_mangal, _adhi, _kesari, _lakshmi, _dharma_karmadhipati)
 
 
 def test_context_shape(sarthak_chart):
@@ -129,3 +130,39 @@ def test_ubhayachari_requires_both_sides_of_sun():
     assert _ubhayachari(ctx) is True
     ctx2 = _ctx({"Sun": {"house": 5}, "Jupiter": {"house": 6}})
     assert _ubhayachari(ctx2) is False
+
+
+def test_chandra_mangal_fires_moon_mars_conjunct():
+    ctx = _ctx({"Moon": {"house": 7}, "Mars": {"house": 7}})
+    assert _chandra_mangal(ctx) is True
+    assert _chandra_mangal(_ctx({"Moon": {"house": 7}, "Mars": {"house": 8}})) is False
+
+
+def test_adhi_fires_two_benefics_6_7_8_from_moon():
+    # Moon H1 -> 6th=H6, 7th=H7, 8th=H8. Mercury H6, Jupiter H7 -> two benefics.
+    ctx = _ctx({"Moon": {"house": 1}, "Mercury": {"house": 6}, "Jupiter": {"house": 7}})
+    assert _adhi(ctx) is True
+    assert _adhi(_ctx({"Moon": {"house": 1}, "Mercury": {"house": 6}})) is False  # only one
+
+
+def test_kesari_fires_strong_jupiter_in_lagna_kendra():
+    # lagna_idx 10 (Aquarius) -> kendras H1/4/7/10. Jupiter strong in H1.
+    ctx = _ctx({"Jupiter": {"house": 1, "dignity": "own", "is_strong": True}})
+    assert _kesari(ctx) is True
+    assert _kesari(_ctx({"Jupiter": {"house": 3, "dignity": "own", "is_strong": True}})) is False
+
+
+def test_lakshmi_fires_strong_venus_and_strong_9th_lord_in_trikona():
+    # 9th lord = Venus per lords map; Venus strong, in a trikona (H9).
+    ctx = _ctx({"Venus": {"house": 9, "dignity": "exalted", "is_strong": True}},
+               lords={9: "Venus"})
+    assert _lakshmi(ctx) is True
+
+
+def test_dharma_karmadhipati_fires_9th_10th_lords_conjunct():
+    ctx = _ctx({"Jupiter": {"house": 5}, "Mars": {"house": 5}},
+               lords={9: "Jupiter", 10: "Mars"})
+    assert _dharma_karmadhipati(ctx) is True
+    ctx2 = _ctx({"Jupiter": {"house": 5}, "Mars": {"house": 8}},
+                lords={9: "Jupiter", 10: "Mars"})
+    assert _dharma_karmadhipati(ctx2) is False
