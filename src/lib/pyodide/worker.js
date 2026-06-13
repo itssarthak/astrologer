@@ -77,10 +77,12 @@ _si.download = _pyodide_download
 _astro.loader = Loader('/home/pyodide')
 `)
 
-  const scripts = ['chart', 'transit', 'yogas', 'doshas', 'numerology', 'synastry', 'dignity', 'aspects', 'adapter']
+  // Keep in sync with PY_SCRIPTS in vite.config.js (both must list every module served).
+  const scripts = ['chart', 'transit', 'yogas', 'doshas', 'numerology', 'synastry', 'dignity', 'adapter']
   for (const name of scripts) {
     post({ type: 'progress', message: `Loading ${name}.py...` })
     const resp = await fetch(`/pyodide-scripts/${name}.py`)
+    if (!resp.ok) throw new Error(`Failed to fetch ${name}.py (${resp.status})`)
     py.FS.writeFile(`/home/pyodide/${name}.py`, await resp.text())
   }
 
