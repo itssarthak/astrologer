@@ -4,6 +4,7 @@ import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { useLLM } from '../../hooks/useLLM'
 import { getHistory, clearHistory } from '../../lib/storage/chat'
 import { formatNumerologyContext } from '../../lib/prompts/formatters'
+import { useReportBusy } from '../../contexts/BusyContext'
 import ChatMessages from '../Chat/ChatMessages'
 import ChatInput from '../Chat/ChatInput'
 import ChatToolbar from '../shared/ChatToolbar'
@@ -19,6 +20,7 @@ const NUM_LABELS = {
 export default function NumbersTab() {
   const { activeProfile } = useContext(ProfilesContext)
   const { send, streaming, error, stop } = useLLM(activeProfile, 'numbers')
+  useReportBusy(streaming)
   const [messages, setMessages] = useState(() =>
     activeProfile ? getHistory(activeProfile.id, 'numbers') : []
   )

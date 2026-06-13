@@ -10,6 +10,7 @@ import ChartTab from '../components/Tabs/ChartTab'
 import NumbersTab from '../components/Tabs/NumbersTab'
 import MatchTab from '../components/Tabs/MatchTab'
 import GitHubLink from '../components/shared/GitHubLink'
+import { BusyProvider } from '../contexts/BusyContext'
 import { trackEvent } from '../lib/analytics'
 
 const TAB_COMPONENTS = {
@@ -32,6 +33,7 @@ export default function MainApp() {
   const TabContent = TAB_COMPONENTS[activeTab] ?? ChatTab
 
   return (
+    <BusyProvider>
     <div className="flex h-screen bg-background overflow-hidden">
       {/* Desktop sidebar — hidden on mobile */}
       <div className="hidden md:flex">
@@ -72,5 +74,6 @@ export default function MainApp() {
         </div>
       </div>
     </div>
+    </BusyProvider>
   )
 }

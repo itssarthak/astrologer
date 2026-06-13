@@ -4,6 +4,7 @@ import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { useLLM } from '../../hooks/useLLM'
 import { getHistory, clearHistory } from '../../lib/storage/chat'
 import { formatChartContext, activeMahadasha } from '../../lib/prompts/formatters'
+import { useReportBusy } from '../../contexts/BusyContext'
 import KundliChart from '../Kundli/KundliChart'
 import ChatMessages from '../Chat/ChatMessages'
 import ChatInput from '../Chat/ChatInput'
@@ -14,6 +15,7 @@ const SUB_TABS = ['D1', 'D9']
 export default function ChartTab() {
   const { activeProfile } = useContext(ProfilesContext)
   const { send, streaming, error, stop } = useLLM(activeProfile, 'chart')
+  useReportBusy(streaming)
   const [subTab, setSubTab] = useState('D1')
   const [messages, setMessages] = useState(() =>
     activeProfile ? getHistory(activeProfile.id, 'chart') : []

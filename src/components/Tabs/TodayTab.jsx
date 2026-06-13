@@ -5,6 +5,7 @@ import { PyodideContext } from '../../contexts/PyodideContext'
 import { useLLM } from '../../hooks/useLLM'
 import { getHistory, clearHistory } from '../../lib/storage/chat'
 import { getTodayTransit, saveTodayTransit } from '../../lib/storage/today'
+import { useReportBusy } from '../../contexts/BusyContext'
 import { formatTransitContext } from '../../lib/prompts/formatters'
 import ChatMessages from '../Chat/ChatMessages'
 import ChatInput from '../Chat/ChatInput'
@@ -25,6 +26,7 @@ export default function TodayTab() {
   )
   const [streamingContent, setStreamingContent] = useState('')
   const computedForRef = useRef(null)
+  useReportBusy(streaming || generating || computing)
 
   useEffect(() => {
     if (!activeProfile || !isReady) return

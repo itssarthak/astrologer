@@ -3,6 +3,7 @@ import { useState, useContext, useEffect } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { useAgent } from '../../hooks/useAgent'
 import { getHistory, clearHistory } from '../../lib/storage/chat'
+import { useReportBusy } from '../../contexts/BusyContext'
 import ChatMessages from '../Chat/ChatMessages'
 import ChatInput from '../Chat/ChatInput'
 import ChatToolbar from '../shared/ChatToolbar'
@@ -11,6 +12,7 @@ import { toolLabelActive } from '../../lib/llm/toolLabels'
 export default function ChatTab() {
   const { activeProfile } = useContext(ProfilesContext)
   const { send, stop, busy, error, toolEvent } = useAgent(activeProfile, 'chat')
+  useReportBusy(busy)
   const [messages, setMessages] = useState(() =>
     activeProfile ? getHistory(activeProfile.id, 'chat') : []
   )

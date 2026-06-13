@@ -5,6 +5,7 @@ import { PyodideContext } from '../../contexts/PyodideContext'
 import { useLLM } from '../../hooks/useLLM'
 import { getHistory, clearHistory } from '../../lib/storage/chat'
 import { formatSynastryContext } from '../../lib/prompts/formatters'
+import { useReportBusy } from '../../contexts/BusyContext'
 import AddProfileModal from '../Sidebar/AddProfileModal'
 import ChatMessages from '../Chat/ChatMessages'
 import ChatInput from '../Chat/ChatInput'
@@ -60,6 +61,7 @@ export default function MatchTab() {
   const [streamingContent, setStreamingContent] = useState('')
   const [synastryRead, setSynastryRead] = useState('')
   const [generatingRead, setGeneratingRead] = useState(false)
+  useReportBusy(streaming || generatingRead || computing)
 
   // When the active profile changes, reload its conversation and reset the match — the
   // partner selection and synastry are computed relative to the (old) active profile.
