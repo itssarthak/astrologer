@@ -2,19 +2,12 @@
 // final answer or asks to call tools. We execute the tools in the browser, feed results
 // back, and loop until it answers (or we hit maxRounds). Per-provider adapters translate a
 // neutral conversation log to/from each API's native tool-use format.
-import { TOOL_SCHEMAS, TOOLS_BY_NAME } from './tools'
 import { resolveProviderConfig } from './providers'
+import { readSSE, accumulateOpenAI, accumulateClaude, accumulateGemini } from './sse'
 
 const MAX_TOOL_RESULT_CHARS = 6000
 // Final-answer rounds (after tools) often write a full interpretation; 2048 truncated them.
 const MAX_ANSWER_TOKENS = 4096
-
-// Parse tool-call arguments. On malformed JSON we return a sentinel (rather than silently
-// using {}) so the dispatch loop can feed a clear error back to the model.
-function safeJSON(s) {
-  if (s && typeof s === 'object') return s
-  try { return JSON.parse(s || '{}') } catch { return { __invalidArgs: String(s) } }
-}
 
 // ── OpenAI-compatible (OpenAI / OpenRouter / Custom) ──────────────────────────────
 function toOpenAIMessages(systemPrompt, log) {
@@ -31,7 +24,7 @@ function toOpenAIMessages(systemPrompt, log) {
   return out
 }
 
-async function runOpenAIRound({ key, baseUrl, model, systemPrompt, log, signal }) {
+async function runOpenAIRound({ key, baseUrl, model, systemPrompt, log, signal, toolSchemas = [], onDelta }) {
   const endpoint = `${(baseUrl || 'https://api.openai.com/v1').replace(/\/+$/, '')}/chat/completions`
   const resp = await fetch(endpoint, {
     method: 'POST',
@@ -40,18 +33,25 @@ async function runOpenAIRound({ key, baseUrl, model, systemPrompt, log, signal }
     body: JSON.stringify({
       model: model || 'gpt-4o',
       messages: toOpenAIMessages(systemPrompt, log),
-      tools: TOOL_SCHEMAS.map(s => ({ type: 'function', function: s })),
-      tool_choice: 'auto',
+      ...(toolSchemas.length
+        ? { tools: toolSchemas.map(s => ({ type: 'function', function: s })), tool_choice: 'auto' }
+        : {}),
       max_tokens: MAX_ANSWER_TOKENS,
+      stream: true,
     }),
   })
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}))
     throw new Error(err.error?.message ?? `LLM error ${resp.status}`)
   }
-  const msg = (await resp.json()).choices?.[0]?.message ?? {}
-  const toolCalls = (msg.tool_calls ?? []).map(tc => ({ id: tc.id, name: tc.function?.name, args: safeJSON(tc.function?.arguments) }))
-  return { text: msg.content || '', toolCalls }
+  const acc = accumulateOpenAI()
+  let last = ''
+  await readSSE(resp, ev => {
+    acc.push(ev)
+    const { text } = acc.result()
+    if (text !== last) { onDelta?.(text.slice(last.length)); last = text }
+  }, signal)
+  return acc.result()
 }
 
 // ── Anthropic (Claude) ────────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ function toClaudeMessages(log) {
   })
 }
 
-async function runClaudeRound({ key, model, systemPrompt, log, signal }) {
+async function runClaudeRound({ key, model, systemPrompt, log, signal, toolSchemas = [], onDelta }) {
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     signal,
@@ -86,17 +86,24 @@ async function runClaudeRound({ key, model, systemPrompt, log, signal }) {
       // meaningfully cuts cost + latency across the tool-call rounds.
       system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
       messages: toClaudeMessages(log),
-      tools: TOOL_SCHEMAS.map(s => ({ name: s.name, description: s.description, input_schema: s.parameters })),
+      ...(toolSchemas.length
+        ? { tools: toolSchemas.map(s => ({ name: s.name, description: s.description, input_schema: s.parameters })) }
+        : {}),
+      stream: true,
     }),
   })
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}))
     throw new Error(err.error?.message ?? `Claude error ${resp.status}`)
   }
-  const blocks = (await resp.json()).content ?? []
-  const text = blocks.filter(b => b.type === 'text').map(b => b.text).join('')
-  const toolCalls = blocks.filter(b => b.type === 'tool_use').map(b => ({ id: b.id, name: b.name, args: b.input ?? {} }))
-  return { text, toolCalls }
+  const acc = accumulateClaude()
+  let last = ''
+  await readSSE(resp, ev => {
+    acc.push(ev)
+    const { text } = acc.result()
+    if (text !== last) { onDelta?.(text.slice(last.length)); last = text }
+  }, signal)
+  return acc.result()
 }
 
 // ── Gemini ──────────────────────────────────────────────────────────────────────
@@ -113,10 +120,10 @@ function toGeminiContents(log) {
   })
 }
 
-async function runGeminiRound({ key, model, systemPrompt, log, signal }) {
+async function runGeminiRound({ key, model, systemPrompt, log, signal, toolSchemas = [], onDelta }) {
   const m = model || 'gemini-2.0-flash'
   // Key goes in the header, not the query string — query strings leak into history/proxy logs.
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:streamGenerateContent?alt=sse`
   const resp = await fetch(url, {
     method: 'POST',
     signal,
@@ -124,22 +131,25 @@ async function runGeminiRound({ key, model, systemPrompt, log, signal }) {
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents: toGeminiContents(log),
-      tools: [{ functionDeclarations: TOOL_SCHEMAS.map(s => ({ name: s.name, description: s.description, parameters: s.parameters })) }],
+      ...(toolSchemas.length
+        ? { tools: [{ functionDeclarations: toolSchemas.map(s => ({ name: s.name, description: s.description, parameters: s.parameters })) }] }
+        : {}),
     }),
   })
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}))
     throw new Error(err.error?.message ?? `Gemini error ${resp.status}`)
   }
-  const parts = (await resp.json()).candidates?.[0]?.content?.parts ?? []
-  const text = parts.filter(p => p.text).map(p => p.text).join('')
-  // Gemini matches functionResponse blocks to calls by name + order (it has no call ids), so we
-  // keep response order identical to call order in toGeminiContents. The synthetic id is for our
-  // own bookkeeping only.
-  const toolCalls = parts
-    .filter(p => p.functionCall)
-    .map((p, i) => ({ id: `${p.functionCall.name}_${i}`, name: p.functionCall.name, args: p.functionCall.args ?? {} }))
-  return { text, toolCalls }
+  // Gemini matches functionResponse blocks to calls by name + order (it has no call ids), so the
+  // accumulator keeps response order identical to call order. The synthetic id is for bookkeeping.
+  const acc = accumulateGemini()
+  let last = ''
+  await readSSE(resp, ev => {
+    acc.push(ev)
+    const { text } = acc.result()
+    if (text !== last) { onDelta?.(text.slice(last.length)); last = text }
+  }, signal)
+  return acc.result()
 }
 
 const RUNNERS = {
@@ -156,11 +166,14 @@ export function providerSupportsTools(provider) {
 
 /**
  * Run the agentic loop. Returns the final assistant text.
- * @param {{provider,key,baseUrl?,model?,systemPrompt,userMessage,history?,onText?,onToolEvent?,maxRounds?}} opts
+ * @param {{provider,key,baseUrl?,model?,systemPrompt,userMessage,history?,tools?,onText?,onDelta?,onToolEvent?,signal?,maxRounds?}} opts
  */
-export async function runAgent({ provider, key, baseUrl, model, systemPrompt, userMessage, history = [], onText, onToolEvent, signal, maxRounds = 6 }) {
+export async function runAgent({ provider, key, baseUrl, model, systemPrompt, userMessage, history = [], tools = [], onText, onDelta, onToolEvent, signal, maxRounds = 6 }) {
   const runner = RUNNERS[provider]
   if (!runner) throw new Error(`No agent runner for provider: ${provider}`)
+
+  const toolSchemas = tools.map(t => ({ name: t.name, description: t.description, parameters: t.parameters }))
+  const byName = Object.fromEntries(tools.map(t => [t.name, t]))
 
   const { baseUrl: resolvedBaseUrl, model: resolvedModel } = resolveProviderConfig(provider, { baseUrl, model })
 
@@ -171,7 +184,7 @@ export async function runAgent({ provider, key, baseUrl, model, systemPrompt, us
 
   for (let round = 0; round < maxRounds; round++) {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
-    const { text, toolCalls } = await runner({ key, baseUrl: resolvedBaseUrl, model: resolvedModel, systemPrompt, log, signal })
+    const { text, toolCalls } = await runner({ key, baseUrl: resolvedBaseUrl, model: resolvedModel, systemPrompt, log, signal, toolSchemas, onDelta })
 
     if (!toolCalls || toolCalls.length === 0) {
       onText?.(text || '')
@@ -184,7 +197,7 @@ export async function runAgent({ provider, key, baseUrl, model, systemPrompt, us
       onToolEvent?.({ name: tc.name, status: 'running' })
       let content
       try {
-        const tool = TOOLS_BY_NAME[tc.name]
+        const tool = byName[tc.name]
         if (!tool) throw new Error(`unknown tool ${tc.name}`)
         if (tc.args?.__invalidArgs !== undefined) {
           throw new Error(`could not parse the arguments you sent for ${tc.name} — resend them as valid JSON`)
