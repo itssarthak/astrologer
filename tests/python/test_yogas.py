@@ -173,3 +173,20 @@ def test_kemadruma_broken_by_planet_in_kendra():
     # from the lagna -> Kemadruma must NOT fire.
     ctx = _ctx({"Moon": {"house": 5}, "Jupiter": {"house": 1}})
     assert _kemadruma(ctx) is False
+
+
+def test_compute_yogas_on_real_chart_is_wellformed(sarthak_chart):
+    result = compute_yogas(sarthak_chart)
+    # Every active yoga carries a non-empty name, category and description.
+    for y in result:
+        assert y["name"] and y["category"] and y["description"]
+    # Names are unique (no rule fires twice).
+    names = [y["name"] for y in result]
+    assert len(names) == len(set(names))
+
+
+def test_compute_yogas_json_roundtrips(sarthak_chart):
+    import json as _json
+    from yogas import compute_yogas_json
+    parsed = _json.loads(compute_yogas_json(_json.dumps(sarthak_chart)))
+    assert isinstance(parsed, list)
