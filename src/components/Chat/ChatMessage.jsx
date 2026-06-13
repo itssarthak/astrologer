@@ -9,8 +9,8 @@ export default function ChatMessage({ message }) {
       {/* Tools the agent called for this answer */}
       {tools.length > 0 && (
         <div className="flex flex-wrap gap-1 max-w-[85%]">
-          {tools.map((name, i) => (
-            <span key={i}
+          {tools.map(name => (
+            <span key={name}
               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-light/60 border border-primary/20 text-primary text-[11px] font-medium">
               🔧 {toolLabel(name)}
             </span>

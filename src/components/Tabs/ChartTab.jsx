@@ -69,7 +69,7 @@ export default function ChartTab() {
           <div className="flex gap-2 flex-wrap items-center">
             <span className="text-muted text-xs uppercase tracking-wide font-semibold">Yogas:</span>
             {yogas.length ? yogas.slice(0, 5).map((y, i) => (
-              <span key={i} className="px-2 py-0.5 rounded-full bg-primary-light text-primary text-xs">{y.name ?? y}</span>
+              <span key={y.name ?? y ?? i} className="px-2 py-0.5 rounded-full bg-primary-light text-primary text-xs">{y.name ?? y}</span>
             )) : <span className="text-muted text-xs">None detected</span>}
           </div>
           <div className="flex gap-2 flex-wrap items-center">
