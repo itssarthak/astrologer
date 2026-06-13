@@ -14,6 +14,19 @@ DUSTHANAS = {6, 8, 12}
 NODES = {"Rahu", "Ketu"}
 STRONG_DIGNITIES = {"exalted", "moolatrikona", "own"}
 
+# Nabhasa-core support: the 7 classical planets, sign modalities, and natural temperaments.
+CLASSICAL = ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")
+MOVABLE = {0, 3, 6, 9}      # Aries, Cancer, Libra, Capricorn
+FIXED = {1, 4, 7, 10}       # Taurus, Leo, Scorpio, Aquarius
+DUAL = {2, 5, 8, 11}        # Gemini, Virgo, Sagittarius, Pisces
+NATURAL_BENEFICS = {"Jupiter", "Venus", "Mercury", "Moon"}
+NATURAL_MALEFICS = {"Sun", "Mars", "Saturn"}
+
+
+def _classical(ctx):
+    """Facts of the 7 classical planets present in the chart."""
+    return [ctx["planets"][p] for p in CLASSICAL if p in ctx["planets"]]
+
 # planet -> the signs it rules (inverse of adapter.SIGN_LORD).
 OWNED_SIGNS = {}
 for _sign, _lord in SIGN_LORD.items():
@@ -388,6 +401,77 @@ YOGA_RULES.append({
     "description": "The lords of wealth (2nd) and gains (11th) combine — strong support for accumulating money and assets through the right channels.",
     "detect": _dhana,
 })
+
+
+# --- Nabhasa core: Sankhya, Asraya, Dala (classical 7 planets only) ---
+
+def _sankhya_count(ctx):
+    """Number of distinct signs the 7 classical planets occupy (Sankhya).
+    Only planets with a valid sign_idx (>= 0) are counted; nodes are excluded."""
+    signs = {p["sign_idx"] for p in _classical(ctx)
+             if isinstance(p.get("sign_idx"), int) and p["sign_idx"] >= 0}
+    return len(signs)
+
+
+_SANKHYA = {
+    7: ("nabhasa_vallaki", "Vallaki", "Veena — a life rich in variety, arts and many interests"),
+    6: ("nabhasa_damini", "Damini", "wealth and generosity, well-distributed energies"),
+    5: ("nabhasa_pasa", "Pasa", "hard-working, capable of juggling many ties and duties"),
+    4: ("nabhasa_kedara", "Kedara", "steady, productive, helpful to many — like fertile fields"),
+    3: ("nabhasa_soola", "Soola", "sharp and one-pointed, but can be harsh or struggle-prone"),
+    2: ("nabhasa_yuga", "Yuga", "polarised focus — strong drives pulling in two directions"),
+    1: ("nabhasa_gola", "Gola", "intensely concentrated energy in one area; lopsided life"),
+}
+
+YOGA_RULES.extend([
+    {"id": _id, "name": _name, "category": "Nabhasa (Sankhya)", "description": _desc,
+     "detect": (lambda n: (lambda ctx: _sankhya_count(ctx) == n))(_n)}
+    for _n, (_id, _name, _desc) in _SANKHYA.items()
+])
+
+
+def _asraya(ctx, modality):
+    """True if every classical planet present sits in a sign of the given modality
+    (and at least one such planet exists). Planets with sign_idx < 0 disqualify the chart."""
+    facts = _classical(ctx)
+    if not facts:
+        return False
+    return all(isinstance(p.get("sign_idx"), int) and p["sign_idx"] in modality for p in facts)
+
+
+YOGA_RULES.extend([
+    {"id": "nabhasa_rajju", "name": "Rajju", "category": "Nabhasa (Asraya)",
+     "description": "restless, travel-loving, always on the move; success away from home",
+     "detect": (lambda ctx: _asraya(ctx, MOVABLE))},
+    {"id": "nabhasa_musala", "name": "Musala", "category": "Nabhasa (Asraya)",
+     "description": "fixed, determined, dignified — steady wealth and a strong will",
+     "detect": (lambda ctx: _asraya(ctx, FIXED))},
+    {"id": "nabhasa_nala", "name": "Nala", "category": "Nabhasa (Asraya)",
+     "description": "adaptable and clever, but uneven fortunes; resourceful under change",
+     "detect": (lambda ctx: _asraya(ctx, DUAL))},
+])
+
+
+def _dala(ctx, group):
+    """Dala: every planet of `group` present in the chart sits in a kendra (1/4/7/10),
+    AND those planets occupy at least 3 distinct kendra houses. Returns False when no
+    planet of the group is present (no vacuous fire)."""
+    present = [ctx["planets"][n] for n in group if n in ctx["planets"]]
+    if not present:
+        return False
+    if not all(p["house"] in KENDRAS for p in present):
+        return False
+    return len({p["house"] for p in present}) >= 3
+
+
+YOGA_RULES.extend([
+    {"id": "nabhasa_mala", "name": "Maalaa", "category": "Nabhasa (Dala)",
+     "description": "Maalaa — comfort, helpful friends and a pleasant, well-supported life",
+     "detect": (lambda ctx: _dala(ctx, NATURAL_BENEFICS))},
+    {"id": "nabhasa_sarpa", "name": "Sarpa", "category": "Nabhasa (Dala)",
+     "description": "Sarpa — struggle and hardship; resilience built through difficulty",
+     "detect": (lambda ctx: _dala(ctx, NATURAL_MALEFICS))},
+])
 
 
 def compute_yogas(chart_json):

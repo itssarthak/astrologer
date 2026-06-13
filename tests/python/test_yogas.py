@@ -10,6 +10,9 @@ from yogas import _raja_kendra_trikona
 from yogas import _viparita
 from yogas import _neecha_bhanga, EXALTED_IN_SIGN
 from yogas import _dhana
+from yogas import _sankhya_count, _asraya, _dala, MOVABLE, FIXED, DUAL
+from yogas import NATURAL_BENEFICS as NATURAL_BENEFICS_NAMES
+from yogas import NATURAL_MALEFICS as NATURAL_MALEFICS_NAMES
 
 
 def test_context_shape(sarthak_chart):
@@ -31,7 +34,12 @@ def test_registry_has_all_new_families():
     ids = {r["id"] for r in YOGA_RULES}
     assert {"raja_kendra_trikona", "viparita_harsha", "viparita_sarala",
             "viparita_vimala", "neecha_bhanga", "dhana_2_11"} <= ids
-    assert len(YOGA_RULES) == 25  # 19 from P1a + 6 new
+    nabhasa = {"nabhasa_vallaki", "nabhasa_damini", "nabhasa_pasa", "nabhasa_kedara",
+               "nabhasa_soola", "nabhasa_yuga", "nabhasa_gola",
+               "nabhasa_rajju", "nabhasa_musala", "nabhasa_nala",
+               "nabhasa_mala", "nabhasa_sarpa"}
+    assert nabhasa <= ids
+    assert len(YOGA_RULES) == 37  # 25 prior + 12 Nabhasa
 
 
 def test_compute_yogas_returns_named_list(sarthak_chart):
@@ -329,3 +337,100 @@ def test_dhana_absent_when_no_association():
 def test_dhana_absent_when_same_lord():
     ctx = _ctx({"Jupiter": {"house": 1}}, lords={2: "Jupiter", 11: "Jupiter"})
     assert _dhana(ctx) is False
+
+
+# --- Nabhasa: Sankhya (count of distinct signs the 7 classical planets occupy) ---
+
+_SEVEN = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
+
+
+def test_sankhya_yuga_two_signs():
+    # Planets alternate between sign 0 and sign 1 -> exactly 2 distinct signs -> Yuga.
+    ctx = _ctx({p: {"sign_idx": (0 if i % 2 == 0 else 1)} for i, p in enumerate(_SEVEN)})
+    assert _sankhya_count(ctx) == 2
+
+
+def test_sankhya_gola_one_sign():
+    ctx = _ctx({p: {"sign_idx": 5} for p in _SEVEN})
+    assert _sankhya_count(ctx) == 1
+
+
+def test_sankhya_vallaki_seven_signs():
+    ctx = _ctx({p: {"sign_idx": i} for i, p in enumerate(_SEVEN)})
+    assert _sankhya_count(ctx) == 7
+
+
+def test_sankhya_ignores_nodes_and_invalid_idx():
+    # Rahu/Ketu and a planet with sign_idx -1 must not count.
+    ctx = _ctx({"Sun": {"sign_idx": 0}, "Moon": {"sign_idx": 0},
+                "Mars": {"sign_idx": -1}, "Rahu": {"sign_idx": 4}, "Ketu": {"sign_idx": 9}})
+    assert _sankhya_count(ctx) == 1
+
+
+def test_sankhya_yuga_via_compute(sarthak_chart):
+    ctx = _ctx({p: {"sign_idx": (0 if i % 2 == 0 else 1), "house": 1} for i, p in enumerate(_SEVEN)})
+    from yogas import YOGA_RULES as _RULES
+    fired = {r["name"] for r in _RULES if r["category"].startswith("Nabhasa (Sankhya)") and r["detect"](ctx)}
+    assert fired == {"Yuga"}
+
+
+# --- Nabhasa: Asraya (all 7 classical planets in one modality) ---
+
+def test_asraya_musala_all_fixed():
+    # All seven in fixed signs (e.g. Taurus=1) -> Musala.
+    ctx = _ctx({p: {"sign_idx": 1} for p in _SEVEN})
+    assert _asraya(ctx, FIXED) is True
+    assert _asraya(ctx, MOVABLE) is False
+    assert _asraya(ctx, DUAL) is False
+
+
+def test_asraya_rajju_all_movable():
+    ctx = _ctx({p: {"sign_idx": 3} for p in _SEVEN})  # Cancer = movable
+    assert _asraya(ctx, MOVABLE) is True
+
+
+def test_asraya_false_when_no_planet():
+    ctx = _ctx({})
+    assert _asraya(ctx, FIXED) is False
+
+
+def test_asraya_false_when_mixed():
+    ctx = _ctx({"Sun": {"sign_idx": 1}, "Moon": {"sign_idx": 0}})  # fixed + movable
+    assert _asraya(ctx, FIXED) is False
+
+
+# --- Nabhasa: Dala (benefics/malefics in kendras) ---
+
+def test_dala_mala_benefics_in_kendras():
+    # Jupiter, Venus, Mercury, Moon each in a distinct kendra house -> Mala.
+    ctx = _ctx({"Jupiter": {"house": 1}, "Venus": {"house": 4},
+                "Mercury": {"house": 7}, "Moon": {"house": 10}})
+    assert _dala(ctx, NATURAL_BENEFICS_NAMES) is True
+
+
+def test_dala_mala_false_when_benefic_outside_kendra():
+    ctx = _ctx({"Jupiter": {"house": 1}, "Venus": {"house": 4},
+                "Mercury": {"house": 7}, "Moon": {"house": 3}})  # Moon not in kendra
+    assert _dala(ctx, NATURAL_BENEFICS_NAMES) is False
+
+
+def test_dala_mala_false_when_fewer_than_three_kendras():
+    # Only two distinct kendra houses occupied.
+    ctx = _ctx({"Jupiter": {"house": 1}, "Venus": {"house": 4}})
+    assert _dala(ctx, NATURAL_BENEFICS_NAMES) is False
+
+
+def test_dala_sarpa_malefics_in_kendras():
+    ctx = _ctx({"Sun": {"house": 1}, "Mars": {"house": 4}, "Saturn": {"house": 7}})
+    assert _dala(ctx, NATURAL_MALEFICS_NAMES) is True
+
+
+def test_dala_false_when_no_planet():
+    assert _dala(_ctx({}), NATURAL_BENEFICS_NAMES) is False
+
+
+def test_dala_mala_via_compute():
+    ctx = _ctx({"Jupiter": {"house": 1}, "Venus": {"house": 4},
+                "Mercury": {"house": 7}, "Moon": {"house": 10}})
+    fired = {r["name"] for r in YOGA_RULES if r["category"] == "Nabhasa (Dala)" and r["detect"](ctx)}
+    assert fired == {"Maalaa"}
