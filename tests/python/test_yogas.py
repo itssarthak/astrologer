@@ -13,6 +13,7 @@ from yogas import _dhana
 from yogas import _sankhya_count, _asraya, _dala, MOVABLE, FIXED, DUAL
 from yogas import NATURAL_BENEFICS as NATURAL_BENEFICS_NAMES
 from yogas import NATURAL_MALEFICS as NATURAL_MALEFICS_NAMES
+from yogas import _classical_houses, _all_classical_in
 
 
 def test_context_shape(sarthak_chart):
@@ -39,7 +40,14 @@ def test_registry_has_all_new_families():
                "nabhasa_rajju", "nabhasa_musala", "nabhasa_nala",
                "nabhasa_mala", "nabhasa_sarpa"}
     assert nabhasa <= ids
-    assert len(YOGA_RULES) == 37  # 25 prior + 12 Nabhasa
+    akriti = {"nabhasa_yupa", "nabhasa_ishu", "nabhasa_sakti", "nabhasa_danda",
+              "nabhasa_nauka", "nabhasa_koota", "nabhasa_chatra", "nabhasa_chapa",
+              "nabhasa_chakra", "nabhasa_samudra", "nabhasa_sakata", "nabhasa_vihaga",
+              "nabhasa_sringataka", "nabhasa_kamala", "nabhasa_vapi",
+              "nabhasa_gada", "nabhasa_hala", "nabhasa_ardha_chandra",
+              "nabhasa_vajra", "nabhasa_yava"}
+    assert akriti <= ids
+    assert len(YOGA_RULES) == 57  # 37 prior + 20 Akriti
 
 
 def test_compute_yogas_returns_named_list(sarthak_chart):
@@ -434,3 +442,119 @@ def test_dala_mala_via_compute():
                 "Mercury": {"house": 7}, "Moon": {"house": 10}})
     fired = {r["name"] for r in YOGA_RULES if r["category"] == "Nabhasa (Dala)" and r["detect"](ctx)}
     assert fired == {"Maalaa"}
+
+
+# --- Nabhasa: Akriti (shape by occupied houses, 7 classical planets only) ---
+
+def _houses(mapping):
+    """Build a ctx placing the 7 classical planets at the given houses (list, len 7)."""
+    return _ctx({p: {"house": h} for p, h in zip(_SEVEN, mapping)})
+
+
+def _akriti_fired(ctx):
+    return {r["name"] for r in YOGA_RULES
+            if r["category"] == "Nabhasa (Akriti)" and r["detect"](ctx)}
+
+
+def test_classical_houses_helper():
+    ctx = _houses([1, 1, 7, 7, 1, 7, 1])
+    assert _classical_houses(ctx) == {1, 7}
+
+
+def test_all_classical_in_helper():
+    ctx = _houses([1, 7, 1, 7, 1, 7, 1])
+    assert _all_classical_in(ctx, {1, 7}) is True
+    assert _all_classical_in(ctx, {1, 4, 7, 10}) is True  # subset of kendras
+    assert _all_classical_in(ctx, {1}) is False
+    assert _all_classical_in(_ctx({}), {1, 7}) is False  # empty chart never fires
+
+
+def test_akriti_sakata_all_in_1_and_7():
+    ctx = _houses([1, 7, 1, 7, 1, 7, 1])
+    assert "Sakata" in _akriti_fired(ctx)
+
+
+def test_akriti_kamala_all_four_kendras():
+    ctx = _houses([1, 4, 7, 10, 1, 4, 7])
+    fired = _akriti_fired(ctx)
+    assert "Kamala" in fired
+
+
+def test_akriti_chakra_all_odd_houses():
+    ctx = _houses([1, 3, 5, 7, 9, 11, 1])
+    assert "Chakra" in _akriti_fired(ctx)
+
+
+def test_akriti_samudra_all_even_houses():
+    ctx = _houses([2, 4, 6, 8, 10, 12, 2])
+    assert "Samudra" in _akriti_fired(ctx)
+
+
+def test_akriti_vapi_no_kendra():
+    ctx = _houses([2, 3, 5, 6, 8, 9, 11])
+    fired = _akriti_fired(ctx)
+    assert "Vapi" in fired
+    # A planet in a kendra breaks Vapi.
+    ctx2 = _houses([2, 3, 5, 6, 8, 9, 1])
+    assert "Vapi" not in _akriti_fired(ctx2)
+
+
+def test_akriti_yupa_first_four_houses():
+    ctx = _houses([1, 2, 3, 4, 1, 2, 3])
+    assert "Yupa" in _akriti_fired(ctx)
+
+
+def test_akriti_sringataka_trikonas():
+    ctx = _houses([1, 5, 9, 1, 5, 9, 1])
+    assert "Sringataka" in _akriti_fired(ctx)
+
+
+def test_akriti_vihaga_4_and_10():
+    ctx = _houses([4, 10, 4, 10, 4, 10, 4])
+    assert "Vihaga (Pakshi)" in _akriti_fired(ctx)
+
+
+def test_akriti_gada_two_adjacent_kendras():
+    # All in {1,4} -> Gada.
+    ctx = _houses([1, 4, 1, 4, 1, 4, 1])
+    assert "Gada" in _akriti_fired(ctx)
+    # {1,7} are opposite kendras, not adjacent -> not Gada (but Sakata).
+    ctx2 = _houses([1, 7, 1, 7, 1, 7, 1])
+    assert "Gada" not in _akriti_fired(ctx2)
+
+
+def test_akriti_hala_mutual_trine_not_from_lagna():
+    # All in {2,6,10} -> Hala.
+    ctx = _houses([2, 6, 10, 2, 6, 10, 2])
+    assert "Hala" in _akriti_fired(ctx)
+    # Trine from lagna {1,5,9} is Sringataka, NOT Hala.
+    ctx2 = _houses([1, 5, 9, 1, 5, 9, 1])
+    assert "Hala" not in _akriti_fired(ctx2)
+
+
+def test_akriti_ardha_chandra_consecutive_not_starting_kendra():
+    # 7 consecutive houses starting at H2 (not a kendra): {2,3,4,5,6,7,8}.
+    ctx = _ctx({p: {"house": h} for p, h in zip(_SEVEN, [2, 3, 4, 5, 6, 7, 8])})
+    assert "Ardha Chandra" in _akriti_fired(ctx)
+    # 7 consecutive starting at a kendra (H1): {1..7} -> NOT Ardha Chandra.
+    ctx2 = _ctx({p: {"house": h} for p, h in zip(_SEVEN, [1, 2, 3, 4, 5, 6, 7])})
+    assert "Ardha Chandra" not in _akriti_fired(ctx2)
+
+
+def test_akriti_vajra_benefics_1_7_malefics_4_10():
+    # Benefics (Jup,Ven,Merc,Moon) in {1,7}; malefics (Sun,Mars,Sat) in {4,10}.
+    ctx = _ctx({"Jupiter": {"house": 1}, "Venus": {"house": 7},
+                "Mercury": {"house": 1}, "Moon": {"house": 7},
+                "Sun": {"house": 4}, "Mars": {"house": 10}, "Saturn": {"house": 4}})
+    assert "Vajra" in _akriti_fired(ctx)
+
+
+def test_akriti_yava_malefics_1_7_benefics_4_10():
+    ctx = _ctx({"Sun": {"house": 1}, "Mars": {"house": 7}, "Saturn": {"house": 1},
+                "Jupiter": {"house": 4}, "Venus": {"house": 10},
+                "Mercury": {"house": 4}, "Moon": {"house": 10}})
+    assert "Yava" in _akriti_fired(ctx)
+
+
+def test_akriti_all_false_on_empty_chart():
+    assert _akriti_fired(_ctx({})) == set()

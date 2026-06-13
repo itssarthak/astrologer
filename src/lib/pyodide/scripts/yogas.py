@@ -27,6 +27,17 @@ def _classical(ctx):
     """Facts of the 7 classical planets present in the chart."""
     return [ctx["planets"][p] for p in CLASSICAL if p in ctx["planets"]]
 
+
+def _classical_houses(ctx):
+    """Set of houses (1..12) occupied by the 7 classical planets present."""
+    return {p["house"] for p in _classical(ctx) if p.get("house")}
+
+
+def _all_classical_in(ctx, houses):
+    """True if every classical planet present sits within `houses` (non-empty)."""
+    hs = _classical_houses(ctx)
+    return bool(hs) and hs <= set(houses)
+
 # planet -> the signs it rules (inverse of adapter.SIGN_LORD).
 OWNED_SIGNS = {}
 for _sign, _lord in SIGN_LORD.items():
@@ -471,6 +482,126 @@ YOGA_RULES.extend([
     {"id": "nabhasa_sarpa", "name": "Sarpa", "category": "Nabhasa (Dala)",
      "description": "Sarpa — struggle and hardship; resilience built through difficulty",
      "detect": (lambda ctx: _dala(ctx, NATURAL_MALEFICS))},
+])
+
+
+# --- Nabhasa: Akriti (shape by the houses the 7 classical planets occupy) ---
+
+# Fixed-house-set shapes: fire when every classical planet present sits within S.
+_AKRITI_FIXED = [
+    ("nabhasa_yupa", "Yupa", {1, 2, 3, 4},
+     "self-reliant, ritual/disciplined, focused on security and roots"),
+    ("nabhasa_ishu", "Ishu (Sara)", {4, 5, 6, 7},
+     "sharp and incisive; good with tools, defence, or precise skills"),
+    ("nabhasa_sakti", "Sakti", {7, 8, 9, 10},
+     "patient and enduring; rewards come later, through perseverance"),
+    ("nabhasa_danda", "Danda", {10, 11, 12, 1},
+     "ups and downs; hard-won independence, sometimes isolation"),
+    ("nabhasa_nauka", "Nauka", {1, 2, 3, 4, 5, 6, 7},
+     "industrious and self-made; gains through one's own effort, fond of water/travel"),
+    ("nabhasa_koota", "Koota", {4, 5, 6, 7, 8, 9, 10},
+     "guarded and self-protective; works behind defences, can face confinement/struggle"),
+    ("nabhasa_chatra", "Chatra", {7, 8, 9, 10, 11, 12, 1},
+     "protective and benevolent; supports others, comfort in the latter half of life"),
+    ("nabhasa_chapa", "Chapa (Dhanu)", {10, 11, 12, 1, 2, 3, 4},
+     "restless and freedom-loving; gains through travel or trade, dislikes constraint"),
+    ("nabhasa_chakra", "Chakra", {1, 3, 5, 7, 9, 11},
+     "regal, idealistic, rises to authority"),
+    ("nabhasa_samudra", "Samudra", {2, 4, 6, 8, 10, 12},
+     "wealthy and well-resourced; broad means and many enjoyments"),
+    ("nabhasa_sakata", "Sakata", {1, 7},
+     "fluctuating fortunes — wheel-like rise and fall; resilience needed"),
+    ("nabhasa_vihaga", "Vihaga (Pakshi)", {4, 10},
+     "always travelling/seeking; restless, opportunistic, lives by movement"),
+    ("nabhasa_sringataka", "Sringataka", {1, 5, 9},
+     "happy, devoted and fortunate; good family life and faith"),
+    ("nabhasa_kamala", "Kamala", {1, 4, 7, 10},
+     "lotus — fame, virtue and lasting prosperity; a strong, accomplished life"),
+    ("nabhasa_vapi", "Vapi", {2, 3, 5, 6, 8, 9, 11, 12},
+     "accumulates and conserves wealth steadily; quietly well-off"),
+]
+
+YOGA_RULES.extend([
+    {"id": _id, "name": _name, "category": "Nabhasa (Akriti)", "description": _desc,
+     "detect": (lambda s: (lambda ctx: _all_classical_in(ctx, s)))(_s)}
+    for _id, _name, _s, _desc in _AKRITI_FIXED
+])
+
+
+# Gada: all classical planets confined to two ADJACENT kendras.
+_GADA_PAIRS = ({1, 4}, {4, 7}, {7, 10}, {10, 1})
+
+
+def _gada(ctx):
+    return any(_all_classical_in(ctx, pair) for pair in _GADA_PAIRS)
+
+
+# Hala: all confined to one mutual-trine set NOT anchored on the lagna.
+_HALA_TRINES = ({2, 6, 10}, {3, 7, 11}, {4, 8, 12})
+
+
+def _hala(ctx):
+    return any(_all_classical_in(ctx, tri) for tri in _HALA_TRINES)
+
+
+def _ardha_chandra(ctx):
+    """The 7 classical planets occupy 7 consecutive houses whose run does NOT start
+    on a kendra: a start house h not in {1,4,7,10} covers every occupied house."""
+    if len(_classical(ctx)) != 7:
+        return False
+    hs = _classical_houses(ctx)
+    if not hs:
+        return False
+    for h in range(1, 13):
+        if h in KENDRAS:
+            continue
+        run = {((h - 1 + k) % 12) + 1 for k in range(7)}
+        if hs <= run:
+            return True
+    return False
+
+
+def _present(ctx, names):
+    """Facts of the named planets present in the chart."""
+    return [ctx["planets"][n] for n in names if n in ctx["planets"]]
+
+
+def _vajra(ctx):
+    """Every natural benefic present in {1,7} AND every natural malefic present in
+    {4,10}, with at least one of each present."""
+    ben = _present(ctx, NATURAL_BENEFICS)
+    mal = _present(ctx, NATURAL_MALEFICS)
+    if not ben or not mal:
+        return False
+    return all(p["house"] in {1, 7} for p in ben) and all(p["house"] in {4, 10} for p in mal)
+
+
+def _yava(ctx):
+    """Every natural malefic present in {1,7} AND every natural benefic present in
+    {4,10}, with at least one of each present."""
+    ben = _present(ctx, NATURAL_BENEFICS)
+    mal = _present(ctx, NATURAL_MALEFICS)
+    if not ben or not mal:
+        return False
+    return all(p["house"] in {1, 7} for p in mal) and all(p["house"] in {4, 10} for p in ben)
+
+
+YOGA_RULES.extend([
+    {"id": "nabhasa_gada", "name": "Gada", "category": "Nabhasa (Akriti)",
+     "description": "energetic and acquisitive; devoted to wealth, ritual and music",
+     "detect": _gada},
+    {"id": "nabhasa_hala", "name": "Hala", "category": "Nabhasa (Akriti)",
+     "description": "hard agricultural-style toil; gains through labour, can struggle with want",
+     "detect": _hala},
+    {"id": "nabhasa_ardha_chandra", "name": "Ardha Chandra", "category": "Nabhasa (Akriti)",
+     "description": "half-moon — handsome, strong, favoured by leaders; commands respect",
+     "detect": _ardha_chandra},
+    {"id": "nabhasa_vajra", "name": "Vajra", "category": "Nabhasa (Akriti)",
+     "description": "happy at the start and end of life, with a tougher middle; brave",
+     "detect": _vajra},
+    {"id": "nabhasa_yava", "name": "Yava", "category": "Nabhasa (Akriti)",
+     "description": "tougher start and end, comfortable middle years; charitable, steady",
+     "detect": _yava},
 ])
 
 
