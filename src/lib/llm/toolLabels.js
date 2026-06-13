@@ -1,26 +1,17 @@
-// Human-friendly labels for the agent tools, shown in the chat (and the live indicator).
+// Human-friendly labels for each agent tool, keyed by the tool name in the registry (tools.js).
+// `active` shows in the live "in progress" indicator; `past` shows as a chip in the chat thread.
+// One entry per tool keeps the two tenses from drifting apart. The toolLabels test pins these
+// keys to the tool registry so a newly-added tool can't silently fall back to its raw name.
 export const TOOL_LABELS = {
-  list_profiles: 'Looked up your profiles',
-  get_chart: 'Fetched the birth chart',
-  get_today_transit: "Read today's transits",
-  match_profiles: 'Checked compatibility',
-  compute_numerology: 'Crunched the numbers',
-  geocode_place: 'Looked up the location',
-  compute_chart: 'Computed a birth chart',
-  web_search: 'Searched the web',
+  list_profiles:      { active: 'Looking up your profiles',  past: 'Looked up your profiles' },
+  get_chart:          { active: 'Fetching the birth chart',  past: 'Fetched the birth chart' },
+  get_today_transit:  { active: "Reading today's transits",  past: "Read today's transits" },
+  match_profiles:     { active: 'Checking compatibility',    past: 'Checked compatibility' },
+  compute_numerology: { active: 'Crunching the numbers',     past: 'Crunched the numbers' },
+  geocode_place:      { active: 'Looking up the location',   past: 'Looked up the location' },
+  compute_chart:      { active: 'Computing the birth chart', past: 'Computed a birth chart' },
+  web_search:         { active: 'Searching the web',         past: 'Searched the web' },
 }
 
-// Present-continuous form for the "in progress" indicator.
-const TOOL_LABELS_ACTIVE = {
-  list_profiles: 'Looking up your profiles',
-  get_chart: 'Fetching the birth chart',
-  get_today_transit: "Reading today's transits",
-  match_profiles: 'Checking compatibility',
-  compute_numerology: 'Crunching the numbers',
-  geocode_place: 'Looking up the location',
-  compute_chart: 'Computing the birth chart',
-  web_search: 'Searching the web',
-}
-
-export const toolLabel = name => TOOL_LABELS[name] ?? name
-export const toolLabelActive = name => TOOL_LABELS_ACTIVE[name] ?? `Running ${name}`
+export const toolLabel = name => TOOL_LABELS[name]?.past ?? name
+export const toolLabelActive = name => TOOL_LABELS[name]?.active ?? `Running ${name}`

@@ -3,8 +3,8 @@
 // back, and loop until it answers (or we hit maxRounds). Per-provider adapters translate a
 // neutral conversation log to/from each API's native tool-use format.
 import { TOOL_SCHEMAS, TOOLS_BY_NAME } from './tools'
+import { resolveProviderConfig } from './providers'
 
-const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1'
 const MAX_TOOL_RESULT_CHARS = 6000
 // Final-answer rounds (after tools) often write a full interpretation; 2048 truncated them.
 const MAX_ANSWER_TOKENS = 4096
@@ -160,8 +160,7 @@ export async function runAgent({ provider, key, baseUrl, model, systemPrompt, us
   const runner = RUNNERS[provider]
   if (!runner) throw new Error(`No agent runner for provider: ${provider}`)
 
-  const resolvedBaseUrl = provider === 'openrouter' ? OPENROUTER_BASE_URL : baseUrl
-  const resolvedModel = provider === 'openrouter' ? (model || 'openrouter/free') : model
+  const { baseUrl: resolvedBaseUrl, model: resolvedModel } = resolveProviderConfig(provider, { baseUrl, model })
 
   const log = [
     ...history.map(m => ({ type: 'text', role: m.role, content: m.content })),

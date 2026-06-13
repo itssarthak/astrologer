@@ -1,22 +1,7 @@
 // src/components/Sidebar/ApiKeyModal.jsx
 import { useState } from 'react'
 import { getApiKey, saveApiKey, clearApiKey } from '../../lib/storage/keys'
-
-const PROVIDERS = [
-  { id: 'claude', label: 'Claude', placeholder: 'sk-ant-...', docs: 'https://console.anthropic.com/account/keys' },
-  { id: 'gemini', label: 'Gemini', placeholder: 'AIza...', docs: 'https://aistudio.google.com/app/apikey' },
-  { id: 'openai', label: 'OpenAI', placeholder: 'sk-...', docs: 'https://platform.openai.com/api-keys' },
-  {
-    id: 'openrouter', label: 'OpenRouter', placeholder: 'sk-or-...',
-    docs: 'https://openrouter.ai/keys', docsLabel: 'Generate your OpenRouter API key →',
-    needsModel: true, defaultModel: 'openrouter/free',
-  },
-  { id: 'custom', label: 'Custom', placeholder: 'your API key', needsBaseUrl: true, needsModel: true },
-]
-
-function defaultModelFor(id) {
-  return PROVIDERS.find(p => p.id === id)?.defaultModel ?? ''
-}
+import { PROVIDERS, defaultModelFor } from '../../lib/llm/providers'
 
 export default function ApiKeyModal({ onClose }) {
   const existing = getApiKey()
