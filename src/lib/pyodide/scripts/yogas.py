@@ -65,6 +65,82 @@ for _planet, (_name, _desc) in _MAHAPURUSHA.items():
     })
 
 
+def _planets_in_house_from(ctx, anchor_house, distance, exclude=()):
+    """Names of planets sitting `distance` houses from anchor_house, excluding `exclude`."""
+    target = ((anchor_house - 1 + (distance - 1)) % 12) + 1
+    return [name for name, p in ctx["planets"].items()
+            if p["house"] == target and name not in exclude]
+
+
+def _gaja_kesari(ctx):
+    """Jupiter in a kendra (1/4/7/10) FROM the Moon, and not debilitated."""
+    moon, jup = planet_in(ctx, "Moon"), planet_in(ctx, "Jupiter")
+    if not moon or not jup:
+        return False
+    return house_distance(moon["house"], jup["house"]) in {1, 4, 7, 10} \
+        and jup["dignity"] != "debilitated"
+
+
+def _sunapha(ctx):
+    """A planet other than the Sun (and not a node) in the 2nd from the Moon."""
+    moon = planet_in(ctx, "Moon")
+    if not moon:
+        return False
+    return len(_planets_in_house_from(ctx, moon["house"], 2, exclude={"Sun", "Moon"} | NODES)) > 0
+
+
+def _anapha(ctx):
+    """A planet other than the Sun (and not a node) in the 12th from the Moon."""
+    moon = planet_in(ctx, "Moon")
+    if not moon:
+        return False
+    return len(_planets_in_house_from(ctx, moon["house"], 12, exclude={"Sun", "Moon"} | NODES)) > 0
+
+
+def _durudhara(ctx):
+    """Both the 2nd AND 12th from the Moon occupied (Sunapha + Anapha together)."""
+    return _sunapha(ctx) and _anapha(ctx)
+
+
+def _kemadruma(ctx):
+    """Affliction yoga: the Moon is isolated — no planet (other than Sun/Moon) in the
+    2nd or 12th from the Moon, AND no planet other than the Moon in a kendra from lagna."""
+    moon = planet_in(ctx, "Moon")
+    if not moon:
+        return False
+    flank = (_planets_in_house_from(ctx, moon["house"], 2, exclude={"Sun", "Moon"} | NODES)
+             + _planets_in_house_from(ctx, moon["house"], 12, exclude={"Sun", "Moon"} | NODES))
+    if flank:
+        return False
+    lagna_kendras = {((ctx["lagna_idx"] + off) % 12) + 1 for off in (0, 3, 6, 9)}
+    # any non-Moon classical planet in a kendra house breaks Kemadruma
+    for name, p in ctx["planets"].items():
+        if name in ({"Moon"} | NODES):
+            continue
+        if p["house"] in lagna_kendras:
+            return False
+    return True
+
+
+YOGA_RULES.extend([
+    {"id": "gaja_kesari", "name": "Gaja-Kesari", "category": "Chandra",
+     "description": "Wisdom paired with standing — Jupiter strengthens the mind; brings respect, judgment and lasting reputation.",
+     "detect": _gaja_kesari},
+    {"id": "sunapha", "name": "Sunapha", "category": "Chandra",
+     "description": "Self-made prosperity and a capable mind — gains through one's own effort.",
+     "detect": _sunapha},
+    {"id": "anapha", "name": "Anapha", "category": "Chandra",
+     "description": "Well-rounded, healthy and well-regarded — comfort and a good name.",
+     "detect": _anapha},
+    {"id": "durudhara", "name": "Durudhara", "category": "Chandra",
+     "description": "Generous and prosperous — supported on both sides; enjoys and shares wealth.",
+     "detect": _durudhara},
+    {"id": "kemadruma", "name": "Kemadruma", "category": "Chandra (affliction)",
+     "description": "An isolated Moon — periods of struggle, instability or feeling unsupported; needs deliberate structure and support.",
+     "detect": _kemadruma},
+])
+
+
 def compute_yogas(chart_json):
     """Run every registered rule; return active yogas as {name, category, description}."""
     ctx = _context(chart_json)
