@@ -358,18 +358,33 @@ def marriage_factors(facts, lords):
         ),
     }
 
-def dasha_overlap(maha_a, maha_b):
-    """Compatibility of the two people's current Mahadasha lords."""
+def _current_maha_end(chart_json, maha_lord):
+    """End date (YYYY-MM-DD) of the given mahadasha in this chart, or None."""
+    md = ((chart_json.get("dashas") or {}).get("all") or {}).get("mahadashas") or {}
+    return (md.get(maha_lord) or {}).get("end")
+
+
+def dasha_overlap(maha_a, maha_b, end_a=None, end_b=None):
+    """Compatibility of the two people's current Mahadasha lords. When the lords clash
+    (natural enemies) and we know the period ends, `eases_after` is the sooner of the two
+    mahadasha end dates — when that lord-pairing changes and the timing friction lifts.
+    (ISO dates compare lexicographically, so min() is chronological.)"""
     if not maha_a or not maha_b:
         return {"a_maha": maha_a, "b_maha": maha_b, "relation": "unknown",
-                "note": "current period unavailable for one or both"}
+                "eases_after": None, "note": "current period unavailable for one or both"}
     rel = planet_relation(maha_a, maha_b)
     note = {
         "friend": "Both are running periods whose lords are natural friends — easy timing alignment.",
         "neutral": "Their current period lords are neutral to each other — neither helps nor hinders.",
-        "enemy": "Their current period lords are natural enemies — timing/priorities may clash now.",
+        "enemy": "Their current period lords are natural enemies — timing and priorities tend to clash in this phase.",
     }[rel]
-    return {"a_maha": maha_a, "b_maha": maha_b, "relation": rel, "note": note}
+    eases_after = None
+    if rel == "enemy":
+        ends = [e for e in (end_a, end_b) if e]
+        if ends:
+            eases_after = min(ends)
+            note += f" This clashing pairing runs until {eases_after}, when the earlier major period changes and the friction should ease."
+    return {"a_maha": maha_a, "b_maha": maha_b, "relation": rel, "eases_after": eases_after, "note": note}
 
 def _digest(items, effect):
     """Top weighted items of one effect, as short strings, highest weight first."""
@@ -390,7 +405,18 @@ def compute_synastry(chart_a_json, chart_b_json, gender_a="", gender_b=""):
     b_in_a = compute_house_overlays(chart_a_json, chart_b_json, planets_b)
     crosses = cross_aspects(planets_a, planets_b)
 
+    maha_a, maha_b = fa["dasha"].get("maha"), fb["dasha"].get("maha")
+    dovl = dasha_overlap(maha_a, maha_b,
+                         _current_maha_end(chart_a_json, maha_a),
+                         _current_maha_end(chart_b_json, maha_b))
+
     all_items = a_in_b + b_in_a + crosses
+    overlay_summary = _overlay_tally(a_in_b, b_in_a, crosses)
+    # When the match leans challenging (or the periods clash), surface the date the current
+    # period-driven friction eases — a static natal lean has no end, but the phase it bites in does.
+    challenging_until = (dovl.get("eases_after")
+                         if (overlay_summary["lean"] == "challenging" or dovl["relation"] == "enemy")
+                         else None)
     return {
         "guna_milan": compute_guna_milan(nak_a, gender_a, nak_b, gender_b, sign_a, sign_b),
         "a_planets_in_b_houses": a_in_b,
@@ -398,8 +424,9 @@ def compute_synastry(chart_a_json, chart_b_json, gender_a="", gender_b=""):
         "cross_aspects": crosses,
         "marriage_factors": {"a": marriage_factors(planets_a, fa["lords"]),
                              "b": marriage_factors(planets_b, fb["lords"])},
-        "dasha_overlap": dasha_overlap(fa["dasha"].get("maha"), fb["dasha"].get("maha")),
-        "overlay_summary": _overlay_tally(a_in_b, b_in_a, crosses),
+        "dasha_overlap": dovl,
+        "overlay_summary": overlay_summary,
+        "challenging_until": challenging_until,
         "top_supportive": _digest(all_items, "supportive"),
         "top_challenging": _digest(all_items, "challenging"),
     }

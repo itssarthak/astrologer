@@ -247,6 +247,9 @@ export const TOOLS = [
           [b.name]: mf.b?.summary,
         },
         dasha: s.dasha_overlap?.note,
+        // When the match leans challenging, the date the current period-driven friction eases
+        // (null = no time-bound clash, i.e. a steady feature rather than a passing phase).
+        challenging_until: s.challenging_until ?? null,
       }
     },
   },

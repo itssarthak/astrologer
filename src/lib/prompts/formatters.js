@@ -102,6 +102,12 @@ export function formatSynastryContext(synastryData, profileA, profileB) {
   const challenging = (synastryData.top_challenging ?? []).map(s => `- ${s}`).join('\n')
   const mf = synastryData.marriage_factors ?? {}
   const dasha = synastryData.dasha_overlap?.note ?? ''
+  // When the match leans challenging, state how long the current period-driven rough phase lasts.
+  const timing = overlay_summary?.lean === 'challenging'
+    ? (synastryData.challenging_until
+        ? `This rough phase is heightened by the current planetary periods and eases after ${synastryData.challenging_until}. Say this timeframe explicitly in the read.`
+        : 'The friction is a steady feature of the match rather than a passing phase — frame it as something to manage, not wait out.')
+    : ''
 
   return `## Computed Synastry Data: ${profileA.name} ↔ ${profileB.name}
 
@@ -130,5 +136,6 @@ ${profileA.name}: ${mf.a?.summary ?? '—'}
 ${profileB.name}: ${mf.b?.summary ?? '—'}
 
 ### Current period
-${dasha}`
+${dasha}
+${timing ? `\n### Timing of the strain\n${timing}` : ''}`
 }

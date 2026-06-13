@@ -64,6 +64,24 @@ def test_dasha_overlap_relation():
     assert dasha_overlap(None, "Saturn")["relation"] == "unknown"
 
 
+def test_dasha_overlap_eases_after_is_sooner_end_when_enemy():
+    r = dasha_overlap("Sun", "Saturn", "2029-03-08", "2027-10-31")
+    assert r["relation"] == "enemy"
+    assert r["eases_after"] == "2027-10-31"   # the chronologically-sooner mahadasha end
+    assert "2027-10-31" in r["note"]
+
+
+def test_dasha_overlap_no_eases_when_not_enemy():
+    assert dasha_overlap("Sun", "Jupiter", "2029-03-08", "2030-01-01")["eases_after"] is None
+
+
+def test_compute_synastry_exposes_challenging_until_key():
+    a = compute_chart("A", "1996-11-22", "13:06", 28.6139, 77.2090, 5.5, "Delhi")
+    b = compute_chart("B", "1998-07-11", "19:10", 27.1767, 78.0081, 5.5, "Agra")
+    s = compute_synastry(a, b)
+    assert "challenging_until" in s   # date string or None depending on the live periods
+
+
 def test_marriage_factors_reports_seventh_lord_and_karakas():
     facts = {
         "Venus": {"house": 2, "dignity": "own", "strength": "strong"},
