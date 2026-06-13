@@ -71,10 +71,21 @@ Investigated `pyjhora-4.8.7` source directly:
   output, with **no Swiss Ephemeris and no WASM build**. We reimplement these rules ourselves
   (clean-room, per Decision 4), using PyJHora as reference + oracle only.
 
-**Open verification (P0):** the WhatsApp `synastry-deep` skill read `dignities.dignity` and
-`shadbala.Shadbala.{Rupas,MinRequired}` directly off the jyotishganit chart JSON. If the
-in-browser jyotishganit build emits these, `dignity.py` is a **thin surfacing layer**, not a
-reimplementation. Confirm before building.
+**Verification (RESOLVED 2026-06-13):** ran the in-browser `jyotishganit` build (`.venv-test`,
+v0.1.3) against a known chart. It already emits, per planet occupant:
+`dignities.dignity`, full 6-part `shadbala` (incl. `Shadbala.{Total, Rupas, MinRequired,
+MeetsRequirement}`), `aspects.{gives,receives}` (graha drishti, `aspect_type` ∈ "3"/"7"/"10"/etc.,
+keyed `to_house`/`to_planet`), and `conjuncts`. Top-level it emits `dashas.all.mahadashas →
+antardashas → pratyantardashas` (full Vimshottari tree with dates) + `dashas.balance`,
+`divisionalCharts` (d2,d3,d4,d7,d9,d10,d12,d16,d20,d24,d27,d30,d40,d45,d60), and `ashtakavarga`.
+House occupants also carry `aspectsReceived`, `bhavaBala`, `lord`, `lordPlacedHouse`,
+`lordPlacedSign`.
+
+**Consequence:** the "missing depth" is overwhelmingly a **surfacing + annotation problem, not a
+computation one**. `dignity.py` and `aspects.py` are **thin surfacing layers** (extract + add
+degree-orbs from `signDegrees`), not reimplementations. The repo's crude `_is_strong`
+(exalted/own only) simply ignored data that was already present. Shadbala/dignity/aspects/dasha/
+divisionals require no Swiss Ephemeris and no new computation.
 
 ---
 
@@ -114,13 +125,14 @@ jyotishganit chart JSON
   (`{planet: {sign, sign_idx, house, longitude, nakshatra, pada, retro, dignity, strength}}`).
   Single source of truth for shape; isolates every rule module from jyotishganit's JSON quirks.
   Also supplies divisional-chart positions (D9 etc.) on request.
-- **`dignity.py` (new)** — Full dignity ladder (exalted/debilitated/moolatrikona/own/
-  great-friend…great-enemy via compound friendship), combustion, retrograde, and a shadbala value
-  vs min-required. **Surfaces jyotishganit's own data if present (P0 check); otherwise computes.**
-  Foundation consumed by yogas/aspects/synastry.
-- **`aspects.py` (new)** — Graha drishti: 7th from every planet + specials (Mars 4/8, Jupiter 5/9,
-  Saturn 3/10), with degree orbs and tightness legend (≤3° tight / 3–7° active / 7–10° loose /
-  >10° noted). Provides `aspects_cast(planet)` and `orb_within_sign`.
+- **`dignity.py` (new — thin surfacing layer)** — Read `dignities.dignity` and
+  `shadbala.Shadbala.{Rupas, MinRequired, MeetsRequirement}` straight off jyotishganit's output and
+  expose a clean `{dignity, rupas, min_required, meets, is_strong}` per planet. No computation of
+  friendship/shadbala (jyotishganit already does it). Foundation consumed by yogas/synastry.
+- **`aspects.py` (new — thin surfacing layer)** — Read jyotishganit's per-planet
+  `aspects.{gives,receives}` (already-computed graha drishti, `aspect_type` + `to_house`/`to_planet`)
+  and `conjuncts`; add the degree-orb + tightness legend (≤3° tight / 3–7° active / 7–10° loose /
+  >10° noted) computed from `signDegrees`. Provides `aspects_to(planet)` and `orb_within_sign`.
 - **`yogas.py` (rewrite as registry)** — Each rule: `{id, name, category, detect(positions, ctx)
   → {present, strength}, meaning}`. Clean-room implementations from classical definitions,
   validated against the oracle. Prioritized coverage (see §6), additive growth toward the full
@@ -214,9 +226,12 @@ Registry design makes coverage additive: adding a rule = adding one entry + one 
 
 ## 8. Phasing (one spec, phased implementation plan)
 
-- **P0 — Foundation & verification.** `adapter.py`; confirm jyotishganit emits dignities/shadbala;
-  `dignity.py` + `aspects.py`; reference-table + `reading-procedure` scaffolding; golden-fixture
-  harness (oracle + smoke values). *No user-facing change.*
+- **P0 — Foundation & surfacing (verification DONE).** `adapter.py` (extract dignities/shadbala/
+  aspects/conjuncts/lords into internal structure); `dignity.py` + `aspects.py` surfacing layers;
+  golden-fixture harness (oracle + smoke values); **surface the already-computed depth via
+  `get_chart` (dignity+shadbala-annotated planets, full dasha chain) and new `get_divisional`
+  (D9 etc.)**. This phase ships a real user-facing win (the model finally sees strength, aspects,
+  full dasha, Navamsa) with surfacing-only code.
 - **P1 — Core reading depth (biggest felt win).** Yoga registry (priority set); doshas (8 +
   exceptions); numerology expansion; surface D9 + full dasha via `get_chart`/`get_divisional`;
   `reading-procedure` live.
@@ -235,7 +250,7 @@ deploy.
 | Risk | Mitigation |
 |---|---|
 | AGPL contamination from PyJHora | Clean-room: reference + oracle only, own implementation, no copied code. App stays proprietary. |
-| jyotishganit lacks dignity/shadbala in-browser | P0 verifies; fallback is computing dignity ourselves in `dignity.py`. |
+| jyotishganit lacks dignity/shadbala in-browser | RESOLVED — verified present (dignities, full shadbala, aspects, dasha tree, divisionals, ashtakavarga). Surfacing only. |
 | Deep synastry exceeds 6k-char tool cap | Compact/segmentable output; per-tool cap override or section-fetch. |
 | Pyodide payload growth (more Python) | Pure-Python text is modest; loaded in worker off main thread. Monitor bundle. |
 | Varshaphal solar-return accuracy | Validate Varsha Pravesh dates/year-lord against oracle; flag as timing-context, not destiny. |
