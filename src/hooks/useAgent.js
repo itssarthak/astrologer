@@ -25,6 +25,9 @@ export function useAgent(profile, tab) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [toolEvent, setToolEvent] = useState(null)
+  // Tools called so far in the in-flight answer — surfaced live so the chips appear the moment
+  // a tool runs, not only when the completion arrives.
+  const [liveTools, setLiveTools] = useState([])
   const abortRef = useRef(null)
 
   const send = useCallback(async ({ userMessage, onText }) => {
@@ -42,6 +45,7 @@ export function useAgent(profile, tab) {
     setBusy(true)
     setError(null)
     setToolEvent(null)
+    setLiveTools([])
 
     try {
       const text = await runAgent({
@@ -55,7 +59,10 @@ export function useAgent(profile, tab) {
         onText,
         onToolEvent: e => {
           // One chip per distinct tool — repeated identical calls would just read as noise.
-          if (e.status === 'running' && !usedTools.includes(e.name)) usedTools.push(e.name)
+          if (e.status === 'running' && !usedTools.includes(e.name)) {
+            usedTools.push(e.name)
+            setLiveTools([...usedTools]) // show the chip the moment the tool is called
+          }
           setToolEvent(e.status === 'done' ? null : e)
         },
         signal: controller.signal,
@@ -71,6 +78,7 @@ export function useAgent(profile, tab) {
     } finally {
       setBusy(false)
       setToolEvent(null)
+      setLiveTools([])
       abortRef.current = null
     }
   }, [profile, tab])
@@ -80,5 +88,5 @@ export function useAgent(profile, tab) {
   const keyData = useApiKey()
   const supportsTools = useMemo(() => providerSupportsTools(keyData?.provider), [keyData?.provider])
 
-  return { send, stop, busy, error, toolEvent, supportsTools }
+  return { send, stop, busy, error, toolEvent, liveTools, supportsTools }
 }

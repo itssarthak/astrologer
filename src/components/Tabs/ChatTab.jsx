@@ -11,7 +11,7 @@ import { toolLabelActive } from '../../lib/llm/toolLabels'
 
 export default function ChatTab() {
   const { activeProfile } = useContext(ProfilesContext)
-  const { send, stop, busy, error, toolEvent } = useAgent(activeProfile, 'chat')
+  const { send, stop, busy, error, toolEvent, liveTools } = useAgent(activeProfile, 'chat')
   useReportBusy(busy)
   const { messages, streamingContent, reload, clearChat, submit } = useChatThread(activeProfile, 'chat')
 
@@ -24,7 +24,7 @@ export default function ChatTab() {
     <div className="flex flex-col h-full">
       <ChatToolbar title="Chat" onRefresh={reload} onClear={clearChat}
         refreshDisabled={busy} clearDisabled={busy || messages.length === 0} />
-      <ChatMessages messages={messages} streaming={busy} streamingContent={streamingContent} />
+      <ChatMessages messages={messages} streaming={busy} streamingContent={streamingContent} streamingTools={liveTools} />
       {busy && toolEvent && (
         <p className="px-4 py-2 text-xs font-medium text-primary bg-primary-light/50 border-t border-border flex items-center gap-2">
           <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" />
