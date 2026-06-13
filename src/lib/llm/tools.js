@@ -137,17 +137,18 @@ export const TOOLS = [
   },
   {
     name: 'compute_numerology',
-    description: 'Compute a numerology profile (Chaldean primary + Pythagorean) from a full birth name and date of birth.',
+    description: 'Compute a numerology profile (Chaldean primary + Pythagorean) from a full birth name and date of birth. Returns the driver (mulank) and destiny (bhagyank) numbers with their ruling planets, the compound name number with its Cheiro meaning, and supports an optional everyday name.',
     parameters: {
       type: 'object',
       properties: {
         full_name: { type: 'string', description: 'Full birth name.' },
         dob: { type: 'string', description: 'Date of birth, YYYY-MM-DD.' },
+        name_in_use: { type: 'string', description: 'The name the person actually goes by, if different from the birth name. Optional.' },
       },
       required: ['full_name', 'dob'],
     },
-    async execute({ full_name, dob }) {
-      return computeNumerology(full_name, dob)
+    async execute({ full_name, dob, name_in_use }) {
+      return computeNumerology(full_name, dob, name_in_use ?? null)
     },
   },
   {
