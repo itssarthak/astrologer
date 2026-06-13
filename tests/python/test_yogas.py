@@ -10,6 +10,14 @@ from yogas import _raja_kendra_trikona
 from yogas import _viparita
 from yogas import _neecha_bhanga, EXALTED_IN_SIGN
 from yogas import _dhana
+from yogas import _sankhya_count, _asraya, _dala, MOVABLE, FIXED, DUAL
+from yogas import NATURAL_BENEFICS as NATURAL_BENEFICS_NAMES
+from yogas import NATURAL_MALEFICS as NATURAL_MALEFICS_NAMES
+from yogas import _classical_houses, _all_classical_in
+from yogas import (_amala, _saraswati, _vasumati, _lagnadhi, _parvata,
+                   _chamara, _kalanidhi, _kahala, _is_strong)
+from yogas import (_houses_ruled, _parivartana_classes,
+                   _dhana_5_9, _dhana_lagna, _daridra)
 
 
 def test_context_shape(sarthak_chart):
@@ -31,7 +39,25 @@ def test_registry_has_all_new_families():
     ids = {r["id"] for r in YOGA_RULES}
     assert {"raja_kendra_trikona", "viparita_harsha", "viparita_sarala",
             "viparita_vimala", "neecha_bhanga", "dhana_2_11"} <= ids
-    assert len(YOGA_RULES) == 25  # 19 from P1a + 6 new
+    nabhasa = {"nabhasa_vallaki", "nabhasa_damini", "nabhasa_pasa", "nabhasa_kedara",
+               "nabhasa_soola", "nabhasa_yuga", "nabhasa_gola",
+               "nabhasa_rajju", "nabhasa_musala", "nabhasa_nala",
+               "nabhasa_mala", "nabhasa_sarpa"}
+    assert nabhasa <= ids
+    akriti = {"nabhasa_yupa", "nabhasa_ishu", "nabhasa_sakti", "nabhasa_danda",
+              "nabhasa_nauka", "nabhasa_koota", "nabhasa_chatra", "nabhasa_chapa",
+              "nabhasa_chakra", "nabhasa_samudra", "nabhasa_sakata", "nabhasa_vihaga",
+              "nabhasa_sringataka", "nabhasa_kamala", "nabhasa_vapi",
+              "nabhasa_gada", "nabhasa_hala", "nabhasa_ardha_chandra",
+              "nabhasa_vajra", "nabhasa_yava"}
+    assert akriti <= ids
+    named = {"amala", "saraswati", "vasumati", "lagnadhi", "parvata",
+             "chamara", "kalanidhi", "kahala"}
+    assert named <= ids
+    parivartana_dhana = {"parivartana_maha", "parivartana_dainya", "parivartana_khala",
+                         "dhana_5_9", "dhana_lagna", "daridra"}
+    assert parivartana_dhana <= ids
+    assert len(YOGA_RULES) == 71  # 65 prior + 3 Parivartana + 2 Dhana + 1 Daridra
 
 
 def test_compute_yogas_returns_named_list(sarthak_chart):
@@ -329,3 +355,510 @@ def test_dhana_absent_when_no_association():
 def test_dhana_absent_when_same_lord():
     ctx = _ctx({"Jupiter": {"house": 1}}, lords={2: "Jupiter", 11: "Jupiter"})
     assert _dhana(ctx) is False
+
+
+# --- Nabhasa: Sankhya (count of distinct signs the 7 classical planets occupy) ---
+
+_SEVEN = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
+
+
+def test_sankhya_yuga_two_signs():
+    # Planets alternate between sign 0 and sign 1 -> exactly 2 distinct signs -> Yuga.
+    ctx = _ctx({p: {"sign_idx": (0 if i % 2 == 0 else 1)} for i, p in enumerate(_SEVEN)})
+    assert _sankhya_count(ctx) == 2
+
+
+def test_sankhya_gola_one_sign():
+    ctx = _ctx({p: {"sign_idx": 5} for p in _SEVEN})
+    assert _sankhya_count(ctx) == 1
+
+
+def test_sankhya_vallaki_seven_signs():
+    ctx = _ctx({p: {"sign_idx": i} for i, p in enumerate(_SEVEN)})
+    assert _sankhya_count(ctx) == 7
+
+
+def test_sankhya_ignores_nodes_and_invalid_idx():
+    # Rahu/Ketu and a planet with sign_idx -1 must not count.
+    ctx = _ctx({"Sun": {"sign_idx": 0}, "Moon": {"sign_idx": 0},
+                "Mars": {"sign_idx": -1}, "Rahu": {"sign_idx": 4}, "Ketu": {"sign_idx": 9}})
+    assert _sankhya_count(ctx) == 1
+
+
+def test_sankhya_yuga_via_compute(sarthak_chart):
+    ctx = _ctx({p: {"sign_idx": (0 if i % 2 == 0 else 1), "house": 1} for i, p in enumerate(_SEVEN)})
+    from yogas import YOGA_RULES as _RULES
+    fired = {r["name"] for r in _RULES if r["category"].startswith("Nabhasa (Sankhya)") and r["detect"](ctx)}
+    assert fired == {"Yuga"}
+
+
+# --- Nabhasa: Asraya (all 7 classical planets in one modality) ---
+
+def test_asraya_musala_all_fixed():
+    # All seven in fixed signs (e.g. Taurus=1) -> Musala.
+    ctx = _ctx({p: {"sign_idx": 1} for p in _SEVEN})
+    assert _asraya(ctx, FIXED) is True
+    assert _asraya(ctx, MOVABLE) is False
+    assert _asraya(ctx, DUAL) is False
+
+
+def test_asraya_rajju_all_movable():
+    ctx = _ctx({p: {"sign_idx": 3} for p in _SEVEN})  # Cancer = movable
+    assert _asraya(ctx, MOVABLE) is True
+
+
+def test_asraya_false_when_no_planet():
+    ctx = _ctx({})
+    assert _asraya(ctx, FIXED) is False
+
+
+def test_asraya_false_when_mixed():
+    ctx = _ctx({"Sun": {"sign_idx": 1}, "Moon": {"sign_idx": 0}})  # fixed + movable
+    assert _asraya(ctx, FIXED) is False
+
+
+# --- Nabhasa: Dala (benefics/malefics in kendras) ---
+
+def test_dala_mala_benefics_in_kendras():
+    # Jupiter, Venus, Mercury, Moon each in a distinct kendra house -> Mala.
+    ctx = _ctx({"Jupiter": {"house": 1}, "Venus": {"house": 4},
+                "Mercury": {"house": 7}, "Moon": {"house": 10}})
+    assert _dala(ctx, NATURAL_BENEFICS_NAMES) is True
+
+
+def test_dala_mala_false_when_benefic_outside_kendra():
+    ctx = _ctx({"Jupiter": {"house": 1}, "Venus": {"house": 4},
+                "Mercury": {"house": 7}, "Moon": {"house": 3}})  # Moon not in kendra
+    assert _dala(ctx, NATURAL_BENEFICS_NAMES) is False
+
+
+def test_dala_mala_false_when_fewer_than_three_kendras():
+    # Only two distinct kendra houses occupied.
+    ctx = _ctx({"Jupiter": {"house": 1}, "Venus": {"house": 4}})
+    assert _dala(ctx, NATURAL_BENEFICS_NAMES) is False
+
+
+def test_dala_sarpa_malefics_in_kendras():
+    ctx = _ctx({"Sun": {"house": 1}, "Mars": {"house": 4}, "Saturn": {"house": 7}})
+    assert _dala(ctx, NATURAL_MALEFICS_NAMES) is True
+
+
+def test_dala_false_when_no_planet():
+    assert _dala(_ctx({}), NATURAL_BENEFICS_NAMES) is False
+
+
+def test_dala_mala_via_compute():
+    ctx = _ctx({"Jupiter": {"house": 1}, "Venus": {"house": 4},
+                "Mercury": {"house": 7}, "Moon": {"house": 10}})
+    fired = {r["name"] for r in YOGA_RULES if r["category"] == "Nabhasa (Dala)" and r["detect"](ctx)}
+    assert fired == {"Maalaa"}
+
+
+# --- Nabhasa: Akriti (shape by occupied houses, 7 classical planets only) ---
+
+def _houses(mapping):
+    """Build a ctx placing the 7 classical planets at the given houses (list, len 7)."""
+    return _ctx({p: {"house": h} for p, h in zip(_SEVEN, mapping)})
+
+
+def _akriti_fired(ctx):
+    return {r["name"] for r in YOGA_RULES
+            if r["category"] == "Nabhasa (Akriti)" and r["detect"](ctx)}
+
+
+def test_classical_houses_helper():
+    ctx = _houses([1, 1, 7, 7, 1, 7, 1])
+    assert _classical_houses(ctx) == {1, 7}
+
+
+def test_all_classical_in_helper():
+    ctx = _houses([1, 7, 1, 7, 1, 7, 1])
+    assert _all_classical_in(ctx, {1, 7}) is True
+    assert _all_classical_in(ctx, {1, 4, 7, 10}) is True  # subset of kendras
+    assert _all_classical_in(ctx, {1}) is False
+    assert _all_classical_in(_ctx({}), {1, 7}) is False  # empty chart never fires
+
+
+def test_akriti_sakata_all_in_1_and_7():
+    ctx = _houses([1, 7, 1, 7, 1, 7, 1])
+    assert "Sakata" in _akriti_fired(ctx)
+
+
+def test_akriti_kamala_all_four_kendras():
+    ctx = _houses([1, 4, 7, 10, 1, 4, 7])
+    fired = _akriti_fired(ctx)
+    assert "Kamala" in fired
+
+
+def test_akriti_chakra_all_odd_houses():
+    ctx = _houses([1, 3, 5, 7, 9, 11, 1])
+    assert "Chakra" in _akriti_fired(ctx)
+
+
+def test_akriti_samudra_all_even_houses():
+    ctx = _houses([2, 4, 6, 8, 10, 12, 2])
+    assert "Samudra" in _akriti_fired(ctx)
+
+
+def test_akriti_vapi_no_kendra():
+    ctx = _houses([2, 3, 5, 6, 8, 9, 11])
+    fired = _akriti_fired(ctx)
+    assert "Vapi" in fired
+    # A planet in a kendra breaks Vapi.
+    ctx2 = _houses([2, 3, 5, 6, 8, 9, 1])
+    assert "Vapi" not in _akriti_fired(ctx2)
+
+
+def test_akriti_yupa_first_four_houses():
+    ctx = _houses([1, 2, 3, 4, 1, 2, 3])
+    assert "Yupa" in _akriti_fired(ctx)
+
+
+def test_akriti_sringataka_trikonas():
+    ctx = _houses([1, 5, 9, 1, 5, 9, 1])
+    assert "Sringataka" in _akriti_fired(ctx)
+
+
+def test_akriti_vihaga_4_and_10():
+    ctx = _houses([4, 10, 4, 10, 4, 10, 4])
+    assert "Vihaga (Pakshi)" in _akriti_fired(ctx)
+
+
+def test_akriti_gada_two_adjacent_kendras():
+    # All in {1,4} -> Gada.
+    ctx = _houses([1, 4, 1, 4, 1, 4, 1])
+    assert "Gada" in _akriti_fired(ctx)
+    # {1,7} are opposite kendras, not adjacent -> not Gada (but Sakata).
+    ctx2 = _houses([1, 7, 1, 7, 1, 7, 1])
+    assert "Gada" not in _akriti_fired(ctx2)
+
+
+def test_akriti_hala_mutual_trine_not_from_lagna():
+    # All in {2,6,10} -> Hala.
+    ctx = _houses([2, 6, 10, 2, 6, 10, 2])
+    assert "Hala" in _akriti_fired(ctx)
+    # Trine from lagna {1,5,9} is Sringataka, NOT Hala.
+    ctx2 = _houses([1, 5, 9, 1, 5, 9, 1])
+    assert "Hala" not in _akriti_fired(ctx2)
+
+
+def test_akriti_ardha_chandra_consecutive_not_starting_kendra():
+    # 7 consecutive houses starting at H2 (not a kendra): {2,3,4,5,6,7,8}.
+    ctx = _ctx({p: {"house": h} for p, h in zip(_SEVEN, [2, 3, 4, 5, 6, 7, 8])})
+    assert "Ardha Chandra" in _akriti_fired(ctx)
+    # 7 consecutive starting at a kendra (H1): {1..7} -> NOT Ardha Chandra.
+    ctx2 = _ctx({p: {"house": h} for p, h in zip(_SEVEN, [1, 2, 3, 4, 5, 6, 7])})
+    assert "Ardha Chandra" not in _akriti_fired(ctx2)
+
+
+def test_akriti_vajra_benefics_1_7_malefics_4_10():
+    # Benefics (Jup,Ven,Merc,Moon) in {1,7}; malefics (Sun,Mars,Sat) in {4,10}.
+    ctx = _ctx({"Jupiter": {"house": 1}, "Venus": {"house": 7},
+                "Mercury": {"house": 1}, "Moon": {"house": 7},
+                "Sun": {"house": 4}, "Mars": {"house": 10}, "Saturn": {"house": 4}})
+    assert "Vajra" in _akriti_fired(ctx)
+
+
+def test_akriti_yava_malefics_1_7_benefics_4_10():
+    ctx = _ctx({"Sun": {"house": 1}, "Mars": {"house": 7}, "Saturn": {"house": 1},
+                "Jupiter": {"house": 4}, "Venus": {"house": 10},
+                "Mercury": {"house": 4}, "Moon": {"house": 10}})
+    assert "Yava" in _akriti_fired(ctx)
+
+
+def test_akriti_all_false_on_empty_chart():
+    assert _akriti_fired(_ctx({})) == set()
+
+
+# --- Named classical yogas ---
+
+def test_is_strong_helper():
+    assert _is_strong({"dignity": "exalted"}) is True
+    assert _is_strong({"dignity": "own"}) is True
+    assert _is_strong({"dignity": "moolatrikona"}) is True
+    assert _is_strong({"strength": "strong"}) is True
+    assert _is_strong({"dignity": "neutral"}) is False
+    assert _is_strong(None) is False
+
+
+def test_amala_benefic_in_10th_from_lagna():
+    ctx = _ctx({"Jupiter": {"house": 10}})
+    assert _amala(ctx) is True
+
+
+def test_amala_benefic_in_10th_from_moon():
+    # Moon H3 -> 10th from Moon is H12. Venus at H12.
+    ctx = _ctx({"Moon": {"house": 3}, "Venus": {"house": 12}})
+    assert _amala(ctx) is True
+
+
+def test_amala_absent_when_no_benefic_in_10th():
+    ctx = _ctx({"Jupiter": {"house": 5}, "Moon": {"house": 1}})
+    assert _amala(ctx) is False
+
+
+def test_amala_absent_on_empty_chart():
+    assert _amala(_ctx({})) is False
+
+
+def test_saraswati_fires_three_benefics_in_good_houses_strong_jupiter():
+    ctx = _ctx({"Mercury": {"house": 1}, "Jupiter": {"house": 5, "dignity": "exalted"},
+                "Venus": {"house": 9}})
+    assert _saraswati(ctx) is True
+
+
+def test_saraswati_absent_when_jupiter_weak():
+    ctx = _ctx({"Mercury": {"house": 1}, "Jupiter": {"house": 5, "dignity": "neutral"},
+                "Venus": {"house": 9}})
+    assert _saraswati(ctx) is False
+
+
+def test_saraswati_absent_when_planet_in_bad_house():
+    ctx = _ctx({"Mercury": {"house": 3}, "Jupiter": {"house": 5, "dignity": "exalted"},
+                "Venus": {"house": 9}})
+    assert _saraswati(ctx) is False
+
+
+def test_saraswati_absent_when_planet_missing():
+    ctx = _ctx({"Mercury": {"house": 1}, "Jupiter": {"house": 5, "dignity": "exalted"}})
+    assert _saraswati(ctx) is False
+
+
+def test_vasumati_two_benefics_in_upachaya():
+    ctx = _ctx({"Mercury": {"house": 3}, "Jupiter": {"house": 11}})
+    assert _vasumati(ctx) is True
+
+
+def test_vasumati_absent_when_only_one_in_upachaya():
+    ctx = _ctx({"Mercury": {"house": 3}, "Jupiter": {"house": 5}})
+    assert _vasumati(ctx) is False
+
+
+def test_lagnadhi_two_benefics_in_6_7_8():
+    ctx = _ctx({"Mercury": {"house": 6}, "Jupiter": {"house": 7}})
+    assert _lagnadhi(ctx) is True
+
+
+def test_lagnadhi_absent_when_only_one():
+    ctx = _ctx({"Mercury": {"house": 6}, "Jupiter": {"house": 2}})
+    assert _lagnadhi(ctx) is False
+
+
+def test_parvata_benefic_in_kendra_no_malefic_in_6_8():
+    ctx = _ctx({"Jupiter": {"house": 1}, "Saturn": {"house": 3}})
+    assert _parvata(ctx) is True
+
+
+def test_parvata_absent_when_malefic_in_6():
+    ctx = _ctx({"Jupiter": {"house": 1}, "Mars": {"house": 6}})
+    assert _parvata(ctx) is False
+
+
+def test_parvata_absent_when_no_benefic_in_kendra():
+    ctx = _ctx({"Jupiter": {"house": 3}})
+    assert _parvata(ctx) is False
+
+
+def test_chamara_lagna_lord_exalted_kendra_aspected_by_jupiter():
+    ctx = _ctx({"Saturn": {"house": 4, "dignity": "exalted"}, "Jupiter": {"house": 8}},
+               lords={1: "Saturn"})
+    ctx["planets"]["Saturn"]["aspects_receives"] = [{"from_planet": "Jupiter"}]
+    assert _chamara(ctx) is True
+
+
+def test_chamara_absent_when_not_aspected():
+    ctx = _ctx({"Saturn": {"house": 4, "dignity": "exalted"}, "Jupiter": {"house": 8}},
+               lords={1: "Saturn"})
+    assert _chamara(ctx) is False
+
+
+def test_chamara_absent_when_not_exalted():
+    ctx = _ctx({"Saturn": {"house": 4, "dignity": "own"}, "Jupiter": {"house": 8}},
+               lords={1: "Saturn"})
+    ctx["planets"]["Saturn"]["aspects_receives"] = [{"from_planet": "Jupiter"}]
+    assert _chamara(ctx) is False
+
+
+def test_kalanidhi_jupiter_in_5th_conjunct_mercury_venus():
+    ctx = _ctx({"Jupiter": {"house": 5}, "Mercury": {"house": 5}, "Venus": {"house": 5}})
+    assert _kalanidhi(ctx) is True
+
+
+def test_kalanidhi_via_aspect():
+    ctx = _ctx({"Jupiter": {"house": 2}, "Mercury": {"house": 8}, "Venus": {"house": 6}})
+    ctx["planets"]["Jupiter"]["aspects_receives"] = [
+        {"from_planet": "Mercury"}, {"from_planet": "Venus"}]
+    assert _kalanidhi(ctx) is True
+
+
+def test_kalanidhi_absent_when_jupiter_in_wrong_house():
+    ctx = _ctx({"Jupiter": {"house": 3}, "Mercury": {"house": 3}, "Venus": {"house": 3}})
+    assert _kalanidhi(ctx) is False
+
+
+def test_kalanidhi_absent_when_only_one_associates():
+    ctx = _ctx({"Jupiter": {"house": 5}, "Mercury": {"house": 5}, "Venus": {"house": 8}})
+    assert _kalanidhi(ctx) is False
+
+
+def test_kahala_4th_9th_lords_mutual_kendra_strong_lagna_lord():
+    # l4=Venus H1, l9=Jupiter H4 (house_distance 1->4 = 4, a kendra). l1=Saturn strong.
+    ctx = _ctx({"Venus": {"house": 1}, "Jupiter": {"house": 4},
+                "Saturn": {"house": 7, "dignity": "own"}},
+               lords={1: "Saturn", 4: "Venus", 9: "Jupiter"})
+    assert _kahala(ctx) is True
+
+
+def test_kahala_absent_when_not_mutual_kendra():
+    ctx = _ctx({"Venus": {"house": 1}, "Jupiter": {"house": 3},
+                "Saturn": {"house": 7, "dignity": "own"}},
+               lords={1: "Saturn", 4: "Venus", 9: "Jupiter"})
+    assert _kahala(ctx) is False
+
+
+def test_kahala_absent_when_lagna_lord_weak():
+    ctx = _ctx({"Venus": {"house": 1}, "Jupiter": {"house": 4},
+                "Saturn": {"house": 7, "dignity": "neutral"}},
+               lords={1: "Saturn", 4: "Venus", 9: "Jupiter"})
+    assert _kahala(ctx) is False
+
+
+def test_kahala_absent_when_same_lord():
+    ctx = _ctx({"Venus": {"house": 1}, "Saturn": {"house": 4, "dignity": "own"}},
+               lords={1: "Saturn", 4: "Venus", 9: "Venus"})
+    assert _kahala(ctx) is False
+
+
+def test_named_yogas_guard_missing_lords():
+    # No lords map -> lord-based rules return False, not KeyError.
+    empty = _ctx({})
+    assert _chamara(empty) is False
+    assert _kahala(empty) is False
+
+
+# --- Parivartana (sign-exchange) yogas ---
+
+def test_houses_ruled_helper():
+    ctx = _ctx({}, lords={1: "Saturn", 4: "Venus", 11: "Saturn"})
+    assert sorted(_houses_ruled(ctx, "Saturn")) == [1, 11]
+    assert _houses_ruled(ctx, "Venus") == [4]
+    assert _houses_ruled(ctx, "Mars") == []
+
+
+def test_parivartana_maha_between_good_houses():
+    # Mars (lord of 5) and Venus (lord of 9) exchange signs. Houses 5,9 -> all good -> maha.
+    ctx = _ctx({"Mars": {"house": 1, "sign": "Libra"}, "Venus": {"house": 7, "sign": "Aries"}},
+               lords={5: "Mars", 9: "Venus"})
+    classes = _parivartana_classes(ctx)
+    assert "maha" in classes
+    assert "dainya" not in classes
+    assert "khala" not in classes
+
+
+def test_parivartana_dainya_involves_dusthana_lord():
+    # Mars (lord of 6, a dusthana) and Venus (lord of 9) exchange -> dainya wins.
+    ctx = _ctx({"Mars": {"house": 1, "sign": "Libra"}, "Venus": {"house": 7, "sign": "Aries"}},
+               lords={6: "Mars", 9: "Venus"})
+    classes = _parivartana_classes(ctx)
+    assert "dainya" in classes
+    assert "maha" not in classes
+
+
+def test_parivartana_khala_involves_3rd_lord_no_dusthana():
+    # Mars (lord of 3) and Venus (lord of 9) exchange -> khala (3rd lord, no dusthana).
+    ctx = _ctx({"Mars": {"house": 1, "sign": "Libra"}, "Venus": {"house": 7, "sign": "Aries"}},
+               lords={3: "Mars", 9: "Venus"})
+    classes = _parivartana_classes(ctx)
+    assert "khala" in classes
+    assert "maha" not in classes
+    assert "dainya" not in classes
+
+
+def test_parivartana_dusthana_beats_3rd():
+    # Mars rules both 3 and 6 (dusthana); exchange with Venus (lord 9) -> dainya, not khala.
+    ctx = _ctx({"Mars": {"house": 1, "sign": "Libra"}, "Venus": {"house": 7, "sign": "Aries"}},
+               lords={3: "Mars", 6: "Mars", 9: "Venus"})
+    classes = _parivartana_classes(ctx)
+    assert classes == {"dainya"}
+
+
+def test_parivartana_none_when_no_exchange():
+    ctx = _ctx({"Mars": {"house": 1, "sign": "Aries"}, "Venus": {"house": 7, "sign": "Libra"}},
+               lords={5: "Mars", 9: "Venus"})
+    assert _parivartana_classes(ctx) == set()
+
+
+def test_parivartana_guards_missing_planets():
+    # Lords map references a planet that isn't placed -> no crash, no classes.
+    ctx = _ctx({}, lords={5: "Mars", 9: "Venus"})
+    assert _parivartana_classes(ctx) == set()
+
+
+def test_parivartana_rules_fire_via_registry():
+    ctx = _ctx({"Mars": {"house": 1, "sign": "Libra"}, "Venus": {"house": 7, "sign": "Aries"}},
+               lords={5: "Mars", 9: "Venus"})
+    fired = {r["id"] for r in YOGA_RULES if r["id"].startswith("parivartana_") and r["detect"](ctx)}
+    assert fired == {"parivartana_maha"}
+
+
+# --- Dhana (5th-9th lords) ---
+
+def test_dhana_5_9_fires_when_lords_associate():
+    ctx = _ctx({"Mars": {"house": 1}, "Jupiter": {"house": 1}},
+               lords={5: "Mars", 9: "Jupiter"})
+    assert _dhana_5_9(ctx) is True
+
+
+def test_dhana_5_9_absent_when_not_associated():
+    ctx = _ctx({"Mars": {"house": 1}, "Jupiter": {"house": 6}},
+               lords={5: "Mars", 9: "Jupiter"})
+    assert _dhana_5_9(ctx) is False
+
+
+def test_dhana_5_9_absent_when_same_lord():
+    ctx = _ctx({"Mars": {"house": 1}}, lords={5: "Mars", 9: "Mars"})
+    assert _dhana_5_9(ctx) is False
+
+
+def test_dhana_5_9_guards_missing():
+    assert _dhana_5_9(_ctx({})) is False
+
+
+# --- Dhana (lagna & wealth) ---
+
+def test_dhana_lagna_fires_via_2nd_lord():
+    ctx = _ctx({"Saturn": {"house": 1}, "Jupiter": {"house": 1}},
+               lords={1: "Saturn", 2: "Jupiter", 11: "Mars"})
+    assert _dhana_lagna(ctx) is True
+
+
+def test_dhana_lagna_fires_via_11th_lord():
+    ctx = _ctx({"Saturn": {"house": 1}, "Mars": {"house": 1}},
+               lords={1: "Saturn", 2: "Jupiter", 11: "Mars"})
+    assert _dhana_lagna(ctx) is True
+
+
+def test_dhana_lagna_absent_when_no_association():
+    ctx = _ctx({"Saturn": {"house": 1}, "Jupiter": {"house": 6}, "Mars": {"house": 8}},
+               lords={1: "Saturn", 2: "Jupiter", 11: "Mars"})
+    assert _dhana_lagna(ctx) is False
+
+
+def test_dhana_lagna_guards_missing():
+    assert _dhana_lagna(_ctx({})) is False
+
+
+# --- Daridra ---
+
+def test_daridra_fires_when_11th_lord_in_dusthana():
+    ctx = _ctx({"Mars": {"house": 8}}, lords={11: "Mars"})
+    assert _daridra(ctx) is True
+
+
+def test_daridra_absent_when_11th_lord_well_placed():
+    ctx = _ctx({"Mars": {"house": 10}}, lords={11: "Mars"})
+    assert _daridra(ctx) is False
+
+
+def test_daridra_guards_missing():
+    assert _daridra(_ctx({})) is False

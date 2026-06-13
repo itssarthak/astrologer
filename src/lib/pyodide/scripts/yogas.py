@@ -14,6 +14,30 @@ DUSTHANAS = {6, 8, 12}
 NODES = {"Rahu", "Ketu"}
 STRONG_DIGNITIES = {"exalted", "moolatrikona", "own"}
 
+# Nabhasa-core support: the 7 classical planets, sign modalities, and natural temperaments.
+CLASSICAL = ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")
+MOVABLE = {0, 3, 6, 9}      # Aries, Cancer, Libra, Capricorn
+FIXED = {1, 4, 7, 10}       # Taurus, Leo, Scorpio, Aquarius
+DUAL = {2, 5, 8, 11}        # Gemini, Virgo, Sagittarius, Pisces
+NATURAL_BENEFICS = {"Jupiter", "Venus", "Mercury", "Moon"}
+NATURAL_MALEFICS = {"Sun", "Mars", "Saturn"}
+
+
+def _classical(ctx):
+    """Facts of the 7 classical planets present in the chart."""
+    return [ctx["planets"][p] for p in CLASSICAL if p in ctx["planets"]]
+
+
+def _classical_houses(ctx):
+    """Set of houses (1..12) occupied by the 7 classical planets present."""
+    return {p["house"] for p in _classical(ctx) if p.get("house")}
+
+
+def _all_classical_in(ctx, houses):
+    """True if every classical planet present sits within `houses` (non-empty)."""
+    hs = _classical_houses(ctx)
+    return bool(hs) and hs <= set(houses)
+
 # planet -> the signs it rules (inverse of adapter.SIGN_LORD).
 OWNED_SIGNS = {}
 for _sign, _lord in SIGN_LORD.items():
@@ -388,6 +412,412 @@ YOGA_RULES.append({
     "description": "The lords of wealth (2nd) and gains (11th) combine — strong support for accumulating money and assets through the right channels.",
     "detect": _dhana,
 })
+
+
+def _houses_ruled(ctx, planet):
+    """Houses (1..12) whose lord is `planet`."""
+    return [h for h, l in ctx["lords"].items() if l == planet]
+
+
+def _parivartana_classes(ctx):
+    """Set of parivartana classes present among house-lord pairs.
+
+    Scans unordered pairs of distinct house-lord planets that are placed and in a
+    sign-exchange (parivartana). For each such pair the involved houses are the houses
+    both planets rule; most-severe class wins: any house in {6,8,12} -> dainya,
+    elif any house == 3 -> khala, else -> maha."""
+    lords = ctx["lords"]
+    placed = sorted({l for l in lords.values()
+                     if l and ctx["planets"].get(l)})
+    classes = set()
+    for i, a in enumerate(placed):
+        for b in placed[i + 1:]:
+            if not _parivartana(ctx, a, b):
+                continue
+            involved = set(_houses_ruled(ctx, a)) | set(_houses_ruled(ctx, b))
+            if involved & DUSTHANAS:
+                classes.add("dainya")
+            elif 3 in involved:
+                classes.add("khala")
+            else:
+                classes.add("maha")
+    return classes
+
+
+YOGA_RULES.extend([
+    {"id": "parivartana_maha", "name": "Maha Parivartana", "category": "Parivartana",
+     "description": "A powerful exchange of strengths between two good areas of life — each lifts the other; rise in status and means.",
+     "detect": (lambda ctx: "maha" in _parivartana_classes(ctx))},
+    {"id": "parivartana_dainya", "name": "Dainya Parivartana", "category": "Parivartana (affliction)",
+     "description": "An exchange dragging in a difficult house — obstacles, dependence or setbacks in the linked areas; needs effort to overcome.",
+     "detect": (lambda ctx: "dainya" in _parivartana_classes(ctx))},
+    {"id": "parivartana_khala", "name": "Khala Parivartana", "category": "Parivartana",
+     "description": "A mixed exchange — alternating gains and reversals; results come unevenly, often through one's own initiative.",
+     "detect": (lambda ctx: "khala" in _parivartana_classes(ctx))},
+])
+
+
+def _dhana_5_9(ctx):
+    """The 5th lord and 9th lord are distinct and associated."""
+    l5, l9 = ctx["lords"].get(5), ctx["lords"].get(9)
+    if not l5 or not l9 or l5 == l9:
+        return False
+    return _associated(ctx, l5, l9)
+
+
+def _dhana_lagna(ctx):
+    """The lagna lord is distinct from and associated with the 2nd lord or the 11th lord."""
+    l1 = ctx["lords"].get(1)
+    if not l1:
+        return False
+    for h in (2, 11):
+        lh = ctx["lords"].get(h)
+        if lh and lh != l1 and _associated(ctx, l1, lh):
+            return True
+    return False
+
+
+def _daridra(ctx):
+    """Daridra: the 11th lord is placed in a dusthana house {6,8,12}."""
+    l11 = ctx["lords"].get(11)
+    p = ctx["planets"].get(l11) if l11 else None
+    return bool(p and p.get("house") in DUSTHANAS)
+
+
+YOGA_RULES.extend([
+    {"id": "dhana_5_9", "name": "Dhana (5th-9th lords)", "category": "Dhana",
+     "description": "The lords of fortune and past merit combine — wealth and luck flow, often with little struggle.",
+     "detect": _dhana_5_9},
+    {"id": "dhana_lagna", "name": "Dhana (lagna & wealth)", "category": "Dhana",
+     "description": "Your own efforts convert directly into income — a strong personal hand in building wealth.",
+     "detect": _dhana_lagna},
+    {"id": "daridra", "name": "Daridra", "category": "Dhana (affliction)",
+     "description": "Gains tend to leak away — income arrives with struggle and slips out through losses or obligations; deliberate financial discipline is the remedy.",
+     "detect": _daridra},
+])
+
+
+# --- Nabhasa core: Sankhya, Asraya, Dala (classical 7 planets only) ---
+
+def _sankhya_count(ctx):
+    """Number of distinct signs the 7 classical planets occupy (Sankhya).
+    Only planets with a valid sign_idx (>= 0) are counted; nodes are excluded."""
+    signs = {p["sign_idx"] for p in _classical(ctx)
+             if isinstance(p.get("sign_idx"), int) and p["sign_idx"] >= 0}
+    return len(signs)
+
+
+_SANKHYA = {
+    7: ("nabhasa_vallaki", "Vallaki", "Veena — a life rich in variety, arts and many interests"),
+    6: ("nabhasa_damini", "Damini", "wealth and generosity, well-distributed energies"),
+    5: ("nabhasa_pasa", "Pasa", "hard-working, capable of juggling many ties and duties"),
+    4: ("nabhasa_kedara", "Kedara", "steady, productive, helpful to many — like fertile fields"),
+    3: ("nabhasa_soola", "Soola", "sharp and one-pointed, but can be harsh or struggle-prone"),
+    2: ("nabhasa_yuga", "Yuga", "polarised focus — strong drives pulling in two directions"),
+    1: ("nabhasa_gola", "Gola", "intensely concentrated energy in one area; lopsided life"),
+}
+
+YOGA_RULES.extend([
+    {"id": _id, "name": _name, "category": "Nabhasa (Sankhya)", "description": _desc,
+     "detect": (lambda n: (lambda ctx: _sankhya_count(ctx) == n))(_n)}
+    for _n, (_id, _name, _desc) in _SANKHYA.items()
+])
+
+
+def _asraya(ctx, modality):
+    """True if ALL seven classical planets sit in signs of the given modality.
+    Asraya yogas are classically defined over all seven grahas, so require the full set
+    (a complete chart always has them; this just avoids over-firing on a partial test chart)."""
+    facts = _classical(ctx)
+    if len(facts) != 7:
+        return False
+    return all(isinstance(p.get("sign_idx"), int) and p["sign_idx"] in modality for p in facts)
+
+
+YOGA_RULES.extend([
+    {"id": "nabhasa_rajju", "name": "Rajju", "category": "Nabhasa (Asraya)",
+     "description": "restless, travel-loving, always on the move; success away from home",
+     "detect": (lambda ctx: _asraya(ctx, MOVABLE))},
+    {"id": "nabhasa_musala", "name": "Musala", "category": "Nabhasa (Asraya)",
+     "description": "fixed, determined, dignified — steady wealth and a strong will",
+     "detect": (lambda ctx: _asraya(ctx, FIXED))},
+    {"id": "nabhasa_nala", "name": "Nala", "category": "Nabhasa (Asraya)",
+     "description": "adaptable and clever, but uneven fortunes; resourceful under change",
+     "detect": (lambda ctx: _asraya(ctx, DUAL))},
+])
+
+
+def _dala(ctx, group):
+    """Dala: every planet of `group` present in the chart sits in a kendra (1/4/7/10),
+    AND those planets occupy at least 3 distinct kendra houses. Returns False when no
+    planet of the group is present (no vacuous fire)."""
+    present = [ctx["planets"][n] for n in group if n in ctx["planets"]]
+    if not present:
+        return False
+    if not all(p["house"] in KENDRAS for p in present):
+        return False
+    return len({p["house"] for p in present}) >= 3
+
+
+YOGA_RULES.extend([
+    {"id": "nabhasa_mala", "name": "Maalaa", "category": "Nabhasa (Dala)",
+     "description": "Maalaa — comfort, helpful friends and a pleasant, well-supported life",
+     "detect": (lambda ctx: _dala(ctx, NATURAL_BENEFICS))},
+    {"id": "nabhasa_sarpa", "name": "Sarpa", "category": "Nabhasa (Dala)",
+     "description": "Sarpa — struggle and hardship; resilience built through difficulty",
+     "detect": (lambda ctx: _dala(ctx, NATURAL_MALEFICS))},
+])
+
+
+# --- Nabhasa: Akriti (shape by the houses the 7 classical planets occupy) ---
+
+# Fixed-house-set shapes: fire when every classical planet present sits within S.
+_AKRITI_FIXED = [
+    ("nabhasa_yupa", "Yupa", {1, 2, 3, 4},
+     "self-reliant, ritual/disciplined, focused on security and roots"),
+    ("nabhasa_ishu", "Ishu (Sara)", {4, 5, 6, 7},
+     "sharp and incisive; good with tools, defence, or precise skills"),
+    ("nabhasa_sakti", "Sakti", {7, 8, 9, 10},
+     "patient and enduring; rewards come later, through perseverance"),
+    ("nabhasa_danda", "Danda", {10, 11, 12, 1},
+     "ups and downs; hard-won independence, sometimes isolation"),
+    ("nabhasa_nauka", "Nauka", {1, 2, 3, 4, 5, 6, 7},
+     "industrious and self-made; gains through one's own effort, fond of water/travel"),
+    ("nabhasa_koota", "Koota", {4, 5, 6, 7, 8, 9, 10},
+     "guarded and self-protective; works behind defences, can face confinement/struggle"),
+    ("nabhasa_chatra", "Chatra", {7, 8, 9, 10, 11, 12, 1},
+     "protective and benevolent; supports others, comfort in the latter half of life"),
+    ("nabhasa_chapa", "Chapa (Dhanu)", {10, 11, 12, 1, 2, 3, 4},
+     "restless and freedom-loving; gains through travel or trade, dislikes constraint"),
+    ("nabhasa_chakra", "Chakra", {1, 3, 5, 7, 9, 11},
+     "regal, idealistic, rises to authority"),
+    ("nabhasa_samudra", "Samudra", {2, 4, 6, 8, 10, 12},
+     "wealthy and well-resourced; broad means and many enjoyments"),
+    ("nabhasa_sakata", "Sakata", {1, 7},
+     "fluctuating fortunes — wheel-like rise and fall; resilience needed"),
+    ("nabhasa_vihaga", "Vihaga (Pakshi)", {4, 10},
+     "always travelling/seeking; restless, opportunistic, lives by movement"),
+    ("nabhasa_sringataka", "Sringataka", {1, 5, 9},
+     "happy, devoted and fortunate; good family life and faith"),
+    ("nabhasa_kamala", "Kamala", {1, 4, 7, 10},
+     "lotus — fame, virtue and lasting prosperity; a strong, accomplished life"),
+    ("nabhasa_vapi", "Vapi", {2, 3, 5, 6, 8, 9, 11, 12},
+     "accumulates and conserves wealth steadily; quietly well-off"),
+]
+
+YOGA_RULES.extend([
+    {"id": _id, "name": _name, "category": "Nabhasa (Akriti)", "description": _desc,
+     "detect": (lambda s: (lambda ctx: _all_classical_in(ctx, s)))(_s)}
+    for _id, _name, _s, _desc in _AKRITI_FIXED
+])
+
+
+# Gada: all classical planets confined to two ADJACENT kendras.
+_GADA_PAIRS = ({1, 4}, {4, 7}, {7, 10}, {10, 1})
+
+
+def _gada(ctx):
+    return any(_all_classical_in(ctx, pair) for pair in _GADA_PAIRS)
+
+
+# Hala: all confined to one mutual-trine set NOT anchored on the lagna.
+_HALA_TRINES = ({2, 6, 10}, {3, 7, 11}, {4, 8, 12})
+
+
+def _hala(ctx):
+    return any(_all_classical_in(ctx, tri) for tri in _HALA_TRINES)
+
+
+def _ardha_chandra(ctx):
+    """The 7 classical planets occupy 7 consecutive houses whose run does NOT start
+    on a kendra: a start house h not in {1,4,7,10} covers every occupied house."""
+    if len(_classical(ctx)) != 7:
+        return False
+    hs = _classical_houses(ctx)
+    if not hs:
+        return False
+    for h in range(1, 13):
+        if h in KENDRAS:
+            continue
+        run = {((h - 1 + k) % 12) + 1 for k in range(7)}
+        if hs <= run:
+            return True
+    return False
+
+
+def _present(ctx, names):
+    """Facts of the named planets present in the chart."""
+    return [ctx["planets"][n] for n in names if n in ctx["planets"]]
+
+
+def _vajra(ctx):
+    """Every natural benefic present in {1,7} AND every natural malefic present in
+    {4,10}, with at least one of each present."""
+    ben = _present(ctx, NATURAL_BENEFICS)
+    mal = _present(ctx, NATURAL_MALEFICS)
+    if not ben or not mal:
+        return False
+    return all(p["house"] in {1, 7} for p in ben) and all(p["house"] in {4, 10} for p in mal)
+
+
+def _yava(ctx):
+    """Every natural malefic present in {1,7} AND every natural benefic present in
+    {4,10}, with at least one of each present."""
+    ben = _present(ctx, NATURAL_BENEFICS)
+    mal = _present(ctx, NATURAL_MALEFICS)
+    if not ben or not mal:
+        return False
+    return all(p["house"] in {1, 7} for p in mal) and all(p["house"] in {4, 10} for p in ben)
+
+
+YOGA_RULES.extend([
+    {"id": "nabhasa_gada", "name": "Gada", "category": "Nabhasa (Akriti)",
+     "description": "energetic and acquisitive; devoted to wealth, ritual and music",
+     "detect": _gada},
+    {"id": "nabhasa_hala", "name": "Hala", "category": "Nabhasa (Akriti)",
+     "description": "hard agricultural-style toil; gains through labour, can struggle with want",
+     "detect": _hala},
+    {"id": "nabhasa_ardha_chandra", "name": "Ardha Chandra", "category": "Nabhasa (Akriti)",
+     "description": "half-moon — handsome, strong, favoured by leaders; commands respect",
+     "detect": _ardha_chandra},
+    {"id": "nabhasa_vajra", "name": "Vajra", "category": "Nabhasa (Akriti)",
+     "description": "happy at the start and end of life, with a tougher middle; brave",
+     "detect": _vajra},
+    {"id": "nabhasa_yava", "name": "Yava", "category": "Nabhasa (Akriti)",
+     "description": "tougher start and end, comfortable middle years; charitable, steady",
+     "detect": _yava},
+])
+
+
+# --- Named classical yogas ---
+
+UPACHAYA = {3, 6, 10, 11}
+
+
+def _is_strong(p):
+    # 'strength' is set by adapter.chart_facts; 'is_strong' (shadbala MeetsRequirement) is set by
+    # planet_facts (what _context uses). Accept either, plus strong dignity.
+    return bool(p) and (p.get("dignity") in STRONG_DIGNITIES
+                        or p.get("strength") == "strong" or p.get("is_strong"))
+
+
+def _amala(ctx):
+    """A natural benefic in the 10th from the lagna, or the 10th from the Moon."""
+    for b in NATURAL_BENEFICS:
+        p = planet_in(ctx, b)
+        if p and p.get("house") == 10:
+            return True
+    moon = planet_in(ctx, "Moon")
+    if moon and moon.get("house"):
+        for b in NATURAL_BENEFICS:
+            p = planet_in(ctx, b)
+            if p and p.get("house") and house_distance(moon["house"], p["house"]) == 10:
+                return True
+    return False
+
+
+def _saraswati(ctx):
+    """Mercury, Jupiter and Venus all in {1,2,4,5,7,9,10}, with Jupiter strong."""
+    good = {1, 2, 4, 5, 7, 9, 10}
+    merc, jup, ven = planet_in(ctx, "Mercury"), planet_in(ctx, "Jupiter"), planet_in(ctx, "Venus")
+    if not (merc and jup and ven):
+        return False
+    if not all(p.get("house") in good for p in (merc, jup, ven)):
+        return False
+    return _is_strong(jup)
+
+
+def _vasumati(ctx):
+    """At least two of {Mercury,Jupiter,Venus} in the upachaya houses {3,6,10,11}."""
+    count = sum(1 for b in BENEFICS
+                if (p := planet_in(ctx, b)) and p.get("house") in UPACHAYA)
+    return count >= 2
+
+
+def _lagnadhi(ctx):
+    """Two or more of {Mercury,Jupiter,Venus} in the 6th/7th/8th from the lagna."""
+    count = sum(1 for b in BENEFICS
+                if (p := planet_in(ctx, b)) and p.get("house") in {6, 7, 8})
+    return count >= 2
+
+
+def _parvata(ctx):
+    """A natural benefic in a kendra, and no natural malefic in house 6 or 8."""
+    if not any((p := planet_in(ctx, b)) and p.get("house") in KENDRAS for b in NATURAL_BENEFICS):
+        return False
+    for m in NATURAL_MALEFICS:
+        p = planet_in(ctx, m)
+        if p and p.get("house") in {6, 8}:
+            return False
+    return True
+
+
+def _chamara(ctx):
+    """Lagna lord exalted, in a kendra, and aspected by Jupiter."""
+    l1 = ctx["lords"].get(1)
+    if not l1:
+        return False
+    p = planet_in(ctx, l1)
+    if not p:
+        return False
+    return p.get("dignity") == "exalted" and p.get("house") in KENDRAS \
+        and _aspects(ctx, "Jupiter", l1)
+
+
+def _kalanidhi(ctx):
+    """Jupiter in the 2nd or 5th, conjoined or aspected by BOTH Mercury and Venus."""
+    jup = planet_in(ctx, "Jupiter")
+    if not jup or jup.get("house") not in {2, 5}:
+        return False
+    for other in ("Mercury", "Venus"):
+        p = planet_in(ctx, other)
+        if not p:
+            return False
+        if p.get("house") == jup.get("house") or _aspects(ctx, other, "Jupiter"):
+            continue
+        return False
+    return True
+
+
+def _kahala(ctx):
+    """4th and 9th lords (distinct, both placed) in mutual kendras, lagna lord strong."""
+    l4, l9, l1 = ctx["lords"].get(4), ctx["lords"].get(9), ctx["lords"].get(1)
+    if not (l4 and l9 and l1) or l4 == l9:
+        return False
+    p4, p9, p1 = planet_in(ctx, l4), planet_in(ctx, l9), planet_in(ctx, l1)
+    if not (p4 and p9 and p1):
+        return False
+    if not (p4.get("house") and p9.get("house")):
+        return False
+    return house_distance(p4["house"], p9["house"]) in KENDRAS and _is_strong(p1)
+
+
+YOGA_RULES.extend([
+    {"id": "amala", "name": "Amala", "category": "Raja",
+     "description": "A spotless reputation — lasting fame and goodwill earned through honourable work.",
+     "detect": _amala},
+    {"id": "saraswati", "name": "Saraswati", "category": "Wisdom",
+     "description": "Brilliance in learning, speech and the arts — a sharp, cultured mind.",
+     "detect": _saraswati},
+    {"id": "vasumati", "name": "Vasumati", "category": "Dhana",
+     "description": "Self-made wealth — resourceful, materially secure, never truly in want.",
+     "detect": _vasumati},
+    {"id": "lagnadhi", "name": "Lagnadhi", "category": "Raja",
+     "description": "Leadership and a well-protected life — trusted with responsibility, quietly powerful.",
+     "detect": _lagnadhi},
+    {"id": "parvata", "name": "Parvata", "category": "Raja",
+     "description": "Rises like a mountain — prosperity, fame, eloquence and a charitable nature.",
+     "detect": _parvata},
+    {"id": "chamara", "name": "Chamara", "category": "Raja",
+     "description": "Eloquent, learned and long-lived — honoured by those in authority.",
+     "detect": _chamara},
+    {"id": "kalanidhi", "name": "Kalanidhi", "category": "Wisdom",
+     "description": "Learned, wealthy and content — favoured in knowledge and the good things of life.",
+     "detect": _kalanidhi},
+    {"id": "kahala", "name": "Kahala", "category": "Raja",
+     "description": "Bold and energetic — commands resources, land and a forceful drive to lead.",
+     "detect": _kahala},
+])
 
 
 def compute_yogas(chart_json):
