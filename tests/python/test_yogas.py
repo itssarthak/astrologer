@@ -9,6 +9,7 @@ from yogas import _aspects, _parivartana, _associated, OWNED_SIGNS
 from yogas import _raja_kendra_trikona
 from yogas import _viparita
 from yogas import _neecha_bhanga, EXALTED_IN_SIGN
+from yogas import _dhana
 
 
 def test_context_shape(sarthak_chart):
@@ -303,3 +304,21 @@ def test_neecha_bhanga_absent_when_no_cancellation():
 def test_neecha_bhanga_absent_when_no_debilitated_planet():
     ctx = _ctx({"Sun": {"house": 1, "sign": "Aquarius", "dignity": "neutral"}})
     assert _neecha_bhanga(ctx) is False
+
+
+def test_dhana_fires_when_2nd_and_11th_lords_associate():
+    # 2nd lord (Jupiter) and 11th lord (Mars) conjoin in H1.
+    ctx = _ctx({"Jupiter": {"house": 1}, "Mars": {"house": 1}},
+               lords={2: "Jupiter", 11: "Mars"})
+    assert _dhana(ctx) is True
+
+
+def test_dhana_absent_when_no_association():
+    ctx = _ctx({"Jupiter": {"house": 1}, "Mars": {"house": 6}},
+               lords={2: "Jupiter", 11: "Mars"})
+    assert _dhana(ctx) is False
+
+
+def test_dhana_absent_when_same_lord():
+    ctx = _ctx({"Jupiter": {"house": 1}}, lords={2: "Jupiter", 11: "Jupiter"})
+    assert _dhana(ctx) is False

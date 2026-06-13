@@ -374,6 +374,22 @@ YOGA_RULES.append({
 })
 
 
+def _dhana(ctx):
+    """Dhana (wealth) yoga: the lord of the 2nd (accumulated wealth) and the lord of
+    the 11th (gains/income) are associated — conjunction, mutual aspect, or exchange."""
+    l2, l11 = ctx["lords"].get(2), ctx["lords"].get(11)
+    if not l2 or not l11 or l2 == l11:
+        return False
+    return _associated(ctx, l2, l11)
+
+
+YOGA_RULES.append({
+    "id": "dhana_2_11", "name": "Dhana Yoga", "category": "Dhana",
+    "description": "The lords of wealth (2nd) and gains (11th) combine — strong support for accumulating money and assets through the right channels.",
+    "detect": _dhana,
+})
+
+
 def compute_yogas(chart_json):
     """Run every registered rule; return active yogas as {name, category, description}."""
     ctx = _context(chart_json)
