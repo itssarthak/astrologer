@@ -40,6 +40,22 @@ def test_benefic_aspect_supportive_malefic_challenging():
 
 
 from synastry import compute_house_overlays, marriage_factors, dasha_overlap
+from synastry import compute_synastry
+from chart import compute_chart
+
+
+def test_compute_synastry_has_deep_layers():
+    a = compute_chart("A", "1996-11-22", "13:06", 28.6139, 77.2090, 5.5, "Delhi")
+    b = compute_chart("B", "1998-07-11", "19:10", 27.1767, 78.0081, 5.5, "Agra")
+    s = compute_synastry(a, b)
+    assert "cross_aspects" in s and isinstance(s["cross_aspects"], list)
+    assert "marriage_factors" in s and set(s["marriage_factors"]) == {"a", "b"}
+    assert "dasha_overlap" in s and "relation" in s["dasha_overlap"]
+    assert "top_supportive" in s and "top_challenging" in s
+    # digest items are capped
+    assert len(s["top_supportive"]) <= 5 and len(s["top_challenging"]) <= 5
+    # existing keys preserved
+    assert "guna_milan" in s and "overlay_summary" in s
 
 
 def test_dasha_overlap_relation():

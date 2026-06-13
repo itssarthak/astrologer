@@ -1,6 +1,7 @@
 import json
 
 from relationships import planet_relation
+from adapter import chart_facts
 
 NAKSHATRA_NAMES = [
     "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
@@ -370,16 +371,37 @@ def dasha_overlap(maha_a, maha_b):
     }[rel]
     return {"a_maha": maha_a, "b_maha": maha_b, "relation": rel, "note": note}
 
+def _digest(items, effect):
+    """Top weighted items of one effect, as short strings, highest weight first."""
+    picked = sorted((i for i in items if i.get("effect") == effect),
+                    key=lambda i: i.get("weight", 0), reverse=True)
+    return [i["note"] for i in picked[:5]]
+
+
 def compute_synastry(chart_a_json, chart_b_json, gender_a="", gender_b=""):
     nak_a, _, sign_a = _moon_nakshatra(chart_a_json)
     nak_b, _, sign_b = _moon_nakshatra(chart_b_json)
-    a_in_b = compute_house_overlays(chart_b_json, chart_a_json)
-    b_in_a = compute_house_overlays(chart_a_json, chart_b_json)
+
+    fa = chart_facts(chart_a_json)   # {lagna, lords, planets(with strength), dasha}
+    fb = chart_facts(chart_b_json)
+    planets_a, planets_b = fa["planets"], fb["planets"]
+
+    a_in_b = compute_house_overlays(chart_b_json, chart_a_json, planets_a)  # A's planets in B's houses
+    b_in_a = compute_house_overlays(chart_a_json, chart_b_json, planets_b)
+    crosses = cross_aspects(planets_a, planets_b)
+
+    all_items = a_in_b + b_in_a + crosses
     return {
         "guna_milan": compute_guna_milan(nak_a, gender_a, nak_b, gender_b, sign_a, sign_b),
         "a_planets_in_b_houses": a_in_b,
         "b_planets_in_a_houses": b_in_a,
-        "overlay_summary": _overlay_tally(a_in_b, b_in_a),
+        "cross_aspects": crosses,
+        "marriage_factors": {"a": marriage_factors(planets_a, fa["lords"]),
+                             "b": marriage_factors(planets_b, fb["lords"])},
+        "dasha_overlap": dasha_overlap(fa["dasha"].get("maha"), fb["dasha"].get("maha")),
+        "overlay_summary": _overlay_tally(a_in_b, b_in_a, crosses),
+        "top_supportive": _digest(all_items, "supportive"),
+        "top_challenging": _digest(all_items, "challenging"),
     }
 
 def compute_synastry_json(chart_a_str, chart_b_str, gender_a="", gender_b=""):
