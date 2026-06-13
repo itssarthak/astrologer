@@ -19,6 +19,18 @@ describe('normalizeYogasDoshas', () => {
     expect(out.yogas_active[0]).toEqual({ name: 'Gajakesari', category: null, description: 'Jupiter–Moon' })
   })
 
+  it('preserves the richer dosha detail when the engine supplies it', () => {
+    const out = normalizeYogasDoshas({
+      yogas_active: [],
+      doshas: {
+        manglik: { present: true, text: 'Mangal Dosha present', severity: 'full', cancelled: false },
+        kalathra: { present: true, text: 'Kalathra', afflictors: ['Saturn'] },
+      },
+    })
+    expect(out.doshas.manglik).toEqual({ present: true, text: 'Mangal Dosha present', severity: 'full', cancelled: false })
+    expect(out.doshas.kalathra).toEqual({ present: true, text: 'Kalathra', afflictors: ['Saturn'] })
+  })
+
   it('coerces missing/odd inputs to the canonical contract', () => {
     const out = normalizeYogasDoshas({ yogas_active: ['BareString'], doshas: { x: null } })
     expect(out.yogas_active[0]).toEqual({ name: 'BareString', category: null, description: null })

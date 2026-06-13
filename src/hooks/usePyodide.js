@@ -18,7 +18,14 @@ export function normalizeYogasDoshas({ yogas_active, doshas } = {}) {
   )
   const normDoshas = {}
   for (const [key, v] of Object.entries(doshas ?? {})) {
-    normDoshas[key] = { present: !!v?.present, text: v?.text ?? '' }
+    const d = { present: !!v?.present, text: v?.text ?? '' }
+    // Preserve the richer detail (only when the engine supplied it) so the get_doshas tool can
+    // explain WHY a dosha is present, its severity, and whether it's cancelled.
+    if (v?.severity != null) d.severity = v.severity
+    if (v?.cancelled != null) d.cancelled = v.cancelled
+    if (Array.isArray(v?.cancellation_reasons) && v.cancellation_reasons.length) d.cancellation_reasons = v.cancellation_reasons
+    if (Array.isArray(v?.afflictors) && v.afflictors.length) d.afflictors = v.afflictors
+    normDoshas[key] = d
   }
   return { yogas_active: yogas, doshas: normDoshas }
 }

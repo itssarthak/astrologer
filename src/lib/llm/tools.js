@@ -42,7 +42,7 @@ export const TOOLS = [
   },
   {
     name: 'get_chart',
-    description: "Get a saved profile's natal chart: ascendant, planetary placements with dignity and strength, the current dasha period chain, active yogas and doshas. Defaults to the active profile if no name is given.",
+    description: "Get a saved profile's natal chart overview: ascendant, planetary placements with dignity and strength, the current dasha period chain, top yogas, and the names of active doshas. This is the starting point for any reading. For DETAIL, call the focused tools: get_dasha (full period timeline + dates for timing questions), get_doshas (why a dosha is present, severity, cancellations), get_yogas (the complete yoga list), get_ashtakavarga (sign-strength scores), get_divisional (varga charts). Defaults to the active profile if no name is given.",
     parameters: {
       type: 'object',
       properties: { profile_name: { type: 'string', description: 'Name of a saved profile. Omit for the active profile.' } },
@@ -92,6 +92,116 @@ export const TOOLS = [
         }
       }
       return { name: profile.name, varga: key, ascendant: dv.ascendant, placements }
+    },
+  },
+  {
+    name: 'get_dasha',
+    description: "Get a saved profile's Vimshottari dasha timeline — the planetary periods that time life events. Returns the currently running mahadasha → antardasha → pratyantardasha (each with absolute start/end dates), the full sequence of all 9 mahadashas (lord + dates), and the next upcoming sub-period. USE THIS for ANY timing question — 'when will X happen', 'what period am I in', 'is this a good time for marriage / a job change / buying a house', 'what's coming next'. Dates are YYYY-MM-DD. Defaults to the active profile.",
+    parameters: {
+      type: 'object',
+      properties: { profile_name: { type: 'string', description: 'Name of a saved profile. Omit for the active profile.' } },
+      required: [],
+    },
+    async execute({ profile_name }) {
+      const profile = findProfileByName(profile_name)
+      if (!profile?.chart) throw new Error(`No saved chart found for "${profile_name ?? 'active profile'}".`)
+      const dashas = profile.chart?.dashas ?? {}
+      const firstEntry = obj => Object.entries(obj ?? {})[0]
+      let current = null
+      const cm = firstEntry(dashas.current?.mahadashas)
+      if (cm) {
+        const [mLord, m] = cm
+        const ca = firstEntry(m.antardashas)
+        const cp = ca ? firstEntry(ca[1].pratyantardashas) : null
+        current = {
+          mahadasha: { lord: mLord, start: m.start, end: m.end },
+          antardasha: ca ? { lord: ca[0], start: ca[1].start, end: ca[1].end } : null,
+          pratyantardasha: cp ? { lord: cp[0], start: cp[1].start, end: cp[1].end } : null,
+        }
+      }
+      const mahadasha_timeline = Object.entries(dashas.all?.mahadashas ?? {})
+        .map(([lord, m]) => ({ lord, start: m.start, end: m.end }))
+      let upcoming = null
+      const um = firstEntry(dashas.upcoming?.mahadashas)
+      if (um) {
+        const ua = firstEntry(um[1].antardashas)
+        if (ua) upcoming = { next_antardasha: { lord: ua[0], start: ua[1].start, end: ua[1].end } }
+      }
+      return { name: profile.name, current, mahadasha_timeline, upcoming }
+    },
+  },
+  {
+    name: 'get_doshas',
+    description: "Get a saved profile's full dosha analysis — the afflictions checked in the chart (Manglik/Mangal, Kala Sarpa, Guru Chandala, Pitru, Ganda Moola, Kalathra, Shrapit, Shakata). For each: whether it is present, its severity (full/partial) and whether it's cancelled (with the reasons), any afflicting planets, and a plain explanation. USE THIS when the user asks about doshas, marriage obstacles, or remedies — or when get_chart shows a dosha and you need the WHY/whether it's neutralised. Defaults to the active profile.",
+    parameters: {
+      type: 'object',
+      properties: { profile_name: { type: 'string', description: 'Name of a saved profile. Omit for the active profile.' } },
+      required: [],
+    },
+    async execute({ profile_name }) {
+      const profile = findProfileByName(profile_name)
+      if (!profile?.doshas) throw new Error(`No dosha data for "${profile_name ?? 'active profile'}". Recompute the chart if it predates the latest version.`)
+      return {
+        name: profile.name,
+        doshas: Object.entries(profile.doshas).map(([dosha, v]) => ({
+          dosha,
+          present: !!v?.present,
+          text: v?.text ?? '',
+          ...(v?.severity ? { severity: v.severity } : {}),
+          ...(v?.cancelled != null ? { cancelled: v.cancelled } : {}),
+          ...(v?.cancellation_reasons?.length ? { cancellation_reasons: v.cancellation_reasons } : {}),
+          ...(v?.afflictors?.length ? { afflictors: v.afflictors } : {}),
+        })),
+      }
+    },
+  },
+  {
+    name: 'get_yogas',
+    description: "Get a saved profile's COMPLETE list of detected yogas (planetary combinations) — each with its name, category, and a plain-English description of what it means for the person. get_chart returns only the top few; USE THIS when the user wants the full picture of their yogas or asks about a specific one. Defaults to the active profile.",
+    parameters: {
+      type: 'object',
+      properties: { profile_name: { type: 'string', description: 'Name of a saved profile. Omit for the active profile.' } },
+      required: [],
+    },
+    async execute({ profile_name }) {
+      const profile = findProfileByName(profile_name)
+      if (!profile) throw new Error(`No saved profile found for "${profile_name ?? 'active profile'}".`)
+      const yogas = profile.yogas ?? []
+      return {
+        name: profile.name,
+        count: yogas.length,
+        yogas: yogas.map(y => (y?.description ? `${y.name} (${y.category ?? 'yoga'}) — ${y.description}` : (y?.name ?? String(y)))),
+      }
+    },
+  },
+  {
+    name: 'get_ashtakavarga',
+    description: "Get a saved profile's Ashtakavarga strength scores — benefic points (bindus) per sign. Higher = stronger, more favourable results for that area and for transits through that sign. Returns the Sarvashtakavarga (SAV — the combined total per sign, roughly 25-40) with the strongest and weakest signs, and, if a planet is named, that planet's own per-sign bindus. USE THIS to judge which life areas are strong and to weigh transit timing (a planet moving through a high-bindu sign tends to deliver better). Defaults to the active profile; SAV only unless a planet is given.",
+    parameters: {
+      type: 'object',
+      properties: {
+        planet: { type: 'string', description: "Optional: Sun/Moon/Mars/Mercury/Jupiter/Venus/Saturn — also return that planet's per-sign bindu contribution." },
+        profile_name: { type: 'string', description: 'Name of a saved profile. Omit for the active profile.' },
+      },
+      required: [],
+    },
+    async execute({ planet, profile_name }) {
+      const profile = findProfileByName(profile_name)
+      if (!profile?.chart?.ashtakavarga) throw new Error(`No Ashtakavarga data for "${profile_name ?? 'active profile'}". Recompute the chart if it predates the latest version.`)
+      const av = profile.chart.ashtakavarga
+      const sav = av.sav ?? {}
+      const sorted = Object.entries(sav).sort((a, b) => b[1] - a[1])
+      const result = {
+        name: profile.name,
+        sav,
+        strongest: sorted.slice(0, 3).map(([s, v]) => `${s} (${v})`),
+        weakest: sorted.slice(-3).map(([s, v]) => `${s} (${v})`),
+      }
+      if (planet) {
+        const bhav = av[`${planet.toLowerCase()}Bhav`]
+        if (bhav) result.planet_bindus = { planet, per_sign: bhav }
+      }
+      return result
     },
   },
   {
