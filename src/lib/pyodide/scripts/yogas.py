@@ -697,8 +697,8 @@ UPACHAYA = {3, 6, 10, 11}
 def _is_strong(p):
     # 'strength' is set by adapter.chart_facts; 'is_strong' (shadbala MeetsRequirement) is set by
     # planet_facts (what _context uses). Accept either, plus strong dignity.
-    return bool(p) and (p.get("dignity") in STRONG_DIGNITIES
-                        or p.get("strength") == "strong" or p.get("is_strong"))
+    return bool(p) and bool(p.get("dignity") in STRONG_DIGNITIES
+                            or p.get("strength") == "strong" or p.get("is_strong"))
 
 
 def _amala(ctx):
