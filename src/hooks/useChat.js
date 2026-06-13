@@ -31,11 +31,12 @@ export function useChat(profile, tab) {
     const usedTools = []
     setBusy(true); setError(null); setToolEvent(null); setLiveTools([])
 
+    let streamed = ''
     try {
       const text = await runAgent({
         provider: keyData.provider, key: keyData.key, baseUrl: keyData.baseUrl, model: keyData.model,
         systemPrompt, userMessage, history, tools,
-        onDelta: chunk => onChunk?.(chunk),
+        onDelta: chunk => { streamed += chunk; onChunk?.(chunk) },
         onToolEvent: e => {
           if (e.status === 'running' && !usedTools.includes(e.name)) { usedTools.push(e.name); setLiveTools([...usedTools]) }
           setToolEvent(e.status === 'done' ? null : e)
@@ -45,7 +46,10 @@ export function useChat(profile, tab) {
       appendMessage(profile.id, tab, { role: 'assistant', content: text, tools: usedTools.length ? usedTools : undefined })
       return text
     } catch (err) {
-      if (err.name === 'AbortError') return ''
+      if (err.name === 'AbortError') {
+        if (streamed) appendMessage(profile.id, tab, { role: 'assistant', content: streamed, tools: usedTools.length ? usedTools : undefined })
+        return streamed
+      }
       setError(err.message)
       trackEvent('chat_error', { provider: keyData.provider })
       throw err
@@ -58,6 +62,6 @@ export function useChat(profile, tab) {
   const keyData = useApiKey()
   const supportsTools = useMemo(() => providerSupportsTools(keyData?.provider), [keyData?.provider])
 
-  // `streaming` aliases `busy` so tabs that destructured useLLM's `streaming` keep working.
+  // `streaming` aliases `busy` for tabs that read a `streaming` flag.
   return { send, stop, busy, streaming: busy, error, toolEvent, liveTools, supportsTools }
 }
