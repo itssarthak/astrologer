@@ -223,7 +223,7 @@ def compute_guna_milan(nak_a_name, gender_a, nak_b_name, gender_b, sign_a="", si
         "verdict": "Strong" if total >= 24 else "Acceptable" if total >= 18 else "Weak",
     }
 
-def compute_house_overlays(chart_a, chart_b):
+def compute_house_overlays(chart_a, chart_b, facts_b=None):
     signs_a = [h["sign"] for h in chart_a["d1Chart"]["houses"]]
     sign_to_house_a = {s: i + 1 for i, s in enumerate(signs_a)}
 
@@ -235,13 +235,20 @@ def compute_house_overlays(chart_a, chart_b):
             house_in_a = sign_to_house_a.get(sign, 0)
             if house_in_a:
                 nature, effect, note = _classify_overlay(planet, house_in_a)
+                f = (facts_b or {}).get(planet, {})
+                strength = f.get("strength")
+                base = 1.5 if effect in ("supportive", "challenging") else 0.0
+                weight = round(base * {"strong": 1.5, "adequate": 1.0, "weak": 0.5}.get(strength, 1.0), 2)
                 overlays.append({
                     "planet": planet,
                     "falls_in_house": house_in_a,
                     "house_meaning": HOUSE_MEANING.get(house_in_a, ""),
                     "sign": sign,
+                    "dignity": f.get("dignity"),
+                    "strength": strength,
                     "nature": nature,
                     "effect": effect,
+                    "weight": weight,
                     "note": note,
                 })
     return overlays

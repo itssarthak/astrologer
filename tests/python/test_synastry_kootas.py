@@ -39,6 +39,33 @@ def test_benefic_aspect_supportive_malefic_challenging():
     assert any(x["from"] == "Saturn" and x["effect"] == "challenging" for x in cross_aspects(a2, b2))
 
 
+from synastry import compute_house_overlays
+
+
+def test_overlay_carries_strength_when_facts_given():
+    # minimal charts: B has Jupiter in the sign that is A's 7th house.
+    chart_a = {"d1Chart": {"houses": [{"number": n, "sign": s, "occupants": []}
+               for n, s in enumerate(["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra",
+                                       "Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"], 1)]}}
+    chart_b = {"d1Chart": {"houses": [{"number": 1, "sign": "Aries",
+               "occupants": [{"celestialBody": "Jupiter", "sign": "Libra"}]}]}}
+    facts_b = {"Jupiter": {"dignity": "exalted", "strength": "strong"}}
+    ov = compute_house_overlays(chart_a, chart_b, facts_b)
+    j = next(o for o in ov if o["planet"] == "Jupiter")
+    assert j["falls_in_house"] == 7
+    assert j["strength"] == "strong" and j["dignity"] == "exalted"
+    assert j["weight"] >= 1.5  # strong benefic on the 7th weighs more
+
+
+def test_overlay_without_facts_still_works():
+    # back-compat: no facts arg -> no strength/dignity, weight defaults.
+    chart_a = {"d1Chart": {"houses": [{"number": 1, "sign": "Aries", "occupants": []}]}}
+    chart_b = {"d1Chart": {"houses": [{"number": 1, "sign": "Aries",
+               "occupants": [{"celestialBody": "Mars", "sign": "Aries"}]}]}}
+    ov = compute_house_overlays(chart_a, chart_b)
+    assert ov and ov[0]["planet"] == "Mars"
+
+
 def yoni(a, b, sa="", sb=""):
     return compute_guna_milan(a, "", b, "", sa, sb)["breakdown"]["yoni"]["score"]
 
