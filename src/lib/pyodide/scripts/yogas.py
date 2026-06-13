@@ -525,10 +525,11 @@ YOGA_RULES.extend([
 
 
 def _asraya(ctx, modality):
-    """True if every classical planet present sits in a sign of the given modality
-    (and at least one such planet exists). Planets with sign_idx < 0 disqualify the chart."""
+    """True if ALL seven classical planets sit in signs of the given modality.
+    Asraya yogas are classically defined over all seven grahas, so require the full set
+    (a complete chart always has them; this just avoids over-firing on a partial test chart)."""
     facts = _classical(ctx)
-    if not facts:
+    if len(facts) != 7:
         return False
     return all(isinstance(p.get("sign_idx"), int) and p["sign_idx"] in modality for p in facts)
 
@@ -694,7 +695,10 @@ UPACHAYA = {3, 6, 10, 11}
 
 
 def _is_strong(p):
-    return bool(p) and (p.get("dignity") in STRONG_DIGNITIES or p.get("strength") == "strong")
+    # 'strength' is set by adapter.chart_facts; 'is_strong' (shadbala MeetsRequirement) is set by
+    # planet_facts (what _context uses). Accept either, plus strong dignity.
+    return bool(p) and (p.get("dignity") in STRONG_DIGNITIES
+                        or p.get("strength") == "strong" or p.get("is_strong"))
 
 
 def _amala(ctx):
