@@ -1,148 +1,61 @@
+"""Vedic yoga detection as a rule registry over adapter facts.
+
+Each rule is a pure function of a context dict (planets + house lords + lagna),
+returning True when the yoga is present. jyotishganit supplies dignity, shadbala
+strength, graha-drishti aspects and conjunctions; we read those (never recompute).
+Clean-room implementations from classical (BPHS) definitions.
+"""
 import json
-
-SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
-         "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
-
-SIGN_LORD = {
-    "Aries": "Mars", "Taurus": "Venus", "Gemini": "Mercury", "Cancer": "Moon",
-    "Leo": "Sun", "Virgo": "Mercury", "Libra": "Venus", "Scorpio": "Mars",
-    "Sagittarius": "Jupiter", "Capricorn": "Saturn", "Aquarius": "Saturn", "Pisces": "Jupiter"
-}
-
-EXALTED = {"Sun": "Aries", "Moon": "Taurus", "Mars": "Capricorn",
-           "Mercury": "Virgo", "Jupiter": "Cancer", "Venus": "Pisces", "Saturn": "Libra"}
-
-OWN_SIGNS = {
-    "Sun": ["Leo"], "Moon": ["Cancer"], "Mars": ["Aries", "Scorpio"],
-    "Mercury": ["Gemini", "Virgo"], "Jupiter": ["Sagittarius", "Pisces"],
-    "Venus": ["Taurus", "Libra"], "Saturn": ["Capricorn", "Aquarius"]
-}
+from adapter import planet_facts, house_lords, lagna_sign, SIGN_IDX
 
 KENDRAS = {1, 4, 7, 10}
+TRIKONAS = {1, 5, 9}
+DUSTHANAS = {6, 8, 12}
+NODES = {"Rahu", "Ketu"}
+STRONG_DIGNITIES = {"exalted", "moolatrikona", "own"}
 
 
-def _planets(chart_json):
-    result = {}
-    for h in chart_json["d1Chart"]["houses"]:
-        for occ in h.get("occupants", []):
-            result[occ["celestialBody"]] = {
-                "sign": occ["sign"],
-                "house": h["number"],
-                "retrograde": occ.get("motion_type", "direct") == "retrograde",
-            }
-    return result
+def _context(chart_json):
+    """Build the per-chart context every rule consumes."""
+    return {
+        "planets": planet_facts(chart_json),
+        "lords": house_lords(chart_json),
+        "lagna_idx": SIGN_IDX[lagna_sign(chart_json)],
+    }
 
 
-def _is_strong(planet, sign):
-    return sign == EXALTED.get(planet) or sign in OWN_SIGNS.get(planet, [])
+def house_distance(from_house, to_house):
+    """1-based count from from_house to to_house (inclusive of the destination),
+    e.g. the 7th from H1 is distance 7; same house is 1."""
+    return ((to_house - from_house) % 12) + 1
 
 
-def _house_lords(lagna_idx):
-    return {i + 1: SIGN_LORD[SIGNS[(lagna_idx + i) % 12]] for i in range(12)}
+def planet_in(ctx, planet):
+    """The planet's fact dict, or None if not placed (e.g. some charts omit a body)."""
+    return ctx["planets"].get(planet)
+
+
+YOGA_RULES = []  # populated by later tasks
 
 
 def compute_yogas(chart_json):
-    planets = _planets(chart_json)
-    lagna_sign = chart_json["d1Chart"]["houses"][0]["sign"]
-    lagna_idx = SIGNS.index(lagna_sign)
-    lords = _house_lords(lagna_idx)
-    yogas = []
-
-    # --- Pancha Mahapurusha ---
-    for planet, name in [("Mars", "Ruchaka"), ("Mercury", "Bhadra"),
-                          ("Jupiter", "Hamsa"), ("Venus", "Malavya"), ("Saturn", "Sasa")]:
-        p = planets.get(planet)
-        if p and p["house"] in KENDRAS and _is_strong(planet, p["sign"]):
-            yogas.append({"name": name, "category": "Pancha Mahapurusha",
-                          "planet": planet, "house": p["house"]})
-
-    # --- Gaja-Kesari: Jupiter in kendra from Moon ---
-    moon = planets.get("Moon")
-    jup = planets.get("Jupiter")
-    if moon and jup:
-        diff = (jup["house"] - moon["house"]) % 12
-        if diff in {0, 3, 6, 9}:
-            yogas.append({"name": "Gaja-Kesari", "category": "Chandra",
-                          "planets": ["Moon", "Jupiter"]})
-
-    # --- Chandra-Mangal: Moon + Mars conjunction ---
-    mars = planets.get("Mars")
-    if moon and mars and moon["house"] == mars["house"]:
-        yogas.append({"name": "Chandra-Mangal", "category": "Chandra",
-                      "planets": ["Moon", "Mars"]})
-
-    # --- Budha-Aditya: Sun + Mercury conjunction ---
-    sun = planets.get("Sun")
-    merc = planets.get("Mercury")
-    if sun and merc and sun["house"] == merc["house"]:
-        yogas.append({"name": "Budha-Aditya", "category": "Solar",
-                      "planets": ["Sun", "Mercury"]})
-
-    # --- Adhi Yoga: Mercury/Jupiter/Venus in 6/7/8 from Moon ---
-    if moon:
-        target = {(moon["house"] - 1 + offset) % 12 + 1 for offset in (5, 6, 7)}
-        benefics = [p for p in ["Mercury", "Jupiter", "Venus"]
-                    if planets.get(p) and planets[p]["house"] in target]
-        if len(benefics) >= 2:
-            yogas.append({"name": "Adhi", "category": "Chandra", "planets": benefics})
-
-    # --- Sunapha: planet (not Sun) in 2nd from Moon ---
-    if moon:
-        h2 = moon["house"] % 12 + 1
-        for p in ["Mars", "Mercury", "Jupiter", "Venus", "Saturn"]:
-            if planets.get(p) and planets[p]["house"] == h2:
-                yogas.append({"name": "Sunapha", "category": "Chandra", "planet": p})
-                break
-
-    # --- Anapha: planet (not Sun) in 12th from Moon ---
-    if moon:
-        h12 = (moon["house"] - 2) % 12 + 1
-        for p in ["Mars", "Mercury", "Jupiter", "Venus", "Saturn"]:
-            if planets.get(p) and planets[p]["house"] == h12:
-                yogas.append({"name": "Anapha", "category": "Chandra", "planet": p})
-                break
-
-    # --- Vesi: planet in 2nd from Sun ---
-    if sun:
-        h2 = sun["house"] % 12 + 1
-        for p in ["Mars", "Mercury", "Jupiter", "Venus", "Saturn"]:
-            if planets.get(p) and planets[p]["house"] == h2:
-                yogas.append({"name": "Vesi", "category": "Solar", "planet": p})
-                break
-
-    # --- Vasi: planet in 12th from Sun ---
-    if sun:
-        h12 = (sun["house"] - 2) % 12 + 1
-        for p in ["Mars", "Mercury", "Jupiter", "Venus", "Saturn"]:
-            if planets.get(p) and planets[p]["house"] == h12:
-                yogas.append({"name": "Vasi", "category": "Solar", "planet": p})
-                break
-
-    # --- Lakshmi Yoga: Venus in own/exalted + 9H lord in kendra/trikona strong ---
-    venus = planets.get("Venus")
-    lord_9 = lords.get(9)
-    p9 = planets.get(lord_9) if lord_9 else None
-    if (venus and _is_strong("Venus", venus["sign"]) and
-            p9 and p9["house"] in KENDRAS | {5, 9} and _is_strong(lord_9, p9["sign"])):
-        yogas.append({"name": "Lakshmi", "category": "Raja", "planets": ["Venus", lord_9]})
-
-    # --- Dharma-Karmadhipati: 9H and 10H lords conjunct or in mutual kendra ---
-    lord_10 = lords.get(10)
-    if lord_9 and lord_10 and lord_9 != lord_10:
-        p10 = planets.get(lord_10)
-        if p9 and p10:
-            diff = (p9["house"] - p10["house"]) % 12
-            if diff in {0, 3, 6, 9}:
-                yogas.append({"name": "Dharma-Karmadhipati", "category": "Raja",
-                              "planets": [lord_9, lord_10]})
-
-    # --- Kesari: Jupiter in 1/4/7/10 from Lagna and strong ---
-    if jup and jup["house"] in KENDRAS and _is_strong("Jupiter", jup["sign"]):
-        yogas.append({"name": "Kesari", "category": "Jupiter", "house": jup["house"]})
-
-    return yogas
+    """Run every registered rule; return active yogas as {name, category, description}."""
+    ctx = _context(chart_json)
+    out = []
+    for rule in YOGA_RULES:
+        try:
+            if rule["detect"](ctx):
+                out.append({
+                    "name": rule["name"],
+                    "category": rule["category"],
+                    "description": rule["description"],
+                })
+        except Exception:
+            # A malformed/edge chart must never crash the whole reading — skip the rule.
+            continue
+    return out
 
 
 def compute_yogas_json(chart_json_str):
-    """Accepts JSON string, returns JSON string — for Pyodide JS."""
+    """Worker entry point: accepts JSON string, returns JSON string."""
     return json.dumps(compute_yogas(json.loads(chart_json_str)), default=str)
