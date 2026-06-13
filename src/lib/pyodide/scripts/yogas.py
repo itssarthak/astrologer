@@ -414,6 +414,89 @@ YOGA_RULES.append({
 })
 
 
+def _houses_ruled(ctx, planet):
+    """Houses (1..12) whose lord is `planet`."""
+    return [h for h, l in ctx["lords"].items() if l == planet]
+
+
+def _parivartana_classes(ctx):
+    """Set of parivartana classes present among house-lord pairs.
+
+    Scans unordered pairs of distinct house-lord planets that are placed and in a
+    sign-exchange (parivartana). For each such pair the involved houses are the houses
+    both planets rule; most-severe class wins: any house in {6,8,12} -> dainya,
+    elif any house == 3 -> khala, else -> maha."""
+    lords = ctx["lords"]
+    placed = sorted({l for l in lords.values()
+                     if l and ctx["planets"].get(l)})
+    classes = set()
+    for i, a in enumerate(placed):
+        for b in placed[i + 1:]:
+            if not _parivartana(ctx, a, b):
+                continue
+            involved = set(_houses_ruled(ctx, a)) | set(_houses_ruled(ctx, b))
+            if involved & DUSTHANAS:
+                classes.add("dainya")
+            elif 3 in involved:
+                classes.add("khala")
+            else:
+                classes.add("maha")
+    return classes
+
+
+YOGA_RULES.extend([
+    {"id": "parivartana_maha", "name": "Maha Parivartana", "category": "Parivartana",
+     "description": "A powerful exchange of strengths between two good areas of life — each lifts the other; rise in status and means.",
+     "detect": (lambda ctx: "maha" in _parivartana_classes(ctx))},
+    {"id": "parivartana_dainya", "name": "Dainya Parivartana", "category": "Parivartana (affliction)",
+     "description": "An exchange dragging in a difficult house — obstacles, dependence or setbacks in the linked areas; needs effort to overcome.",
+     "detect": (lambda ctx: "dainya" in _parivartana_classes(ctx))},
+    {"id": "parivartana_khala", "name": "Khala Parivartana", "category": "Parivartana",
+     "description": "A mixed exchange — alternating gains and reversals; results come unevenly, often through one's own initiative.",
+     "detect": (lambda ctx: "khala" in _parivartana_classes(ctx))},
+])
+
+
+def _dhana_5_9(ctx):
+    """The 5th lord and 9th lord are distinct and associated."""
+    l5, l9 = ctx["lords"].get(5), ctx["lords"].get(9)
+    if not l5 or not l9 or l5 == l9:
+        return False
+    return _associated(ctx, l5, l9)
+
+
+def _dhana_lagna(ctx):
+    """The lagna lord is distinct from and associated with the 2nd lord or the 11th lord."""
+    l1 = ctx["lords"].get(1)
+    if not l1:
+        return False
+    for h in (2, 11):
+        lh = ctx["lords"].get(h)
+        if lh and lh != l1 and _associated(ctx, l1, lh):
+            return True
+    return False
+
+
+def _daridra(ctx):
+    """Daridra: the 11th lord is placed in a dusthana house {6,8,12}."""
+    l11 = ctx["lords"].get(11)
+    p = ctx["planets"].get(l11) if l11 else None
+    return bool(p and p.get("house") in DUSTHANAS)
+
+
+YOGA_RULES.extend([
+    {"id": "dhana_5_9", "name": "Dhana (5th-9th lords)", "category": "Dhana",
+     "description": "The lords of fortune and past merit combine — wealth and luck flow, often with little struggle.",
+     "detect": _dhana_5_9},
+    {"id": "dhana_lagna", "name": "Dhana (lagna & wealth)", "category": "Dhana",
+     "description": "Your own efforts convert directly into income — a strong personal hand in building wealth.",
+     "detect": _dhana_lagna},
+    {"id": "daridra", "name": "Daridra", "category": "Dhana (affliction)",
+     "description": "Gains tend to leak away — income arrives with struggle and slips out through losses or obligations; deliberate financial discipline is the remedy.",
+     "detect": _daridra},
+])
+
+
 # --- Nabhasa core: Sankhya, Asraya, Dala (classical 7 planets only) ---
 
 def _sankhya_count(ctx):
