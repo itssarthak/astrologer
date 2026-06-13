@@ -55,3 +55,4 @@ public/pyodide-scripts/
 
 # Partial download artifacts
 *.download
+.vercel
