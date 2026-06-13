@@ -16,7 +16,9 @@
     "pyodide": "^0.29.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.17.0",
+    "remark-gfm": "^4.0.1",
     "uuid": "^14.0.0"
   },
   "devDependencies": {

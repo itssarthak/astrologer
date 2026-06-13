@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import ChatMessage from './ChatMessage'
 import ToolChips from './ToolChips'
+import Markdown from './Markdown'
 import LoadingSpinner from '../shared/LoadingSpinner'
 
 export default function ChatMessages({ messages, streaming, streamingContent = '', streamingTools = [], emptyState = null }) {
@@ -20,8 +21,8 @@ export default function ChatMessages({ messages, streaming, streamingContent = '
           {/* Tools shown live as the agent calls them, before the completion arrives */}
           <ToolChips tools={streamingTools} />
           {streamingContent ? (
-            <div className="max-w-[85%] px-3 py-2 rounded-2xl rounded-bl-sm text-sm leading-relaxed bg-surface border border-border text-text whitespace-pre-wrap">
-              {streamingContent}
+            <div className="max-w-[85%] px-3 py-2 rounded-2xl rounded-bl-sm text-sm leading-relaxed bg-surface border border-border text-text">
+              <Markdown>{streamingContent}</Markdown>
             </div>
           ) : (
             <div className="px-3 py-2 rounded-2xl rounded-bl-sm bg-surface border border-border">
