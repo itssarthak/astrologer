@@ -2,6 +2,7 @@ import json
 
 from relationships import planet_relation
 from adapter import chart_facts
+from aspects import orb_within_sign, tightness
 
 NAKSHATRA_NAMES = [
     "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
@@ -305,6 +306,10 @@ def _cross_one_direction(facts_from, owner, facts_to, out):
                 continue  # conjunction handled once, separately
             if dist in angles:
                 nature, effect, weight = _aspect_effect(pf, ff.get("strength"))
+                orb = orb_within_sign(ff.get("sign_degrees", 0.0), ft.get("sign_degrees", 0.0))
+                tight = tightness(orb)
+                mult = {"tight": 1.5, "active": 1.0, "loose": 0.7, "noted": 0.4}[tight]
+                weight = round(weight * mult, 2)
                 note = f"{owner}'s {pf} aspects their {pt}"
                 if pf == "Saturn" and pt in _AFFECTION:
                     note = f"{owner}'s Saturn restrains their {pt} — can feel heavy in affection"
@@ -312,7 +317,8 @@ def _cross_one_direction(facts_from, owner, facts_to, out):
                     note = f"{owner}'s {pf} warms their {pt} — affection and ease"
                 out.append({"from": pf, "from_owner": owner, "to": pt, "type": "aspect",
                             "dignity": ff.get("dignity"), "strength": ff.get("strength"),
-                            "nature": nature, "effect": effect, "weight": weight, "note": note})
+                            "nature": nature, "effect": effect, "weight": weight,
+                            "tightness": tight, "orb": orb, "note": note})
 
 
 def cross_aspects(facts_a, facts_b):
@@ -334,8 +340,13 @@ def cross_aspects(facts_a, facts_b):
                 na = pa in BENEFIC_PLANETS or pb in BENEFIC_PLANETS
                 ma = pa in MALEFIC_PLANETS or pb in MALEFIC_PLANETS
                 effect = "challenging" if ma and not na else "supportive" if na and not ma else "neutral"
+                orb = orb_within_sign(fa.get("sign_degrees", 0.0), fb.get("sign_degrees", 0.0))
+                tight = tightness(orb)
+                mult = {"tight": 1.5, "active": 1.0, "loose": 0.7, "noted": 0.4}[tight]
+                weight = round((1.0 if effect != "neutral" else 0.0) * mult, 2)
                 out.append({"from": pa, "from_owner": "A", "to": pb, "type": "conjunction",
-                            "nature": "mixed", "effect": effect, "weight": 1.0 if effect != "neutral" else 0.0,
+                            "nature": "mixed", "effect": effect, "weight": weight,
+                            "tightness": tight, "orb": orb,
                             "note": f"{pa} and {pb} sit together — fused energies"})
     return out
 
