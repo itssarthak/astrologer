@@ -1,5 +1,7 @@
 import json
 
+from relationships import planet_relation
+
 NAKSHATRA_NAMES = [
     "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
     "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni",
@@ -354,6 +356,19 @@ def marriage_factors(facts, lords):
             f"Venus is {venus.get('strength','unknown')}, Jupiter {jup.get('strength','unknown')}"
         ),
     }
+
+def dasha_overlap(maha_a, maha_b):
+    """Compatibility of the two people's current Mahadasha lords."""
+    if not maha_a or not maha_b:
+        return {"a_maha": maha_a, "b_maha": maha_b, "relation": "unknown",
+                "note": "current period unavailable for one or both"}
+    rel = planet_relation(maha_a, maha_b)
+    note = {
+        "friend": "Both are running periods whose lords are natural friends — easy timing alignment.",
+        "neutral": "Their current period lords are neutral to each other — neither helps nor hinders.",
+        "enemy": "Their current period lords are natural enemies — timing/priorities may clash now.",
+    }[rel]
+    return {"a_maha": maha_a, "b_maha": maha_b, "relation": rel, "note": note}
 
 def compute_synastry(chart_a_json, chart_b_json, gender_a="", gender_b=""):
     nak_a, _, sign_a = _moon_nakshatra(chart_a_json)

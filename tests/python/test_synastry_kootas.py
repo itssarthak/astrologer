@@ -39,7 +39,13 @@ def test_benefic_aspect_supportive_malefic_challenging():
     assert any(x["from"] == "Saturn" and x["effect"] == "challenging" for x in cross_aspects(a2, b2))
 
 
-from synastry import compute_house_overlays, marriage_factors
+from synastry import compute_house_overlays, marriage_factors, dasha_overlap
+
+
+def test_dasha_overlap_relation():
+    assert dasha_overlap("Sun", "Jupiter")["relation"] == "friend"
+    assert dasha_overlap("Sun", "Saturn")["relation"] == "enemy"
+    assert dasha_overlap(None, "Saturn")["relation"] == "unknown"
 
 
 def test_marriage_factors_reports_seventh_lord_and_karakas():
