@@ -1,15 +1,21 @@
+import { useContext } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { getProfiles, getActiveProfileId } from './lib/storage/profiles'
-import { getApiKey } from './lib/storage/keys'
+import { ProfilesContext } from './contexts/ProfilesContext'
+import { useApiKey } from './hooks/useApiKey'
 import Onboarding from './pages/Onboarding'
 import MainApp from './pages/MainApp'
 
+// Setup is complete when there's at least one profile, an active one, and an API key.
+// Reads from ProfilesContext + useApiKey so the guards re-render when any of these change
+// (e.g. the user clears their key from the sidebar while on /app).
+function useIsSetUp() {
+  const { profiles, activeProfileId } = useContext(ProfilesContext)
+  const key = useApiKey()
+  return profiles.length > 0 && !!activeProfileId && !!key
+}
+
 function RequireSetup({ children }) {
-  const profiles = getProfiles()
-  const activeId = getActiveProfileId()
-  const key = getApiKey()
-  if (profiles.length > 0 && activeId && key) return children
-  return <Navigate to="/onboarding" replace />
+  return useIsSetUp() ? children : <Navigate to="/onboarding" replace />
 }
 
 export default function AppRouter() {
@@ -23,9 +29,5 @@ export default function AppRouter() {
 }
 
 function RootRedirect() {
-  const profiles = getProfiles()
-  const activeId = getActiveProfileId()
-  const key = getApiKey()
-  if (profiles.length > 0 && activeId && key) return <Navigate to="/app" replace />
-  return <Navigate to="/onboarding" replace />
+  return <Navigate to={useIsSetUp() ? '/app' : '/onboarding'} replace />
 }
