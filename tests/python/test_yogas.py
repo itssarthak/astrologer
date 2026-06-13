@@ -3,6 +3,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../src/lib/pyodid
 from yogas import _context, compute_yogas, YOGA_RULES
 from yogas import _mahapurusha_present
 from yogas import (_gaja_kesari, _sunapha, _anapha, _durudhara, _kemadruma)
+from yogas import (_budha_aditya, _vesi, _vasi, _ubhayachari)
 
 
 def test_context_shape(sarthak_chart):
@@ -103,3 +104,28 @@ def test_kemadruma_fires_when_moon_isolated():
 def test_kemadruma_absent_when_planet_flanks_moon():
     ctx = _ctx({"Moon": {"house": 5}, "Mars": {"house": 6}})
     assert _kemadruma(ctx) is False
+
+
+def test_budha_aditya_fires_sun_mercury_same_house():
+    ctx = _ctx({"Sun": {"house": 3}, "Mercury": {"house": 3}})
+    assert _budha_aditya(ctx) is True
+    ctx2 = _ctx({"Sun": {"house": 3}, "Mercury": {"house": 5}})
+    assert _budha_aditya(ctx2) is False
+
+
+def test_vesi_fires_planet_2nd_from_sun():
+    # Sun H1, planet (Jupiter) in H2 = 2nd from Sun. Moon/nodes excluded.
+    ctx = _ctx({"Sun": {"house": 1}, "Jupiter": {"house": 2}})
+    assert _vesi(ctx) is True
+
+
+def test_vasi_fires_planet_12th_from_sun():
+    ctx = _ctx({"Sun": {"house": 5}, "Saturn": {"house": 4}})
+    assert _vasi(ctx) is True
+
+
+def test_ubhayachari_requires_both_sides_of_sun():
+    ctx = _ctx({"Sun": {"house": 5}, "Jupiter": {"house": 6}, "Saturn": {"house": 4}})
+    assert _ubhayachari(ctx) is True
+    ctx2 = _ctx({"Sun": {"house": 5}, "Jupiter": {"house": 6}})
+    assert _ubhayachari(ctx2) is False

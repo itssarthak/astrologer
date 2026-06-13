@@ -141,6 +141,49 @@ YOGA_RULES.extend([
 ])
 
 
+def _budha_aditya(ctx):
+    """Sun and Mercury together (same house) — intelligence yoga."""
+    sun, merc = planet_in(ctx, "Sun"), planet_in(ctx, "Mercury")
+    return bool(sun and merc and sun["house"] == merc["house"])
+
+
+def _vesi(ctx):
+    """A planet other than the Moon (and not a node) in the 2nd from the Sun."""
+    sun = planet_in(ctx, "Sun")
+    if not sun:
+        return False
+    return len(_planets_in_house_from(ctx, sun["house"], 2, exclude={"Sun", "Moon"} | NODES)) > 0
+
+
+def _vasi(ctx):
+    """A planet other than the Moon (and not a node) in the 12th from the Sun."""
+    sun = planet_in(ctx, "Sun")
+    if not sun:
+        return False
+    return len(_planets_in_house_from(ctx, sun["house"], 12, exclude={"Sun", "Moon"} | NODES)) > 0
+
+
+def _ubhayachari(ctx):
+    """Planets flanking the Sun on both sides (2nd AND 12th) — Vesi + Vasi together."""
+    return _vesi(ctx) and _vasi(ctx)
+
+
+YOGA_RULES.extend([
+    {"id": "budha_aditya", "name": "Budha-Aditya", "category": "Surya",
+     "description": "Bright, analytical intelligence — clear thinking, learning and communication.",
+     "detect": _budha_aditya},
+    {"id": "vesi", "name": "Vesi", "category": "Surya",
+     "description": "Steady, balanced disposition — a measured, principled nature.",
+     "detect": _vesi},
+    {"id": "vasi", "name": "Vasi", "category": "Surya",
+     "description": "Capable and persuasive — gains through skill and goodwill.",
+     "detect": _vasi},
+    {"id": "ubhayachari", "name": "Ubhayachari", "category": "Surya",
+     "description": "All-round comfort and standing — well-supported, healthy, respected.",
+     "detect": _ubhayachari},
+])
+
+
 def compute_yogas(chart_json):
     """Run every registered rule; return active yogas as {name, category, description}."""
     ctx = _context(chart_json)
