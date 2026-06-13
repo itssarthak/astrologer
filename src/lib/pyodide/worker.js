@@ -30,7 +30,6 @@ function post(msg) { self.postMessage(msg) }
 async function init() {
   post({ type: 'progress', message: 'Downloading Python runtime (~5 MB)...' })
 
-  // eslint-disable-next-line import/no-unresolved
   const { loadPyodide } = await import(/* @vite-ignore */ PYODIDE_CDN)
   const py = await loadPyodide()
 
