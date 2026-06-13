@@ -17,11 +17,11 @@ test('renders SVG with chart content', () => {
   expect(svg).toBeInTheDocument()
 })
 
-test('renders lagna sign in center', () => {
+test('renders the rashi (sign) number for house 1', () => {
   const { container } = render(<KundliChart chart={mockChart} />)
-  // Find SVG text nodes containing 'Leo' (the ascendant sign, not in any house)
-  const lagnaText = Array.from(container.querySelectorAll('text')).find(el => el.textContent === 'Leo')
-  expect(lagnaText).toBeInTheDocument()
+  // House 1's sign is Aquarius (11); the chart labels each house with its sign number.
+  const signNum = Array.from(container.querySelectorAll('text')).find(el => el.textContent === '11')
+  expect(signNum).toBeInTheDocument()
 })
 
 test('renders Sun abbreviation in house 1', () => {
@@ -29,7 +29,7 @@ test('renders Sun abbreviation in house 1', () => {
   expect(screen.getByText('Su')).toBeInTheDocument()
 })
 
-test('renders retrograde suffix R for retrograde planets', () => {
+test('marks retrograde planets with the ℞ symbol', () => {
   const chartWithRetro = {
     ascendant: { sign: 'Leo' },
     houses: Array.from({ length: 12 }, (_, i) => ({
@@ -39,7 +39,7 @@ test('renders retrograde suffix R for retrograde planets', () => {
     }))
   }
   const { container } = render(<KundliChart chart={chartWithRetro} />)
-  const retroText = Array.from(container.querySelectorAll('text')).find(el => el.textContent === 'SaR')
+  const retroText = Array.from(container.querySelectorAll('text')).find(el => el.textContent === 'Sa℞')
   expect(retroText).toBeInTheDocument()
 })
 

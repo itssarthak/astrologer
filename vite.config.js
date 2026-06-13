@@ -115,6 +115,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./tests/setup.js'],
     globals: true,
+    // tests/e2e/*.spec.js are Playwright tests — run via `npx playwright test`, not vitest.
+    exclude: ['**/node_modules/**', '**/dist/**', 'tests/e2e/**'],
   },
   optimizeDeps: {
     exclude: ['pyodide'],
