@@ -92,4 +92,19 @@ test.describe('ChatToolbar', () => {
     await expect(page).toHaveURL(/\/app/)
     await expect(page.getByRole('button', { name: /clear chat/i })).toBeDisabled()
   })
+
+  test('blank chat shows the astrologer greeting, personalised with the profile name', async ({ page }) => {
+    await seed(page, false) // no history → greeting should show
+    await page.goto(BASE)
+    await expect(page).toHaveURL(/\/app/)
+    await expect(page.getByText(/Namaste, Fixture Person/)).toBeVisible()
+  })
+
+  test('greeting is hidden once the chat has messages', async ({ page }) => {
+    await seed(page, true) // existing history → no greeting
+    await page.goto(BASE)
+    await expect(page).toHaveURL(/\/app/)
+    await expect(page.getByText('Greetings, seeker.')).toBeVisible()
+    await expect(page.getByText(/Namaste, Fixture Person/)).toHaveCount(0)
+  })
 })
