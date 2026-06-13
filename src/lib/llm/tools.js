@@ -70,6 +70,7 @@ export const TOOLS = [
       if (!p?.chart) throw new Error('No active profile chart to compute transits against.')
       const lagna = p.chart?.d1Chart?.houses?.find(h => h.number === 1)?.sign
       const t = await computeTransit(lagna, p.lat, p.lon, p.timezone_offset)
+      if (t.error) throw new Error(t.error)
       return {
         date: t.date,
         panchanga: t.panchanga,

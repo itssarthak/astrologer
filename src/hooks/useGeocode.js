@@ -12,31 +12,38 @@ export function useGeocode() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const debounceRef = useRef(null)
+  const searchAbortRef = useRef(null)
 
   const search = useCallback(query => {
     if (!query || query.length < 2) { setResults([]); return }
 
     clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
+      // Cancel any in-flight search so a slow earlier response can't land after a newer
+      // one and overwrite the results with stale matches.
+      searchAbortRef.current?.abort()
+      const controller = new AbortController()
+      searchAbortRef.current = controller
       setLoading(true)
       setError(null)
       try {
         const url = `${NOMINATIM}?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`
-        const resp = await fetch(url, { headers: { 'Accept-Language': 'en' } })
+        const resp = await fetch(url, { headers: { 'Accept-Language': 'en' }, signal: controller.signal })
         if (!resp.ok) throw new Error('Geocoding failed')
         const data = await resp.json()
         setResults(data)
       } catch (err) {
+        if (err.name === 'AbortError') return // superseded by a newer search — ignore
         setError(err.message)
         setResults([])
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) setLoading(false)
       }
     }, 400)
   }, [])
 
-  const fetchTimezone = useCallback(async (lat, lon) => {
-    const resp = await fetch(`${TIMEAPI}?latitude=${lat}&longitude=${lon}`)
+  const fetchTimezone = useCallback(async (lat, lon, { signal } = {}) => {
+    const resp = await fetch(`${TIMEAPI}?latitude=${lat}&longitude=${lon}`, { signal })
     if (!resp.ok) throw new Error('Timezone lookup failed')
     const data = await resp.json()
     if (data.currentUtcOffset?.seconds != null) return data.currentUtcOffset.seconds / 3600

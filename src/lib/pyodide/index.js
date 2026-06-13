@@ -14,24 +14,32 @@ const SPICA_HIP_RECORD =
 let _pyodide = null
 let _initPromise = null
 
+// Marshal a value for a Python function that does json.loads on its argument: pass strings
+// through untouched, stringify objects. Guards against the double-encode crash that happens
+// if an already-serialized string is JSON.stringify'd again.
+function asJson(value) {
+  return typeof value === 'string' ? value : JSON.stringify(value)
+}
+
 async function _init(onMessage) {
+  onMessage?.('Downloading Python runtime (~5 MB)...')
+
+  // loadPyodide has no progress events — show timed sub-steps so the user
+  // knows things are moving during the long first-load WASM download
+  const subSteps = [
+    [4000,  'Unpacking WASM binary...'],
+    [9000,  'Initializing Python interpreter...'],
+    [14000, 'Loading standard library...'],
+    [19000, 'Python ready, installing packages...'],
+  ]
+  let timers = subSteps.map(([ms, msg]) => setTimeout(() => onMessage?.(msg), ms))
+  const clearTimers = () => { timers.forEach(clearTimeout); timers = [] }
+
   try {
-    onMessage?.('Downloading Python runtime (~5 MB)...')
-
-    // loadPyodide has no progress events — show timed sub-steps so the user
-    // knows things are moving during the long first-load WASM download
-    const subSteps = [
-      [4000,  'Unpacking WASM binary...'],
-      [9000,  'Initializing Python interpreter...'],
-      [14000, 'Loading standard library...'],
-      [19000, 'Python ready, installing packages...'],
-    ]
-    const timers = subSteps.map(([ms, msg]) => setTimeout(() => onMessage?.(msg), ms))
-
     // eslint-disable-next-line import/no-unresolved
     const { loadPyodide } = await import(/* @vite-ignore */ PYODIDE_CDN)
     const pyodide = await loadPyodide()
-    timers.forEach(clearTimeout)
+    clearTimers()
 
     onMessage?.('Loading micropip...')
     await pyodide.loadPackage(['micropip'])
@@ -94,8 +102,10 @@ _astro.loader = Loader('/home/pyodide')
 
     onMessage?.('Python engine ready')
     return pyodide
-  } catch (err) {
-    throw err
+  } finally {
+    // Clear any still-pending sub-step timers so they don't fire stale messages
+    // after a failed init (no-op if already cleared on the success path).
+    clearTimers()
   }
 }
 
@@ -136,7 +146,7 @@ export async function computeYogasFallback(chartJson) {
 import sys; sys.path.insert(0, '/home/pyodide')
 from yogas import compute_yogas_json
 `)
-  const result = py.globals.get('compute_yogas_json')(JSON.stringify(chartJson))
+  const result = py.globals.get('compute_yogas_json')(asJson(chartJson))
   return JSON.parse(result)
 }
 
@@ -146,7 +156,7 @@ export async function computeDoshasFallback(chartJson) {
 import sys; sys.path.insert(0, '/home/pyodide')
 from doshas import compute_doshas_json
 `)
-  const result = py.globals.get('compute_doshas_json')(JSON.stringify(chartJson))
+  const result = py.globals.get('compute_doshas_json')(asJson(chartJson))
   return JSON.parse(result)
 }
 
@@ -167,7 +177,7 @@ import sys; sys.path.insert(0, '/home/pyodide')
 from synastry import compute_synastry_json
 `)
   const result = py.globals.get('compute_synastry_json')(
-    JSON.stringify(chartJsonA), JSON.stringify(chartJsonB), genderA ?? '', genderB ?? ''
+    asJson(chartJsonA), asJson(chartJsonB), genderA ?? '', genderB ?? ''
   )
   return JSON.parse(result)
 }
