@@ -1,7 +1,7 @@
 // src/components/Tabs/ChartTab.jsx
 import { useState, useContext } from 'react'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
-import { useLLM } from '../../hooks/useLLM'
+import { useChat } from '../../hooks/useChat'
 import { useChatThread } from '../../hooks/useChatThread'
 import { formatChartContext, activeMahadasha } from '../../lib/prompts/formatters'
 import { useReportBusy } from '../../contexts/BusyContext'
@@ -14,7 +14,7 @@ const SUB_TABS = ['D1', 'D9']
 
 export default function ChartTab() {
   const { activeProfile } = useContext(ProfilesContext)
-  const { send, streaming, error, stop } = useLLM(activeProfile, 'chart')
+  const { send, streaming, error, stop } = useChat(activeProfile, 'chart')
   useReportBusy(streaming)
   const [subTab, setSubTab] = useState('D1')
   const { messages, streamingContent, reload, clearChat, submit } = useChatThread(activeProfile, 'chart')

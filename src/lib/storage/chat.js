@@ -17,7 +17,7 @@ export function getHistory(profileId, tab) {
 export function appendMessage(profileId, tab, message) {
   const history = getHistory(profileId, tab)
   // Stable id for stable React keys. Senders pass only {role, content, tools?}; never trust
-  // these ids in provider requests — useLLM strips messages down to {role, content}.
+  // these ids in provider requests — the chat hook strips messages down to {role, content} before sending.
   history.push({ id: uuidv4(), ...message })
   localStorage.setItem(storageKey(profileId, tab), JSON.stringify(history))
 }

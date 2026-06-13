@@ -228,8 +228,3 @@ export const TOOLS = [
     },
   },
 ]
-
-export const TOOLS_BY_NAME = Object.fromEntries(TOOLS.map(t => [t.name, t]))
-
-// Schema-only view (no execute fn) for sending to the model.
-export const TOOL_SCHEMAS = TOOLS.map(({ name, description, parameters }) => ({ name, description, parameters }))
