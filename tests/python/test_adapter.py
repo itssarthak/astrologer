@@ -7,7 +7,7 @@ def test_planet_facts_has_core_fields(sarthak_chart):
     facts = planet_facts(sarthak_chart)
     assert "Saturn" in facts
     s = facts["Saturn"]
-    for key in ("sign", "sign_idx", "house", "longitude", "nakshatra", "pada",
+    for key in ("sign", "sign_idx", "house", "sign_degrees", "nakshatra", "pada",
                 "retrograde", "dignity", "rupas", "min_required", "meets", "is_strong",
                 "conjuncts", "aspects_gives", "aspects_receives"):
         assert key in s, f"missing {key}"
@@ -78,3 +78,16 @@ def test_chart_facts_json_roundtrips(sarthak_chart):
     s = chart_facts_json(_json.dumps(sarthak_chart), "2020-01-01")
     parsed = _json.loads(s)
     assert parsed["lagna"] == "Aquarius"
+
+
+def test_dasha_chain_before_first_period_clamps_to_first(sarthak_chart):
+    # ref before the chart's earliest mahadasha should clamp to the first period,
+    # not silently return the last one.
+    chain = current_dasha_chain(sarthak_chart, ref_date="1990-01-01")
+    assert chain["maha"] == "Ketu"  # Ketu is the earliest (balance-at-birth) mahadasha
+
+
+def test_tanya_moon_nakshatra_smoke(tanya_chart):
+    # Parity smoke anchor from the WhatsApp astro skill (DOB 11 Jul 1998 19:10 IST, Agra).
+    facts = planet_facts(tanya_chart)
+    assert facts["Moon"]["nakshatra"] == "Shravana"

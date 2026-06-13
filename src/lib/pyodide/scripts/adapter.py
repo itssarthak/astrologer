@@ -26,7 +26,7 @@ def planet_facts(chart_json):
                 "sign": occ["sign"],
                 "sign_idx": SIGN_IDX.get(occ["sign"], -1),
                 "house": h["number"],
-                "longitude": round(float(occ.get("signDegrees", 0.0)), 4),
+                "sign_degrees": round(float(occ.get("signDegrees", 0.0)), 4),
                 "nakshatra": occ.get("nakshatra", ""),
                 "pada": occ.get("pada", 1),
                 "retrograde": occ.get("motion_type", "direct") == "retrograde",
@@ -65,15 +65,19 @@ def house_lords(chart_json):
 
 def _active_period(periods, ref):
     """Given {name: {start, end, <subkey>?}}, return (name, node) whose [start,end) holds ref.
-    Dates are 'YYYY-MM-DD' strings — lexicographic compare is correct for ISO dates."""
-    for name, node in (periods or {}).items():
+    Dates are 'YYYY-MM-DD' strings — lexicographic compare is correct for ISO dates.
+    If ref falls outside the covered range, clamp to the first period (if before it
+    starts) or the last period (if past the end)."""
+    items = list((periods or {}).items())
+    for name, node in items:
         if node.get("start", "9999") <= ref < node.get("end", "9999"):
             return name, node
-    # ref past the last end (e.g. tree truncated) -> fall back to the last period.
-    if periods:
-        name = list(periods.keys())[-1]
-        return name, periods[name]
-    return None, {}
+    if not items:
+        return None, {}
+    first_name, first = items[0]
+    if ref < first.get("start", "9999"):
+        return first_name, first
+    return items[-1]
 
 
 def current_dasha_chain(chart_json, ref_date=None):
