@@ -19,6 +19,12 @@ OWNED_SIGNS = {}
 for _sign, _lord in SIGN_LORD.items():
     OWNED_SIGNS.setdefault(_lord, []).append(_sign)
 
+# The planet exalted in each sign (signs with no exaltation are omitted).
+EXALTED_IN_SIGN = {
+    "Aries": "Sun", "Taurus": "Moon", "Cancer": "Jupiter", "Virgo": "Mercury",
+    "Libra": "Saturn", "Capricorn": "Mars", "Pisces": "Venus",
+}
+
 
 def _aspects(ctx, giver, receiver):
     """True if `giver` casts a graha-drishti onto `receiver` (read from the
@@ -332,6 +338,40 @@ YOGA_RULES.extend([
      "description": "The 12th lord falls in a dusthana — losses convert to gains; thrift and good conduct bring quiet prosperity.",
      "detect": (lambda ctx: _viparita(ctx, 12))},
 ])
+
+
+def _kendra_from(ctx, planet, anchor_house):
+    """True if `planet` sits in a kendra (1/4/7/10) counted from anchor_house."""
+    p = ctx["planets"].get(planet)
+    return bool(p and house_distance(anchor_house, p["house"]) in KENDRAS)
+
+
+def _neecha_bhanga(ctx):
+    """Neecha Bhanga Raja yoga: a planet is debilitated, but its weakness is cancelled
+    because either the dispositor of its sign OR the planet exalted in that sign sits in
+    a kendra from the lagna or from the Moon."""
+    moon = ctx["planets"].get("Moon")
+    moon_house = moon["house"] if moon else None
+    for name, p in ctx["planets"].items():
+        if name in NODES or p["dignity"] != "debilitated":
+            continue
+        rescuers = [r for r in (SIGN_LORD.get(p["sign"]), EXALTED_IN_SIGN.get(p["sign"])) if r]
+        for r in rescuers:
+            rp = ctx["planets"].get(r)
+            if not rp:
+                continue
+            if rp["house"] in KENDRAS:  # kendra from the lagna (house is lagna-relative)
+                return True
+            if moon_house and _kendra_from(ctx, r, moon_house):
+                return True
+    return False
+
+
+YOGA_RULES.append({
+    "id": "neecha_bhanga", "name": "Neecha Bhanga Raja Yoga", "category": "Raja (cancellation)",
+    "description": "A debilitated planet's weakness is cancelled — an early struggle in that area of life tends to reverse into notable strength and success later.",
+    "detect": _neecha_bhanga,
+})
 
 
 def compute_yogas(chart_json):

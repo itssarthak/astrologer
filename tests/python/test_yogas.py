@@ -8,6 +8,7 @@ from yogas import (_chandra_mangal, _adhi, _kesari, _lakshmi, _dharma_karmadhipa
 from yogas import _aspects, _parivartana, _associated, OWNED_SIGNS
 from yogas import _raja_kendra_trikona
 from yogas import _viparita
+from yogas import _neecha_bhanga, EXALTED_IN_SIGN
 
 
 def test_context_shape(sarthak_chart):
@@ -273,3 +274,32 @@ def test_viparita_sarala_and_vimala():
                lords={8: "Saturn", 12: "Jupiter"})
     assert _viparita(ctx, 8) is True
     assert _viparita(ctx, 12) is True
+
+
+def test_neecha_bhanga_via_dispositor_in_kendra_from_lagna():
+    # Sun debilitated in Libra; dispositor of Libra is Venus; Venus in a kendra (H4) from lagna.
+    ctx = _ctx({"Sun": {"house": 7, "sign": "Libra", "dignity": "debilitated"},
+                "Venus": {"house": 4, "sign": "Cancer"}})
+    assert _neecha_bhanga(ctx) is True
+
+
+def test_neecha_bhanga_via_exaltation_lord_in_kendra():
+    # Sun debilitated in Libra; the planet exalted in Libra is Saturn; Saturn in kendra (H10).
+    ctx = _ctx({"Sun": {"house": 7, "sign": "Libra", "dignity": "debilitated"},
+                "Venus": {"house": 3, "sign": "Gemini"},
+                "Saturn": {"house": 10, "sign": "Capricorn"}})
+    assert EXALTED_IN_SIGN["Libra"] == "Saturn"
+    assert _neecha_bhanga(ctx) is True
+
+
+def test_neecha_bhanga_absent_when_no_cancellation():
+    # Sun debilitated in Libra; dispositor Venus and exalt-lord Saturn both in non-kendra, non-Moon-kendra houses.
+    ctx = _ctx({"Sun": {"house": 7, "sign": "Libra", "dignity": "debilitated"},
+                "Venus": {"house": 3, "sign": "Gemini"},
+                "Saturn": {"house": 6, "sign": "Virgo"}})
+    assert _neecha_bhanga(ctx) is False
+
+
+def test_neecha_bhanga_absent_when_no_debilitated_planet():
+    ctx = _ctx({"Sun": {"house": 1, "sign": "Aquarius", "dignity": "neutral"}})
+    assert _neecha_bhanga(ctx) is False
