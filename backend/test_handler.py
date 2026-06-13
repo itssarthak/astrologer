@@ -50,6 +50,18 @@ def test_bad_numeric_returns_400():
     assert resp["statusCode"] == 400
 
 
+def test_accepts_web_client_timezone_offset_key():
+    """The web client posts birthData with `timezone_offset`, not `tz_offset`.
+    Regression guard: the handler must accept that spelling, else every real
+    request 400s and the Lambda catalog silently never gets used."""
+    body = {k: v for k, v in VALID_BODY.items() if k != "tz_offset"}
+    body["timezone_offset"] = 5.5
+    resp = lambda_handler(make_event(body=body), None)
+    # 400 would mean the key was rejected. Without pyjhora it reaches the 500 compute
+    # path; either way the input-validation stage passed.
+    assert resp["statusCode"] != 400, resp["body"]
+
+
 @pytest.mark.skipif(not HAS_PYJHORA, reason="pyjhora/pyswisseph not installed")
 def test_valid_request_returns_yogas_and_doshas():
     resp = lambda_handler(make_event(body=VALID_BODY), None)
