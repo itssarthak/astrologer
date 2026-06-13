@@ -2,7 +2,7 @@
 // an async `execute(args)` that runs in the browser — calling the in-browser Pyodide compute
 // functions, reading saved profiles, geocoding, or web searching. Returns stay concise so
 // they fit comfortably back into the model's context.
-import { computeChart, computeTransit, computeSynastry, computeNumerology } from '../pyodide/index'
+import { computeChart, computeTransit, computeSynastry, computeNumerology, computeChartFacts } from '../pyodide/index'
 import { getProfiles, getActiveProfile } from '../storage/profiles'
 import { searchPlaces, fetchTimezoneOffset } from '../geocode'
 
@@ -42,7 +42,7 @@ export const TOOLS = [
   },
   {
     name: 'get_chart',
-    description: "Get a saved profile's natal chart summary — ascendant, planetary placements, active dasha, yogas and doshas. Defaults to the active profile if no name is given.",
+    description: "Get a saved profile's natal chart: ascendant, planetary placements with dignity and strength, the current dasha period chain, active yogas and doshas. Defaults to the active profile if no name is given.",
     parameters: {
       type: 'object',
       properties: { profile_name: { type: 'string', description: 'Name of a saved profile. Omit for the active profile.' } },
@@ -51,14 +51,46 @@ export const TOOLS = [
     async execute({ profile_name }) {
       const profile = findProfileByName(profile_name)
       if (!profile?.chart) throw new Error(`No saved chart found for "${profile_name ?? 'active profile'}".`)
-      const dasha = profile.chart?.dashas?.current
+      const facts = await computeChartFacts(profile.chart)
+      // Strength-annotated planets the model can weight (was: name+sign only).
+      const planets = Object.entries(facts.planets).map(([name, f]) =>
+        `${name}: ${f.sign} (H${f.house}), ${f.dignity}, ${f.strength}${f.retrograde ? ', retrograde' : ''}`)
+      const d = facts.dasha
       return {
         name: profile.name,
-        ...summarizeChart(profile.chart),
-        active_dasha: dasha ? Object.keys(dasha)[0] : undefined,
+        ascendant: facts.lagna,
+        planets,
+        // Full running period, not just the mahadasha label.
+        dasha: [d.maha, d.antar, d.pratyantar].filter(Boolean).join(' → '),
         yogas: (profile.yogas ?? []).map(y => y.name ?? y).slice(0, 12),
         doshas: Object.entries(profile.doshas ?? {}).filter(([, v]) => v?.present).map(([k]) => k),
       }
+    },
+  },
+  {
+    name: 'get_divisional',
+    description: "Get a saved profile's divisional (varga) chart placements. D9 (Navamsa) is the key chart for marriage and dharma questions; also D10 (career), D7 (children), D2/D3/D12 etc. Defaults to the active profile and D9.",
+    parameters: {
+      type: 'object',
+      properties: {
+        varga: { type: 'string', description: 'Divisional chart id: d2, d3, d4, d7, d9, d10, d12, d16, d20, d24, d27, d30, d40, d45, d60. Default d9.' },
+        profile_name: { type: 'string', description: 'Name of a saved profile. Omit for the active profile.' },
+      },
+      required: [],
+    },
+    async execute({ varga, profile_name }) {
+      const profile = findProfileByName(profile_name)
+      if (!profile?.chart) throw new Error(`No saved chart found for "${profile_name ?? 'active profile'}".`)
+      const key = (varga || 'd9').toLowerCase()
+      const dv = profile.chart?.divisionalCharts?.[key]
+      if (!dv?.houses) throw new Error(`Divisional chart "${key}" is not available for ${profile.name}.`)
+      const placements = []
+      for (const h of dv.houses) {
+        for (const occ of h.occupants ?? []) {
+          placements.push(`${occ.celestialBody} in ${occ.sign} (H${h.number})${occ.motion_type === 'retrograde' ? ' retro' : ''}`)
+        }
+      }
+      return { name: profile.name, varga: key, ascendant: dv.ascendant, placements }
     },
   },
   {

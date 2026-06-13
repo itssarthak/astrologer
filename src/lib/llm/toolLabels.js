@@ -4,8 +4,9 @@
 // keys to the tool registry so a newly-added tool can't silently fall back to its raw name.
 export const TOOL_LABELS = {
   list_profiles:      { active: 'Looking up your profiles',  past: 'Looked up your profiles' },
-  get_chart:          { active: 'Fetching the birth chart',  past: 'Fetched the birth chart' },
-  get_today_transit:  { active: "Reading today's transits",  past: "Read today's transits" },
+  get_chart:          { active: 'Fetching the birth chart',        past: 'Fetched the birth chart' },
+  get_divisional:     { active: 'Reading divisional charts',       past: 'Read divisional charts' },
+  get_today_transit:  { active: "Reading today's transits",        past: "Read today's transits" },
   match_profiles:     { active: 'Checking compatibility',    past: 'Checked compatibility' },
   compute_numerology: { active: 'Crunching the numbers',     past: 'Crunched the numbers' },
   geocode_place:      { active: 'Looking up the location',   past: 'Looked up the location' },
