@@ -605,6 +605,134 @@ YOGA_RULES.extend([
 ])
 
 
+# --- Named classical yogas ---
+
+UPACHAYA = {3, 6, 10, 11}
+
+
+def _is_strong(p):
+    return bool(p) and (p.get("dignity") in STRONG_DIGNITIES or p.get("strength") == "strong")
+
+
+def _amala(ctx):
+    """A natural benefic in the 10th from the lagna, or the 10th from the Moon."""
+    for b in NATURAL_BENEFICS:
+        p = planet_in(ctx, b)
+        if p and p.get("house") == 10:
+            return True
+    moon = planet_in(ctx, "Moon")
+    if moon and moon.get("house"):
+        for b in NATURAL_BENEFICS:
+            p = planet_in(ctx, b)
+            if p and p.get("house") and house_distance(moon["house"], p["house"]) == 10:
+                return True
+    return False
+
+
+def _saraswati(ctx):
+    """Mercury, Jupiter and Venus all in {1,2,4,5,7,9,10}, with Jupiter strong."""
+    good = {1, 2, 4, 5, 7, 9, 10}
+    merc, jup, ven = planet_in(ctx, "Mercury"), planet_in(ctx, "Jupiter"), planet_in(ctx, "Venus")
+    if not (merc and jup and ven):
+        return False
+    if not all(p.get("house") in good for p in (merc, jup, ven)):
+        return False
+    return _is_strong(jup)
+
+
+def _vasumati(ctx):
+    """At least two of {Mercury,Jupiter,Venus} in the upachaya houses {3,6,10,11}."""
+    count = sum(1 for b in BENEFICS
+                if (p := planet_in(ctx, b)) and p.get("house") in UPACHAYA)
+    return count >= 2
+
+
+def _lagnadhi(ctx):
+    """Two or more of {Mercury,Jupiter,Venus} in the 6th/7th/8th from the lagna."""
+    count = sum(1 for b in BENEFICS
+                if (p := planet_in(ctx, b)) and p.get("house") in {6, 7, 8})
+    return count >= 2
+
+
+def _parvata(ctx):
+    """A natural benefic in a kendra, and no natural malefic in house 6 or 8."""
+    if not any((p := planet_in(ctx, b)) and p.get("house") in KENDRAS for b in NATURAL_BENEFICS):
+        return False
+    for m in NATURAL_MALEFICS:
+        p = planet_in(ctx, m)
+        if p and p.get("house") in {6, 8}:
+            return False
+    return True
+
+
+def _chamara(ctx):
+    """Lagna lord exalted, in a kendra, and aspected by Jupiter."""
+    l1 = ctx["lords"].get(1)
+    if not l1:
+        return False
+    p = planet_in(ctx, l1)
+    if not p:
+        return False
+    return p.get("dignity") == "exalted" and p.get("house") in KENDRAS \
+        and _aspects(ctx, "Jupiter", l1)
+
+
+def _kalanidhi(ctx):
+    """Jupiter in the 2nd or 5th, conjoined or aspected by BOTH Mercury and Venus."""
+    jup = planet_in(ctx, "Jupiter")
+    if not jup or jup.get("house") not in {2, 5}:
+        return False
+    for other in ("Mercury", "Venus"):
+        p = planet_in(ctx, other)
+        if not p:
+            return False
+        if p.get("house") == jup.get("house") or _aspects(ctx, other, "Jupiter"):
+            continue
+        return False
+    return True
+
+
+def _kahala(ctx):
+    """4th and 9th lords (distinct, both placed) in mutual kendras, lagna lord strong."""
+    l4, l9, l1 = ctx["lords"].get(4), ctx["lords"].get(9), ctx["lords"].get(1)
+    if not (l4 and l9 and l1) or l4 == l9:
+        return False
+    p4, p9, p1 = planet_in(ctx, l4), planet_in(ctx, l9), planet_in(ctx, l1)
+    if not (p4 and p9 and p1):
+        return False
+    if not (p4.get("house") and p9.get("house")):
+        return False
+    return house_distance(p4["house"], p9["house"]) in KENDRAS and _is_strong(p1)
+
+
+YOGA_RULES.extend([
+    {"id": "amala", "name": "Amala", "category": "Raja",
+     "description": "A spotless reputation — lasting fame and goodwill earned through honourable work.",
+     "detect": _amala},
+    {"id": "saraswati", "name": "Saraswati", "category": "Wisdom",
+     "description": "Brilliance in learning, speech and the arts — a sharp, cultured mind.",
+     "detect": _saraswati},
+    {"id": "vasumati", "name": "Vasumati", "category": "Dhana",
+     "description": "Self-made wealth — resourceful, materially secure, never truly in want.",
+     "detect": _vasumati},
+    {"id": "lagnadhi", "name": "Lagnadhi", "category": "Raja",
+     "description": "Leadership and a well-protected life — trusted with responsibility, quietly powerful.",
+     "detect": _lagnadhi},
+    {"id": "parvata", "name": "Parvata", "category": "Raja",
+     "description": "Rises like a mountain — prosperity, fame, eloquence and a charitable nature.",
+     "detect": _parvata},
+    {"id": "chamara", "name": "Chamara", "category": "Raja",
+     "description": "Eloquent, learned and long-lived — honoured by those in authority.",
+     "detect": _chamara},
+    {"id": "kalanidhi", "name": "Kalanidhi", "category": "Wisdom",
+     "description": "Learned, wealthy and content — favoured in knowledge and the good things of life.",
+     "detect": _kalanidhi},
+    {"id": "kahala", "name": "Kahala", "category": "Raja",
+     "description": "Bold and energetic — commands resources, land and a forceful drive to lead.",
+     "detect": _kahala},
+])
+
+
 def compute_yogas(chart_json):
     """Run every registered rule; return active yogas as {name, category, description}."""
     ctx = _context(chart_json)
