@@ -77,11 +77,11 @@ export const TOOLS = [
   },
   {
     name: 'get_divisional',
-    description: "Get a saved profile's divisional (varga) chart placements. D9 (Navamsa) is the key chart for marriage and dharma questions; also D10 (career), D7 (children), D2/D3/D12 etc. Defaults to the active profile and D9.",
+    description: "Fetch the placements of ANY of the profile's computed charts — you DO have access to all of these, so call this tool rather than saying you can't show a chart. Valid ids: d1 (Rasi / main birth chart), d2 (wealth), d3 (siblings), d4 (property), d7 (children), d9 (Navamsa — marriage & dharma), d10 (career), d12 (parents), d16, d20, d24 (education), d27, d30 (health & adversity), d40, d45, d60 (fine detail). If an id isn't computed the error lists what IS available. Defaults to the active profile and d9.",
     parameters: {
       type: 'object',
       properties: {
-        varga: { type: 'string', description: 'Divisional chart id: d2, d3, d4, d7, d9, d10, d12, d16, d20, d24, d27, d30, d40, d45, d60. Default d9.' },
+        varga: { type: 'string', description: "Chart id: d1 (Rasi/main) or any divisional d2,d3,d4,d7,d9,d10,d12,d16,d20,d24,d27,d30,d40,d45,d60. Default d9." },
         profile_name: { type: 'string', description: 'Name of a saved profile. Omit for the active profile.' },
       },
       required: [],
@@ -89,16 +89,21 @@ export const TOOLS = [
     async execute({ varga, profile_name }) {
       const profile = findProfileByName(profile_name)
       if (!profile?.chart) throw new Error(`No saved chart found for "${profile_name ?? 'active profile'}".`)
-      const key = (varga || 'd9').toLowerCase()
-      const dv = profile.chart?.divisionalCharts?.[key]
-      if (!dv?.houses) throw new Error(`Divisional chart "${key}" is not available for ${profile.name}.`)
+      const key = (varga || 'd9').toLowerCase().replace(/^rasi$|^lagna$|^birth$/, 'd1')
+      // D1 (Rasi) is the main chart, not under divisionalCharts.
+      const dv = key === 'd1' ? profile.chart?.d1Chart : profile.chart?.divisionalCharts?.[key]
+      if (!dv?.houses) {
+        const available = ['d1', ...Object.keys(profile.chart?.divisionalCharts ?? {})].join(', ')
+        throw new Error(`"${key}" isn't computed for ${profile.name}. Charts you CAN fetch: ${available}.`)
+      }
       const placements = []
       for (const h of dv.houses) {
         for (const occ of h.occupants ?? []) {
           placements.push(`${occ.celestialBody} in ${occ.sign} (H${h.number})${occ.motion_type === 'retrograde' ? ' retro' : ''}`)
         }
       }
-      return { name: profile.name, varga: key, ascendant: dv.ascendant, placements }
+      const ascendant = dv.ascendant ?? dv.houses.find(h => h.number === 1)?.sign
+      return { name: profile.name, varga: key, ascendant, placements }
     },
   },
   {
