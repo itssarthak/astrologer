@@ -5,7 +5,7 @@
 import { computeChart, computeTransit, computeSynastry, computeNumerology, computeNumberCompatibility, computeChartFacts, computeVarshaphal } from '../pyodide/index'
 import { getProfiles, getActiveProfile } from '../storage/profiles'
 import { searchPlaces, fetchTimezoneOffset } from '../geocode'
-import { lookupReference, SHODASAVARGA } from './reference'
+import { lookupReference, SHODASAVARGA, DIVISIONALS } from './reference'
 
 // Format the dignity/strength-annotated planet lines shared by get_chart and compute_chart.
 function planetLines(facts) {
@@ -13,34 +13,6 @@ function planetLines(facts) {
     `${name}: ${f.sign} (H${f.house}), ${f.dignity}, ${f.strength}${f.retrograde ? ', retrograde' : ''}`)
 }
 
-const ZODIAC = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
-  'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
-
-// Generic equal-division D-n varga sign index for an absolute sidereal longitude — the same
-// cyclic method jyotishganit uses for arbitrary divisors. Used only for vargas OUTSIDE the
-// standard Shodasavarga set (the 16 standard charts use their own authoritative special rules).
-function genericVargaIdx(longitude, n) {
-  const norm = ((longitude % 360) + 360) % 360
-  return Math.floor((norm * n) / 30) % 12
-}
-
-// Compute an arbitrary D-n chart from the natal d1Chart (placements only, no special rules).
-function computeGenericVarga(d1Chart, n) {
-  const houses = d1Chart?.houses ?? []
-  const h1 = houses.find(h => h.number === 1)
-  if (!h1 || ZODIAC.indexOf(h1.sign) < 0) return null
-  const ascIdx = genericVargaIdx(ZODIAC.indexOf(h1.sign) * 30 + (h1.signDegrees ?? 0), n)
-  const placements = []
-  for (const h of houses) {
-    for (const occ of h.occupants ?? []) {
-      const long = ZODIAC.indexOf(occ.sign) * 30 + (occ.signDegrees ?? 0)
-      const vIdx = genericVargaIdx(long, n)
-      const house = ((vIdx - ascIdx + 12) % 12) + 1
-      placements.push(`${occ.celestialBody} in ${ZODIAC[vIdx]} (H${house})${occ.motion_type === 'retrograde' ? ' retro' : ''}`)
-    }
-  }
-  return { ascendant: ZODIAC[ascIdx], placements }
-}
 
 // Sarvashtakavarga bindu strength band for a sign (per-sign SAV is roughly 25-40):
 // >=30 strong, 25-29 average, <25 weak.
@@ -107,7 +79,7 @@ export const TOOLS = [
   },
   {
     name: 'get_divisional',
-    description: "Fetch the placements of ANY divisional/varga chart — you DO have access, so call this rather than saying you can't. The 16 standard Shodasavarga charts use authoritative classical rules: d1 (Rasi/main), d2 (wealth), d3 (siblings), d4 (property), d7 (children), d9 (Navamsa — marriage & dharma), d10 (career), d12 (parents), d16, d20, d24 (education), d27, d30 (Trimsamsa — health & adversity), d40, d45, d60. You can ALSO request any other division (e.g. d5, d6, d8, d11, d108): it's computed on the fly by the generic equal-division method and returned with a `note` saying so — surface that caveat to the user. Defaults to the active profile and d9.",
+    description: "Fetch the placements of a STANDARD divisional/varga chart — you have access to all 16 of these, so call this rather than saying you can't: d1 (Rasi/main), d2 (wealth), d3 (siblings), d4 (property), d7 (children), d9 (Navamsa — marriage & dharma), d10 (career), d12 (parents), d16, d20, d24 (education), d27, d30 (Trimsamsa — health & adversity), d40, d45, d60. These are the classical Shodasavarga. If you ask for a NON-standard division (e.g. d5, d6, d8, d11) the tool returns an error saying it isn't a standard chart — relay that to the user (don't fabricate the chart). Use astro_reference to confirm what a given Dn is. Defaults to the active profile and d9.",
     parameters: {
       type: 'object',
       properties: {
@@ -132,19 +104,16 @@ export const TOOLS = [
         const ascendant = dv.ascendant ?? dv.houses.find(h => h.number === 1)?.sign
         return { name: profile.name, varga: key, ascendant, placements }
       }
-      // Not one of the precomputed standard charts — compute the division on the fly.
-      const m = key.match(/^d(\d+)$/)
-      const n = m ? Number(m[1]) : null
-      if (n && n >= 2 && n <= 300) {
-        const g = computeGenericVarga(profile.chart?.d1Chart, n)
-        if (g) {
-          return {
-            name: profile.name, varga: key, ascendant: g.ascendant, placements: g.placements,
-            note: `D${n} is outside the standard 16-chart Shodasavarga, so it has no single classical rule — this was computed by the generic equal-division method. Tell the user that.`,
-          }
-        }
+      // Not a computed standard chart — explain why (and teach the fact), don't fabricate it.
+      const standardList = ['d1', ...Object.keys(profile.chart?.divisionalCharts ?? {})].join(', ')
+      const ref = DIVISIONALS[key]
+      if (ref && ref.standard === false) {
+        throw new Error(`${key.toUpperCase()} (${ref.name}) is NOT one of the 16 standard Shodasavarga charts — it isn't computed and shouldn't be presented as a standard chart. Tell the user it's a non-standard varga (${ref.name}: ${ref.signifies}). Standard charts you can fetch: ${standardList}.`)
       }
-      throw new Error(`Couldn't build "${varga}". Use d1-d60 (a Dn id), e.g. d9, d10, d30.`)
+      if (ref && ref.standard) {
+        throw new Error(`${key.toUpperCase()} (${ref.name}) is a standard chart but wasn't computed for ${profile.name} — recompute the chart. Available now: ${standardList}.`)
+      }
+      throw new Error(`"${varga}" isn't a recognised divisional chart. Standard charts: ${standardList}. Use astro_reference to check what a Dn is.`)
     },
   },
   {
