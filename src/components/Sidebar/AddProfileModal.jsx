@@ -5,6 +5,7 @@ import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { PyodideContext } from '../../contexts/PyodideContext'
 import BirthDetailsForm from '../shared/BirthDetailsForm'
 import LoadingSpinner from '../shared/LoadingSpinner'
+import { CHART_ENGINE_VERSION } from '../../lib/version'
 
 export default function AddProfileModal({ onClose }) {
   const { addProfile } = useContext(ProfilesContext)
@@ -37,6 +38,7 @@ export default function AddProfileModal({ onClose }) {
         yogas: yogasDoshas.yogas_active ?? [],
         doshas: yogasDoshas.doshas ?? {},
         numerology,
+        engineVersion: CHART_ENGINE_VERSION,
         createdAt: new Date().toISOString(),
       })
       onClose()

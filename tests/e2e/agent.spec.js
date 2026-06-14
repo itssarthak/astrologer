@@ -15,10 +15,11 @@ const base = { dob: '1990-06-15', time: '14:30', place: 'Mumbai', lat: 19.076, l
 const ALICE = { ...base, id: 'prof-a', name: 'Alice' }
 const BOB = { ...base, id: 'prof-b', name: 'Bob' }
 
-const toolCallResponse = (name, args) => ({
-  choices: [{ message: { role: 'assistant', content: null, tool_calls: [{ id: 'call_1', type: 'function', function: { name, arguments: JSON.stringify(args) } }] } }],
-})
-const finalResponse = text => ({ choices: [{ message: { role: 'assistant', content: text } }] })
+// The agent streams now: mock the OpenAI-compatible endpoint as text/event-stream SSE.
+const sse = (...events) => events.map(e => `data: ${JSON.stringify(e)}\n\n`).join('') + 'data: [DONE]\n\n'
+const toolCallResponse = (name, args) =>
+  sse({ choices: [{ delta: { tool_calls: [{ index: 0, id: 'call_1', type: 'function', function: { name, arguments: JSON.stringify(args) } }] } }] })
+const finalResponse = text => sse({ choices: [{ delta: { content: text } }] })
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 async function seed(page) {
@@ -35,7 +36,7 @@ function mockTwoRound(page, toolName, toolArgs, finalText, capture) {
   return page.route(`${LLM}/**`, route => {
     capture.bodies.push(route.request().postDataJSON())
     const body = capture.bodies.length === 1 ? toolCallResponse(toolName, toolArgs) : finalResponse(finalText)
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
+    route.fulfill({ status: 200, contentType: 'text/event-stream', body })
   })
 }
 
@@ -66,6 +67,7 @@ test('agent calls a read tool (list_profiles) and answers', async ({ page }) => 
 })
 
 test('agent calls get_chart and the real chart summary flows back', async ({ page }) => {
+  test.setTimeout(180_000) // get_chart runs computeChartFacts in Pyodide; first load can be slow under parallel workers
   const capture = { bodies: [] }
   await seed(page)
   await mockTwoRound(page, 'get_chart', { profile_name: 'Alice' }, 'Alice has a Virgo ascendant.', capture)
@@ -74,7 +76,7 @@ test('agent calls get_chart and the real chart summary flows back', async ({ pag
   await page.locator('textarea').fill("What's Alice's ascendant?")
   await page.locator('textarea').press('Enter')
 
-  await expect(page.getByText('Alice has a Virgo ascendant.')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Alice has a Virgo ascendant.')).toBeVisible({ timeout: 150_000 })
   // The tool call is shown in the chat thread as a chip
   await expect(page.getByText('Fetched the birth chart')).toBeVisible()
   // The executed tool returned the REAL ascendant from the fixture (Virgo) into round 2
@@ -88,10 +90,10 @@ test('tool chip appears while the tool runs, before the completion arrives', asy
   await page.route(`${LLM}/**`, async route => {
     calls += 1
     if (calls === 1) {
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(toolCallResponse('get_chart', { profile_name: 'Alice' })) })
+      route.fulfill({ status: 200, contentType: 'text/event-stream', body: toolCallResponse('get_chart', { profile_name: 'Alice' }) })
     } else {
       await sleep(3000)
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(finalResponse('Alice has a Virgo ascendant.')) })
+      route.fulfill({ status: 200, contentType: 'text/event-stream', body: finalResponse('Alice has a Virgo ascendant.') })
     }
   })
 

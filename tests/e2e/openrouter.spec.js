@@ -62,9 +62,9 @@ test.describe('OpenRouter — request routing', () => {
     await page.route('https://openrouter.ai/**', route => {
       const req = route.request()
       captured = { url: req.url(), auth: req.headers()['authorization'], body: req.postDataJSON() }
-      // Chat is agentic now (non-streaming JSON). No tool call -> the content is the answer.
-      route.fulfill({ status: 200, contentType: 'application/json',
-        body: JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'Hello from OpenRouter.' } }] }) })
+      // Chat is agentic + streaming now: respond with OpenAI-compatible SSE.
+      route.fulfill({ status: 200, contentType: 'text/event-stream',
+        body: `data: ${JSON.stringify({ choices: [{ delta: { content: 'Hello from OpenRouter.' } }] })}\n\ndata: [DONE]\n\n` })
     })
     await page.route('https://api.openai.com/**', route => route.fulfill({ status: 500, body: 'should not be called' }))
 

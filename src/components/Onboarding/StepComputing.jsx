@@ -5,6 +5,7 @@ import { PyodideContext } from '../../contexts/PyodideContext'
 import { ProfilesContext } from '../../contexts/ProfilesContext'
 import LoadingSpinner from '../shared/LoadingSpinner'
 import { trackEvent } from '../../lib/analytics'
+import { CHART_ENGINE_VERSION } from '../../lib/version'
 
 const STEPS = [
   { key: 'pyodide', label: 'Loading Python engine', doneLabel: 'Python engine ready ✓' },
@@ -55,6 +56,7 @@ export default function StepComputing({ birthData }) {
         yogas: yogasDoshas.yogas_active ?? [],
         doshas: yogasDoshas.doshas ?? {},
         numerology,
+        engineVersion: CHART_ENGINE_VERSION,
         createdAt: new Date().toISOString(),
       }
       addProfile(profile)
