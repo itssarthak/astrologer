@@ -69,12 +69,15 @@ export function useTextToSpeech() {
   }, [])
 
   const speak = useCallback(
-    text => {
+    (text, onEnd) => {
       if (!supported || !text) return
       setSpeaking(true)
       ttsSpeak(text, {
         voice: voiceRef.current,
-        onEnd: () => setSpeaking(false),
+        onEnd: () => {
+          setSpeaking(false)
+          onEnd?.()
+        },
       })
     },
     [supported]

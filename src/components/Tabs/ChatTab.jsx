@@ -35,7 +35,11 @@ export default function ChatTab() {
     else setMicInject(text)
   }, [])
 
-  const stt = useSpeechToText({ onResult: handleResult })
+  const stt = useSpeechToText({
+    onResult: handleResult,
+    onEnd: () => voiceRef.current?.onListenEnd?.(),
+    onError: e => voiceRef.current?.onListenError?.(e),
+  })
 
   // handleVoiceSend: submit to the thread AND return the assistant's reply text to speak.
   const handleVoiceSend = useCallback(async text => {

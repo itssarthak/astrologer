@@ -67,18 +67,54 @@ test('interim updates state, final calls onResult and clears interim', () => {
   expect(result.current.interim).toBe('')
 })
 
-test('onend clears listening', () => {
-  const { result } = renderHook(() => useSpeechToText())
+test('onend clears listening and surfaces onEnd to caller', () => {
+  const onEnd = vi.fn()
+  const { result } = renderHook(() => useSpeechToText({ onEnd }))
   act(() => result.current.start())
   act(() => instances[0].onend())
   expect(result.current.listening).toBe(false)
+  expect(onEnd).toHaveBeenCalledTimes(1)
 })
 
-test('onerror clears listening', () => {
-  const { result } = renderHook(() => useSpeechToText())
+test('onerror clears listening and surfaces onError to caller', () => {
+  const onError = vi.fn()
+  const { result } = renderHook(() => useSpeechToText({ onError }))
   act(() => result.current.start())
   act(() => instances[0].onerror({ error: 'no-speech' }))
   expect(result.current.listening).toBe(false)
+  expect(onError).toHaveBeenCalledWith({ error: 'no-speech' })
+})
+
+test('start() called twice does not double-start the recognizer', () => {
+  const { result } = renderHook(() => useSpeechToText())
+  act(() => result.current.start())
+  act(() => result.current.start()) // already running — should be a no-op
+  expect(instances.length).toBe(1)
+  expect(instances[0].start).toHaveBeenCalledTimes(1)
+  expect(result.current.listening).toBe(true)
+})
+
+test('start() can run again after recognizer ends', () => {
+  const { result } = renderHook(() => useSpeechToText())
+  act(() => result.current.start())
+  act(() => instances[0].onend()) // recognizer wound down
+  act(() => result.current.start()) // now allowed again
+  expect(instances[0].start).toHaveBeenCalledTimes(2)
+  expect(result.current.listening).toBe(true)
+})
+
+test('start() swallows InvalidStateError thrown by rec.start()', () => {
+  // Make the underlying start() throw to simulate a recognizer still winding down.
+  const Throwing = class extends MockRecognition {
+    constructor() {
+      super()
+      this.start = vi.fn(() => { throw new DOMException('busy', 'InvalidStateError') })
+    }
+  }
+  window.webkitSpeechRecognition = Throwing
+  const { result } = renderHook(() => useSpeechToText())
+  expect(() => act(() => result.current.start())).not.toThrow()
+  expect(result.current.listening).toBe(false) // state reset so a retry can succeed
 })
 
 test('stop stops recognizer and clears listening', () => {
