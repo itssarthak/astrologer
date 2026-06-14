@@ -8,10 +8,14 @@ export function isTTSSupported() {
   return typeof window !== 'undefined' && 'speechSynthesis' in window
 }
 
+// macOS/Windows novelty voices that produce sound effects rather than human speech.
+// Excluded from the picker so users only see voices that can actually read text naturally.
+const NON_HUMAN_VOICE_RE = /^(Bells|Boing|Bubbles|Cellos|Deranged|Good News|Jester|Organ|Trinoids|Whisper|Zarvox|Albert|Bad News|Bahh|Hysterical|Kathy|Princess|Ralph|Wobble|Pipe Organ|Novelty)$/i
+
 export function getEnglishVoices() {
   if (!isTTSSupported()) return []
   const voices = window.speechSynthesis.getVoices() || []
-  return voices.filter(v => v.lang?.startsWith('en'))
+  return voices.filter(v => v.lang?.startsWith('en') && !NON_HUMAN_VOICE_RE.test(v.name?.trim()))
 }
 
 // Calls `cb` with the current English voices immediately, and again whenever the browser
@@ -38,7 +42,7 @@ export function voiceQuality(v) {
   let s = 0
   if (/Natural|Neural|Premium|Enhanced/i.test(name)) s += 6        // modern neural voices — best
   else if (/Google/i.test(name)) s += 4                            // Chrome's network voices
-  else if (/Samantha|Karen|Daniel|Moira|Rishi|Veena|Serena|Allison|Ava|Zoe|Aaron|Tessa|Fiona/i.test(name)) s += 3 // named OS premium
+  else if (/Gordon|Samantha|Karen|Daniel|Moira|Rishi|Veena|Serena|Allison|Ava|Zoe|Aaron|Tessa|Fiona/i.test(name)) s += 3 // named OS premium
   if (v?.lang === 'en-IN') s += 2                                  // locale preference (soft)
   else if (/^en-(GB|US|AU|IE)/.test(v?.lang || '')) s += 1
   if (v?.localService === false) s += 1                            // network voices skew higher-quality
@@ -46,12 +50,14 @@ export function voiceQuality(v) {
   return s
 }
 
-// Pick the best-sounding English voice available (quality first, then locale), else null.
+// Pick the best-sounding English voice available. Tries Gordon first, then falls back to
+// quality sort. The user can always override via the picker.
 export function pickDefaultVoice(voices) {
   if (!voices || voices.length === 0) return null
   const en = voices.filter(v => v.lang?.startsWith('en'))
   const pool = en.length ? en : voices
-  return pool.slice().sort((a, b) => voiceQuality(b) - voiceQuality(a))[0] || null
+  const gordon = pool.find(v => /^Gordon$/i.test(v.name?.trim()))
+  return gordon || pool.slice().sort((a, b) => voiceQuality(b) - voiceQuality(a))[0] || null
 }
 
 // Strip the bits of markdown our replies use so they don't get read aloud literally.

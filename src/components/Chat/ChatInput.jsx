@@ -54,7 +54,7 @@ export default function ChatInput({
               : 'bg-surface border border-border text-muted hover:text-primary hover:border-primary'
           }`}>
           {listening && <span className="absolute inset-0 rounded-xl bg-red-500/40 animate-ping" />}
-          <MicIcon className="relative w-5 h-5" />
+          <MicIcon className="relative w-5 h-5" active={listening} />
         </button>
       )}
       <textarea ref={textareaRef} value={value} onChange={handleInput} onKeyDown={handleKeyDown}
