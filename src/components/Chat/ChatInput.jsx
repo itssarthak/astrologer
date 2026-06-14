@@ -20,6 +20,16 @@ export default function ChatInput({
     }
   }, [injectText])
 
+  // Esc stops an in-flight reply from anywhere on the page (not only the textarea).
+  useEffect(() => {
+    if (!busy || !onStop) return
+    const onKey = e => {
+      if (e.key === 'Escape') { e.preventDefault(); onStop() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [busy, onStop])
+
   const handleSend = () => {
     const msg = value.trim()
     if (!msg || disabled || busy) return

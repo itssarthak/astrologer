@@ -10,19 +10,45 @@ import ChatMessages from '../Chat/ChatMessages'
 import ChatInput from '../Chat/ChatInput'
 import ChatToolbar from '../shared/ChatToolbar'
 
-const SUB_TABS = ['D1', 'D9']
+// What each varga is traditionally read for — used only to label whatever the engine
+// actually computed. Unknown ids fall back to their bare "Dn" label, so the UI always
+// mirrors the data: only the divisional charts present on the chart are shown.
+const VARGA_NAMES = {
+  d1: 'Rasi — overall life',
+  d2: 'Hora — wealth',
+  d3: 'Drekkana — siblings & courage',
+  d4: 'Chaturthamsa — property & fortune',
+  d7: 'Saptamsa — children',
+  d9: 'Navamsa — marriage & dharma',
+  d10: 'Dasamsa — career',
+  d12: 'Dwadasamsa — parents & lineage',
+  d16: 'Shodasamsa — vehicles & comforts',
+  d20: 'Vimsamsa — spiritual life',
+  d24: 'Chaturvimsamsa — education',
+  d27: 'Bhamsa — strengths & weaknesses',
+  d30: 'Trimsamsa — adversity & health',
+  d40: 'Khavedamsa — maternal legacy',
+  d45: 'Akshavedamsa — paternal legacy',
+  d60: 'Shashtiamsa — fine detail & past karma',
+}
 
 export default function ChartTab() {
   const { activeProfile } = useContext(ProfilesContext)
   const { send, streaming, error, stop } = useChat(activeProfile, 'chart')
   useReportBusy(streaming)
-  const [subTab, setSubTab] = useState('D1')
+  const [varga, setVarga] = useState('d1')
   const { messages, streamingContent, reload, clearChat, submit } = useChatThread(activeProfile, 'chart')
 
   const chart = activeProfile?.chart
   const yogas = activeProfile?.yogas ?? []
   const doshas = activeProfile?.doshas ?? {}
-  const d9Chart = chart?.divisionalCharts?.d9 ?? null
+  // Build the varga list straight from what was computed — D1 plus every divisional present,
+  // ordered by divisional number. The UI thus reflects exactly what the engine produced.
+  const dvKeys = Object.keys(chart?.divisionalCharts ?? {})
+    .sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)))
+  const vargas = ['d1', ...dvKeys].map(id => ({ id, label: id.toUpperCase(), name: VARGA_NAMES[id] ?? id.toUpperCase() }))
+  const activeVarga = vargas.find(v => v.id === varga) ?? vargas[0]
+  const vargaChart = activeVarga.id === 'd1' ? chart : chart?.divisionalCharts?.[activeVarga.id]
 
   const handleSend = userMessage =>
     submit(userMessage, ({ onChunk }) =>
@@ -37,22 +63,21 @@ export default function ChartTab() {
       <ChatToolbar title="Chart" onRefresh={reload} onClear={clearChat}
         refreshDisabled={streaming} clearDisabled={streaming || messages.length === 0} />
       <div className="p-4 border-b border-border overflow-y-auto flex-shrink-0 max-h-[60%]">
-        <div className="flex gap-2 mb-4">
-          {SUB_TABS.map(t => (
-            <button key={t} onClick={() => setSubTab(t)}
-              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                subTab === t ? 'bg-primary text-white' : 'bg-surface border border-border text-muted hover:border-border-strong'
+        <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1 -mx-1 px-1">
+          {vargas.map(v => (
+            <button key={v.id} onClick={() => setVarga(v.id)} title={v.name}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-colors ${
+                activeVarga.id === v.id ? 'bg-primary text-white' : 'bg-surface border border-border text-muted hover:border-border-strong'
               }`}>
-              {t}
+              {v.label}
             </button>
           ))}
         </div>
+        <p className="text-xs text-muted text-center mb-2">{activeVarga.name}</p>
 
-        {subTab === 'D1' && <KundliChart chart={chart} />}
-        {subTab === 'D9' && (d9Chart
-          ? <KundliChart chart={d9Chart} />
-          : <p className="text-sm text-muted text-center py-4">D9 chart not available</p>
-        )}
+        {(vargaChart?.d1Chart?.houses || vargaChart?.houses)
+          ? <KundliChart chart={vargaChart} />
+          : <p className="text-sm text-muted text-center py-4">{activeVarga.label} chart not available</p>}
 
         <div className="mt-4 flex flex-col gap-2 text-sm">
           {(() => {
