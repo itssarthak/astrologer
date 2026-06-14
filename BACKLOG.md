@@ -11,144 +11,36 @@ Legend: 🟣 feature · 🔄 refactor · 🔴 bug · 💡 idea · 📝 chore
 
 _(Pull the top item from here when starting work.)_
 
-1. 🟣 Full classical yoga catalogue (~6,500) — the original stretch goal
-2. 🟣 P3 — Varshaphal / Tajaka (annual chart)
+-
 
 ## Tasks
 
-### 🟣 Full classical yoga catalogue (~6,500 yogas)
+### 🟣 Yoga catalogue — further families (ongoing)
 
-The original stretch goal: grow the clean-room yoga registry from the current **25**
-toward the full classical catalogue (~6,500 yoga *results* spread across ~233 rule
-families), entirely **in-browser, no backend**.
+The clean-room registry now has **71 rules** covering the major classical families
+(Pancha Mahapurusha, Chandra, Surya, Raja, Viparita, Neecha Bhanga, Dhana, Nabhasa
+Sankhya/Asraya/Dala/Akriti, named classics, Parivartana, Daridra). The literal "~6,500"
+figure is the count of yoga *results/permutations* across the whole corpus; the generalized
+rules already detect many instances. Reaching deeper coverage is open-ended — add more
+named/obscure families (Sankha, Bheri, Pushkala, Gaja, Kala-sarpa variants, longevity/Arishta
+sets, more Raja/Dhana permutations) batch-by-family with the same TDD + clean-room sourcing.
+Diminishing returns past the common families, so pick up only as needed.
 
-**Constraints (locked):**
-- **Clean-room only.** Reference PyJHora 4.8.7 `yoga.py` (~233 rules, pure
-  `_from_planet_positions` variants) and BPHS/classical texts for *definitions* —
-  never copy code (PyJHora is AGPL-3.0; copying would force the whole app open).
-- **Never hallucinate** (soul.md hard rule): every rule must come from a sourced
-  classical definition, with conservative detection. Per-rule `try/except` in
-  `compute_yogas` already isolates a bad rule from crashing the reading.
-- Pure-Python in the Pyodide worker; no WASM, no network at detection time.
+### 🟣 Varshaphal — full Tajaka layer (deferred from P3)
 
-**Scaffolding already in place** (`src/lib/pyodide/scripts/yogas.py`):
-- `YOGA_RULES` registry of `{id, name, category, description, detect(ctx)}`.
-- `_context(chart)` → `{planets (sign/house/dignity/strength), lords, lagna_idx}`.
-- Helpers: `_associated` (conjunction / mutual aspect / parivartana), `_aspects`,
-  `_parivartana`, `OWNED_SIGNS`, `ASPECT_ANGLES`, kendra/trikona/dusthana sets,
-  `KENDRAS`/`TRIKONAS`, `EXALTED_IN_SIGN`, `house_distance`, `planet_in`.
-
-**Approach — batch by family, each with tests (synthetic `_ctx` + real-chart smoke), like P1a/b:**
-- Nabhasa yogas (Sankhya / Asraya / Dala / Akriti groups — ~32 core + variants).
-- Generalized Parivartana (sign-exchange) yogas across all house-lord pairs
-  (Maha / Dainya / Khala variants).
-- Full Dhana set (2/5/9/11 lord combinations), Daridra, Arishta/longevity.
-- Raja yoga variants beyond kendra–trikona (Neechabhanga-driven, exchange-driven).
-- Solar/lunar/planet-pair combinations, planet-in-own/exalted-house yogas, etc.
-- Surfacing: `get_chart` (top N) + `get_yogas` (full list); descriptions flow through unchanged.
-
-**Effort:** large — do incrementally; count + categorise as families land. Log how many
-rules/results are covered so we know the distance to "full".
-
-### 🟣 P3 — Varshaphal / Tajaka (annual chart)
-
-Annual solar-return reading. New `varshaphal.py` + a `get_varshaphal` tool ("what does
-this year hold"). Verify whether jyotishganit exposes a solar return; if not, compute the
-solar-return moment (Sun returns to natal longitude) ourselves.
-
-**Scope to decide when picked up** (full Tajaka vs. a useful subset):
-- Muntha (progressed point) + its house/lord.
-- Varshesha (year lord) selection (Panchadhikari / five office-bearers).
-- Mudda (annual Vimshottari) dasha.
-- Core Tajaka yogas (Ithasala, Ishrafa, Nakta, Yamaya, Manau, Kamboola, …) via Tajaka
-  aspects (orb-based, not graha-drishti).
-- Sahams (Punya, etc.) — optional.
-
-### 🔄 Harmonize the `compute_chart` tool output (deferred from P0)
-
-The `compute_chart` tool (fresh chart for a **non-saved** person) still returns the ad-hoc
-`summarizeChart` shape. Make it return the same dignity/strength/dasha format `get_chart`
-uses (via `computeChartFacts`) so the agent reads both consistently.
-
-### 🟣 In-browser voice: STT + TTS (Chat tab)
-
-Add speech-to-text input and text-to-speech output using the Web Speech API —
-no server, all in-browser. Scope to the Chat tab first, expand later if it lands.
-
-**Decisions (locked):**
-- **TTS:** both — global auto-speak toggle in the toolbar AND a per-message
-  play/stop button on each assistant message.
-- **STT:** hands-free conversation loop — mic listens → auto-send on silence →
-  TTS speaks reply → mic reopens. Single on/off control. Mic forced **off** while
-  TTS speaks (so the agent doesn't transcribe its own voice).
-- **Scope:** Chat tab only to start.
-- **Language:** default `en-IN`, fall back to `en-US` / first English voice.
-
-**Architecture (two primitives + one orchestrator):**
-- `src/lib/speech/tts.js` — `isTTSSupported()`, `getEnglishVoices()`,
-  `speak(text, {voice, rate, pitch, onEnd})`, `cancelSpeech()`. Prefer
-  Google/Natural en-IN→en voices; handle Chrome async `onvoiceschanged`; chunk
-  long replies by sentence (Chrome ~15s cutoff). (Seed from the sample below.)
-- `src/lib/speech/stt.js` — `isSTTSupported()`,
-  `createRecognizer({lang, onInterim, onFinal, onEnd, onError})`. Uses
-  `webkitSpeechRecognition`, `continuous=false`, `interimResults=true` so the
-  browser's silence-detection fires `onend` → that's the auto-send trigger.
-- `useTextToSpeech()` → `{ supported, speaking, autoSpeak, setAutoSpeak, voices,
-  voice, setVoice, speak, stop }`. Persist `autoSpeak` + voice to localStorage.
-- `useSpeechToText()` → `{ supported, listening, interim, start, stop }`.
-- `useVoiceConversation({ onSend, replyText, replyComplete })` →
-  `{ handsFree, toggleHandsFree, mode }`. State machine:
-  `idle → listening → thinking → speaking → listening…`.
-
-**UI wiring:**
-- `ChatInput` — mic button left of Send; idle 🎙️ / listening pulsing-red;
-  show live `interim` in the textarea. Manual mode fills textarea for edit;
-  hands-free auto-sends.
-- `ChatToolbar` — 🔊 auto-speak toggle + 🎧 hands-free toggle. Hide each if its
-  API is unsupported (Firefox: no SpeechRecognition → hide mic/hands-free, keep TTS).
-- `ChatMessage` — per-message play/stop button (reuses `useTextToSpeech.speak`).
-
-**Edge cases:** unsupported browser degrades silently (buttons hidden, text chat
-intact); mic permission denied → inline error + hands-free off; user typing or
-Stop cancels active speech + listening.
-
-**Testing:** unit-test `tts.js`/`stt.js` against mocked `speechSynthesis` /
-`SpeechRecognition`; loop state machine via vitest + fake timers; manual smoke
-for the mic (hard to automate).
-
-**TTS sample to seed from:**
-```js
-function testTTS() {
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance("Testing local text to speech…");
-  function applyVoice() {
-    const voices = window.speechSynthesis.getVoices();
-    const bestVoice =
-      voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural')))
-      || voices.find(v => v.lang.startsWith('en'))
-      || voices[0];
-    if (bestVoice) utterance.voice = bestVoice;
-    utterance.rate = 1.0; utterance.pitch = 1.0; utterance.volume = 1.0;
-    window.speechSynthesis.speak(utterance);
-  }
-  if (window.speechSynthesis.onvoiceschanged !== undefined)
-    window.speechSynthesis.onvoiceschanged = applyVoice;
-  applyVoice();
-}
-```
+P3 shipped the annual chart core (solar return, Varsha lagna + lord, Muntha + lord, Mudda
+dasha, placements, `get_varshaphal` tool). Still open if wanted: the Tajaka yoga engine
+(Ithasala, Ishrafa, Nakta, Yamaya, Manau, Kamboola, … — orb/speed-based applying/separating
+aspects), the Panchadhikari **year-lord (Varshesha)** scoring, Sahams (Punya, etc.), and
+Tri-pataki / Pancha-vargeeya bala. Source-variable and complex — scope carefully if picked up.
 
 ## Ideas
 
-- 💡 **Arbitrary-date transit tool** — `get_today_transit` only does *now*; add a dated
-  variant ("what about next month / in March") computing transits for a given date.
-- 💡 **Profile recompute / migration** — existing saved profiles miss newer doshas/yogas
-  and the dignity-vocabulary fix until re-added. Add a one-time recompute-on-load (or a
-  "refresh chart" action) so old profiles pick up engine improvements without re-entry.
-- 💡 **Degree-orb aspect weighting** — synastry cross-aspects are sign-based; optionally
-  weight them by degree-orb tightness (tight/active/loose) using the existing
-  `aspects.py` helpers (`orb_within_sign`, `tightness`).
-- 💡 **Ashtakavarga-weighted transits** — fold SAV bindus into `get_today_transit` so a
-  transit through a high-bindu sign reads as stronger.
+- 💡 **Tighter STT silence tuning** — Web Speech `continuous=false` ends a turn on its own
+  silence timeout; expose a small "keep listening" grace or a manual end-of-turn control if
+  hands-free turns feel too eager to cut off.
+- 💡 **Voice in other tabs** — the voice stack is Chat-only; could extend the mic/auto-speak
+  to Today/Chart/Numbers/Match if there's demand (all use the same `useChat` now).
 
 ## Someday / Maybe
 
@@ -159,11 +51,11 @@ function testTTS() {
 
 ## Done
 
-_(Move completed items here with a date.)_
+_(Most recent first.)_
 
-- ✅ 2026-06-13 — **P0** chart-facts foundation (adapter, dignity, strength, `get_chart` + `get_divisional`).
-- ✅ 2026-06-13 — **P1a/b** yoga registry → **25 yogas** (Mahapurusha, Chandra/Surya, Raja, Viparita, Neecha Bhanga, Dhana) + adapter dignity-vocabulary fix.
-- ✅ 2026-06-13 — **P1c** doshas → **8** (Kalathra/Shrapit/Shakata + Manglik refinements), numerology expansion (mulank/bhagyank + rulers, name-in-use, compound/Cheiro, compatibility), reading-procedure + output-format layer.
-- ✅ 2026-06-13 — **P2** deep synastry (planet↔planet cross-aspects, dignity-weighted overlays, 7th-lord/karaka, dasha overlap, ranked digest, Match-card render, "challenging until" timing).
-- ✅ 2026-06-13 — Unified **streaming** chat engine + per-tab configurable tools; markdown-rendered replies; live date/time + active-profile birth details in the prompt; Chart-tab context fix.
-- ✅ 2026-06-13 — Exposed all computed data as agent tools: `get_dasha`, `get_doshas`, `get_yogas`, `get_ashtakavarga`.
+- ✅ 2026-06-14 — **In-browser voice (STT + TTS), Chat tab**: Web Speech primitives + hooks, a callback-driven hands-free conversation loop (survives silence, guards double-start, recovers from mic-permission errors), mic button, global auto-speak toggle, per-message read-aloud. Degrades silently on unsupported browsers.
+- ✅ 2026-06-14 — **P3 Varshaphal** annual chart: solar-return (Newton iteration on Sun longitude), Varsha lagna + lord, Muntha + lord, Mudda (annual Vimshottari) dasha, `get_varshaphal` tool.
+- ✅ 2026-06-14 — **Yoga catalogue expansion** 25 → 71 rules (Nabhasa Sankhya/Asraya/Dala/Akriti, named classics, Parivartana, Dhana, Daridra), reviewed for classical accuracy.
+- ✅ 2026-06-14 — **Backlog ideas**: dated transits + Ashtakavarga-weighted transits, degree-orb-weighted synastry cross-aspects (activated `aspects.py`), auto-migration of stale saved profiles on engine-version bump.
+- ✅ 2026-06-14 — **compute_chart tool** harmonized to get_chart's dignity/strength/dasha format.
+- ✅ 2026-06-13 — **P0–P2** parity work + infra: chart-facts foundation; 25→ (then 71) yogas; 8 doshas; expanded numerology; deep synastry (cross-aspects, karakas, dasha timing, "challenging until"); unified streaming chat + per-tab configurable tools; markdown replies; live date/time + birth details in the prompt; all computed data exposed as agent tools (dasha, doshas, yogas, ashtakavarga).
