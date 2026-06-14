@@ -2,7 +2,7 @@
 // an async `execute(args)` that runs in the browser — calling the in-browser Pyodide compute
 // functions, reading saved profiles, geocoding, or web searching. Returns stay concise so
 // they fit comfortably back into the model's context.
-import { computeChart, computeTransit, computeSynastry, computeNumerology, computeNumberCompatibility, computeChartFacts } from '../pyodide/index'
+import { computeChart, computeTransit, computeSynastry, computeNumerology, computeNumberCompatibility, computeChartFacts, computeVarshaphal } from '../pyodide/index'
 import { getProfiles, getActiveProfile } from '../storage/profiles'
 import { searchPlaces, fetchTimezoneOffset } from '../geocode'
 
@@ -264,6 +264,38 @@ export const TOOLS = [
         // When the match leans challenging, the date the current period-driven friction eases
         // (null = no time-bound clash, i.e. a steady feature rather than a passing phase).
         challenging_until: s.challenging_until ?? null,
+      }
+    },
+  },
+  {
+    name: 'get_varshaphal',
+    description: "Compute the Varshaphal (annual solar-return chart) for a saved profile and a year — the chart cast for the moment the Sun returns to its birth position that year. Returns the Varsha (annual) ascendant and its lord, the Muntha (the year's progressed point) sign/house/lord, the Mudda (annual) dasha periods with dates, and the year's planetary placements. USE THIS for year-ahead questions — 'how will <year> be', 'what does this year hold', annual forecast. Defaults to the active profile and the current year.",
+    parameters: {
+      type: 'object',
+      properties: {
+        year: { type: 'number', description: 'The year to forecast, e.g. 2026. Defaults to the current year.' },
+        profile_name: { type: 'string', description: 'Name of a saved profile. Omit for the active profile.' },
+      },
+      required: [],
+    },
+    async execute({ year, profile_name }) {
+      const profile = findProfileByName(profile_name)
+      if (!profile?.chart) throw new Error(`No saved chart found for "${profile_name ?? 'active profile'}".`)
+      if (!profile.dob || !profile.time || profile.lat == null) throw new Error(`Profile "${profile.name}" is missing birth details needed for Varshaphal.`)
+      const y = year ?? new Date().getFullYear()
+      const [by, bm, bd] = profile.dob.split('-').map(Number)
+      const [bh, bmin] = profile.time.split(':').map(Number)
+      const v = await computeVarshaphal(profile.chart, y, profile.lat, profile.lon, profile.timezone_offset, by, bm, bd, bh, bmin)
+      if (v.error) throw new Error(v.error)
+      return {
+        name: profile.name,
+        year: v.year,
+        age: v.age,
+        solar_return: `${v.solar_return.date} ${v.solar_return.time}`,
+        varsha_lagna: `${v.varsha_lagna} (lord ${v.varsha_lagna_lord})`,
+        muntha: `${v.muntha.sign} in house ${v.muntha.house} (lord ${v.muntha.lord})`,
+        mudda_dasha: (v.mudda_dasha ?? []).map(d => `${d.lord}: ${d.start} → ${d.end}`),
+        placements: (v.placements ?? []).map(p => `${p.planet} in ${p.sign} (H${p.house})${p.retrograde ? ' retro' : ''}`),
       }
     },
   },
