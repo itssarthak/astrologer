@@ -22,6 +22,7 @@ const PY_FN = {
   computeNumberCompatibility: 'compute_number_compatibility_json',
   computeSynastry: 'compute_synastry_json',
   computeChartFacts: 'chart_facts_json',
+  computeVarshaphal: 'compute_varshaphal_json',
 }
 
 let pyodide = null
@@ -79,7 +80,7 @@ _astro.loader = Loader('/home/pyodide')
 `)
 
   // Keep in sync with PY_SCRIPTS in vite.config.js (both must list every module served).
-  const scripts = ['chart', 'transit', 'yogas', 'doshas', 'relationships', 'numerology', 'synastry', 'dignity', 'adapter', 'aspects']
+  const scripts = ['chart', 'transit', 'yogas', 'doshas', 'relationships', 'numerology', 'synastry', 'dignity', 'adapter', 'aspects', 'varshaphal']
   for (const name of scripts) {
     post({ type: 'progress', message: `Loading ${name}.py...` })
     const resp = await fetch(`/pyodide-scripts/${name}.py`)
@@ -98,6 +99,7 @@ from doshas import compute_doshas_json
 from numerology import compute_numerology_json, compute_number_compatibility_json
 from synastry import compute_synastry_json
 from adapter import chart_facts_json
+from varshaphal import compute_varshaphal_json
 `)
 
   post({ type: 'progress', message: 'Python engine ready' })
