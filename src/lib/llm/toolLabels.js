@@ -17,6 +17,7 @@ export const TOOL_LABELS = {
   numerology_compatibility: { active: 'Checking number compatibility', past: 'Checked number compatibility' },
   geocode_place:      { active: 'Looking up the location',   past: 'Looked up the location' },
   compute_chart:      { active: 'Computing the birth chart', past: 'Computed a birth chart' },
+  astro_reference:    { active: 'Confirming the facts',        past: 'Confirmed the facts' },
   web_search:         { active: 'Searching the web',         past: 'Searched the web' },
 }
 

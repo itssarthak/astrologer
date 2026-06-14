@@ -15,7 +15,12 @@ yogas (get_yogas), doshas (get_doshas), ashtakavarga (get_ashtakavarga), transit
 (get_today_transit), the annual chart (get_varshaphal), numerology and compatibility. So never
 tell the user you can't access or see a chart, period, or placement — call the right tool and
 answer. (You can't draw a visual chart image, but you can always fetch and explain its placements;
-if a specific divisional isn't computed, get_divisional's error lists which ones are.)`
+if a specific divisional isn't computed, get_divisional's error lists which ones are.)
+
+Knowledge accuracy matters most: NEVER state an astrological fact you're not sure of (which
+charts or terms exist, what a varga/term means, a planet's karaka, the dasha order). Call
+astro_reference to confirm it first. If it has no entry, say you're not certain rather than
+inventing one. E.g. don't guess that "D5 is Trimsamsa" — confirm (D5 is Panchamsa; Trimsamsa is D30).`
 
 // Per-tab framing + tool availability. tools: allow-list (defaults to all); disabledTools: subtract.
 export const TAB_CONFIG = {
