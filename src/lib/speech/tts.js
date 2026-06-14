@@ -30,16 +30,28 @@ export function onVoicesReady(cb) {
 
 // Prefer an Indian-English voice, then a higher-quality Google/Natural en voice,
 // then any English voice, else null.
+// Score an English voice for quality. Default system voices (e.g. "Microsoft David",
+// eSpeak, "compact") sound robotic; the neural/Google/named premium voices sound far
+// better. We pick the highest-scoring available voice (the user can override via the picker).
+export function voiceQuality(v) {
+  const name = v?.name || ''
+  let s = 0
+  if (/Natural|Neural|Premium|Enhanced/i.test(name)) s += 6        // modern neural voices — best
+  else if (/Google/i.test(name)) s += 4                            // Chrome's network voices
+  else if (/Samantha|Karen|Daniel|Moira|Rishi|Veena|Serena|Allison|Ava|Zoe|Aaron|Tessa|Fiona/i.test(name)) s += 3 // named OS premium
+  if (v?.lang === 'en-IN') s += 2                                  // locale preference (soft)
+  else if (/^en-(GB|US|AU|IE)/.test(v?.lang || '')) s += 1
+  if (v?.localService === false) s += 1                            // network voices skew higher-quality
+  if (/David|Mark|Zira|Hazel|eSpeak|compact/i.test(name)) s -= 4   // known low-quality
+  return s
+}
+
+// Pick the best-sounding English voice available (quality first, then locale), else null.
 export function pickDefaultVoice(voices) {
   if (!voices || voices.length === 0) return null
-  const indian = voices.find(v => v.lang === 'en-IN')
-  if (indian) return indian
-  const quality = voices.find(
-    v => /Google|Natural/.test(v.name || '') && v.lang?.startsWith('en')
-  )
-  if (quality) return quality
-  const anyEn = voices.find(v => v.lang?.startsWith('en'))
-  return anyEn || null
+  const en = voices.filter(v => v.lang?.startsWith('en'))
+  const pool = en.length ? en : voices
+  return pool.slice().sort((a, b) => voiceQuality(b) - voiceQuality(a))[0] || null
 }
 
 // Strip the bits of markdown our replies use so they don't get read aloud literally.

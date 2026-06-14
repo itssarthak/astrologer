@@ -45,10 +45,11 @@ test('supported false when absent', () => {
   expect(result.current.supported).toBe(false)
 })
 
-test('loads voices and picks en-IN default', () => {
+test('loads voices and picks the highest-quality voice as default', () => {
   const { result } = renderHook(() => useTextToSpeech())
   expect(result.current.voices.length).toBe(2)
-  expect(result.current.voice.lang).toBe('en-IN')
+  // 'Google US' outranks a plain 'Indian' en-IN system voice (quality first).
+  expect(result.current.voice.voiceURI).toBe('uri-us')
 })
 
 test('autoSpeak persists to localStorage', () => {

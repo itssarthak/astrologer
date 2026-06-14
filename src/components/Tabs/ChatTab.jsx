@@ -80,8 +80,10 @@ export default function ChatTab() {
     <div className="flex flex-col h-full">
       <ChatToolbar title="Chat" onRefresh={reload} onClear={clearChat}
         refreshDisabled={busy} clearDisabled={busy || messages.length === 0}
-        ttsSupported={tts.supported} autoSpeak={tts.autoSpeak}
+        ttsSupported={tts.supported} autoSpeak={tts.autoSpeak} speaking={tts.speaking}
         onToggleAutoSpeak={() => tts.setAutoSpeak(!tts.autoSpeak)}
+        voices={tts.voices} voice={tts.voice}
+        onSelectVoice={uri => tts.setVoice(tts.voices.find(v => v.voiceURI === uri))}
         voiceSupported={voice.supported} handsFree={voice.handsFree}
         onToggleHandsFree={voice.toggleHandsFree} />
       <ChatMessages messages={messages} streaming={busy} streamingContent={streamingContent} streamingTools={liveTools}

@@ -104,28 +104,35 @@ describe('onVoicesReady', () => {
 })
 
 describe('pickDefaultVoice', () => {
-  test('prefers en-IN', () => {
+  test('prefers a high-quality voice over a plain en-IN system voice', () => {
     const voices = [
-      { name: 'Google US', lang: 'en-US' },
-      { name: 'Some IN', lang: 'en-IN' },
+      { name: 'Some IN', lang: 'en-IN' },        // plain locale voice (often robotic)
+      { name: 'Google US English', lang: 'en-US' }, // higher quality
     ]
-    expect(pickDefaultVoice(voices).name).toBe('Some IN')
+    expect(pickDefaultVoice(voices).name).toBe('Google US English')
   })
-  test('then Google/Natural en', () => {
+  test('among quality voices, prefers en-IN', () => {
     const voices = [
-      { name: 'Plain', lang: 'en-US' },
       { name: 'Google UK English', lang: 'en-GB' },
+      { name: 'Google India English', lang: 'en-IN' },
     ]
-    expect(pickDefaultVoice(voices).name).toBe('Google UK English')
+    expect(pickDefaultVoice(voices).name).toBe('Google India English')
   })
-  test('Natural also matches', () => {
+  test('neural/natural voices score highest', () => {
     const voices = [
-      { name: 'Plain', lang: 'en-US' },
-      { name: 'Microsoft Natural', lang: 'en-US' },
+      { name: 'Google US English', lang: 'en-US' },
+      { name: 'Microsoft Aria Natural', lang: 'en-US' },
     ]
-    expect(pickDefaultVoice(voices).name).toBe('Microsoft Natural')
+    expect(pickDefaultVoice(voices).name).toBe('Microsoft Aria Natural')
   })
-  test('then first en', () => {
+  test('avoids known low-quality voices when a better one exists', () => {
+    const voices = [
+      { name: 'Microsoft David', lang: 'en-US' },  // robotic — penalised
+      { name: 'Samantha', lang: 'en-US' },          // named premium
+    ]
+    expect(pickDefaultVoice(voices).name).toBe('Samantha')
+  })
+  test('falls back to the first en voice when none have quality markers', () => {
     const voices = [{ name: 'First', lang: 'en-AU' }, { name: 'Second', lang: 'en-US' }]
     expect(pickDefaultVoice(voices).name).toBe('First')
   })

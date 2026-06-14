@@ -1,5 +1,6 @@
 import ToolChips from './ToolChips'
 import Markdown from './Markdown'
+import { SpeakerIcon, StopIcon } from './VoiceIcons'
 
 export default function ChatMessage({ message, onSpeak, onStopSpeak, isSpeaking = false }) {
   const isUser = message.role === 'user'
@@ -20,9 +21,11 @@ export default function ChatMessage({ message, onSpeak, onStopSpeak, isSpeaking 
       {canSpeak && (
         <button
           onClick={() => (isSpeaking ? onStopSpeak?.() : onSpeak(message.content))}
-          title={isSpeaking ? 'Stop' : 'Read aloud'}
-          className="text-xs text-muted hover:text-primary transition-colors px-1">
-          {isSpeaking ? '⏹' : '🔊'}
+          title={isSpeaking ? 'Stop' : 'Read aloud'} aria-label={isSpeaking ? 'Stop reading' : 'Read aloud'}
+          className={`transition-colors p-0.5 ${isSpeaking ? 'text-primary' : 'text-muted hover:text-primary'}`}>
+          {isSpeaking
+            ? <StopIcon className="w-4 h-4" />
+            : <SpeakerIcon className="w-4 h-4" active={false} />}
         </button>
       )}
     </div>
