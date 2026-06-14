@@ -88,3 +88,7 @@ export async function computeSynastry(chartJsonA, chartJsonB, genderA = '', gend
 export async function computeChartFacts(chartJson, refDate = null) {
   return compute('computeChartFacts', [asJson(chartJson), refDate])
 }
+
+export async function computeVarshaphal(natalChartJson, targetYear, lat, lon, tz, birthYear, birthMonth, birthDay, birthHour, birthMinute) {
+  return compute('computeVarshaphal', [asJson(natalChartJson), targetYear, lat, lon, tz, birthYear, birthMonth, birthDay, birthHour, birthMinute])
+}

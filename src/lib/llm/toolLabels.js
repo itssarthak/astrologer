@@ -10,6 +10,7 @@ export const TOOL_LABELS = {
   get_doshas:         { active: 'Checking the doshas',              past: 'Checked the doshas' },
   get_yogas:          { active: 'Listing the yogas',                past: 'Listed the yogas' },
   get_ashtakavarga:   { active: 'Reading Ashtakavarga strengths',   past: 'Read Ashtakavarga strengths' },
+  get_varshaphal:     { active: 'Casting the annual chart',         past: 'Cast the annual chart' },
   get_today_transit:  { active: "Reading today's transits",        past: "Read today's transits" },
   match_profiles:     { active: 'Checking compatibility',    past: 'Checked compatibility' },
   compute_numerology: { active: 'Crunching the numbers',     past: 'Crunched the numbers' },
