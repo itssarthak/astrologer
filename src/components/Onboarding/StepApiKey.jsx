@@ -4,7 +4,7 @@ import { PROVIDERS, defaultModelFor } from '../../lib/llm/providers'
 
 export default function StepApiKey({ onNext }) {
   const existing = getApiKey()
-  const initialProvider = existing?.provider ?? 'claude'
+  const initialProvider = existing?.provider ?? 'openrouter'
   const [provider, setProvider] = useState(initialProvider)
   const [key, setKey] = useState(existing?.key ?? '')
   const [baseUrl, setBaseUrl] = useState(existing?.baseUrl ?? '')
@@ -84,7 +84,7 @@ export default function StepApiKey({ onNext }) {
             className="w-full px-3 py-2 rounded-lg border border-border bg-white text-text focus:outline-none focus:border-primary font-mono text-sm" />
           {provider === 'openrouter' && (
             <p className="text-xs text-muted">
-              Suggested: <span className="font-mono text-text-2">openrouter/free</span> — routes to free models at no cost. Use any OpenRouter model id.
+              Suggested: <span className="font-mono text-text-2">openai/gpt-oss-120b:free</span> — a capable free model at no cost. Use any OpenRouter model id.
             </p>
           )}
         </div>

@@ -3,7 +3,7 @@
 // by the streaming (index.js) and agentic (agent.js) paths.
 
 export const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1'
-export const OPENROUTER_DEFAULT_MODEL = 'openrouter/free'
+export const OPENROUTER_DEFAULT_MODEL = 'openai/gpt-oss-120b:free'
 
 export const PROVIDERS = [
   { id: 'claude', label: 'Claude', placeholder: 'sk-ant-...', docs: 'https://console.anthropic.com/account/keys' },

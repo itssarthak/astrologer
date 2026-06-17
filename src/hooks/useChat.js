@@ -23,9 +23,9 @@ export function useChat(profile, tab) {
     const base = buildSystemPrompt(profile)
     const guidance = tools.length ? `\n\n${TOOL_GUIDANCE}` : ''
     const systemPrompt = `${base}${guidance}\n\n# This view\n${instructionFor(tab)}${extraContext ? `\n\n${extraContext}` : ''}`
-    const history = getHistory(profile.id, tab)
+    const history = await getHistory(profile.id, tab)
 
-    appendMessage(profile.id, tab, { role: 'user', content: userMessage })
+    await appendMessage(profile.id, tab, { role: 'user', content: userMessage })
     const controller = new AbortController()
     abortRef.current = controller
     const usedTools = []
@@ -43,11 +43,11 @@ export function useChat(profile, tab) {
         },
         signal: controller.signal,
       })
-      appendMessage(profile.id, tab, { role: 'assistant', content: text, tools: usedTools.length ? usedTools : undefined })
+      await appendMessage(profile.id, tab, { role: 'assistant', content: text, tools: usedTools.length ? usedTools : undefined })
       return text
     } catch (err) {
       if (err.name === 'AbortError') {
-        if (streamed) appendMessage(profile.id, tab, { role: 'assistant', content: streamed, tools: usedTools.length ? usedTools : undefined })
+        if (streamed) await appendMessage(profile.id, tab, { role: 'assistant', content: streamed, tools: usedTools.length ? usedTools : undefined })
         return streamed
       }
       setError(err.message)

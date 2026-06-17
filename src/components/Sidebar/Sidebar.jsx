@@ -5,6 +5,7 @@ import { PyodideContext } from '../../contexts/PyodideContext'
 import ProfileItem from './ProfileItem'
 import AddProfileModal from './AddProfileModal'
 import ApiKeyModal from './ApiKeyModal'
+import StorageFlag from '../StorageFlag'
 
 const ENGINE_STATUS = {
   ready: { dot: 'bg-green-400', label: 'Python engine ready' },
@@ -43,6 +44,7 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="px-2 py-3 border-t border-white/10 flex flex-col gap-1">
+        <StorageFlag />
         <button onClick={() => setShowApiModal(true)}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-gold/70 hover:text-gold hover:bg-white/5 transition-colors">
           <span>🔑</span>

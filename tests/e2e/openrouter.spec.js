@@ -17,7 +17,7 @@ const PROFILE = {
 }
 
 test.describe('OpenRouter — onboarding UI', () => {
-  test('suggests openrouter/free, shows key deeplink, and saves the config', async ({ page }) => {
+  test('suggests openai/gpt-oss-120b:free, shows key deeplink, and saves the config', async ({ page }) => {
     await page.addInitScript(() => localStorage.clear())
     await page.goto(BASE)
     await page.getByRole('button', { name: /get started/i }).click()
@@ -26,7 +26,7 @@ test.describe('OpenRouter — onboarding UI', () => {
     await page.getByRole('button', { name: /^openrouter$/i }).click()
 
     // Model is pre-filled with the suggestion
-    await expect(page.locator('input[type="text"]')).toHaveValue('openrouter/free')
+    await expect(page.locator('input[type="text"]')).toHaveValue('openai/gpt-oss-120b:free')
 
     // Deeplink to generate a key points at OpenRouter's keys page
     const keyLink = page.getByRole('link', { name: /generate your openrouter api key/i })
@@ -45,7 +45,7 @@ test.describe('OpenRouter — onboarding UI', () => {
     await expect(page.getByRole('heading', { name: /your birth details/i })).toBeVisible()
 
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('astro:apiKey')))
-    expect(saved).toMatchObject({ provider: 'openrouter', key: 'sk-or-test-key', model: 'openrouter/free' })
+    expect(saved).toMatchObject({ provider: 'openrouter', key: 'sk-or-test-key', model: 'openai/gpt-oss-120b:free' })
   })
 })
 

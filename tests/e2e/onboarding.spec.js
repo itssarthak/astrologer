@@ -51,9 +51,13 @@ test.describe('Onboarding flow (fresh start)', () => {
   })
 
   test('Step 1: Get Started skips API key when key already saved', async ({ page }) => {
-    await page.evaluate(() => {
+    // Seed the API key before load so the storage cache hydrates with it (the app reads the key
+    // from the hydrated cache, not synchronously from localStorage). addInitScript runs after the
+    // beforeEach clear on the reload below, so the key survives.
+    await page.addInitScript(() => {
       localStorage.setItem('astro:apiKey', JSON.stringify({ provider: 'claude', key: 'sk-ant-test' }))
     })
+    await page.reload()
     await page.getByRole('button', { name: /get started/i }).click()
     await expect(page.getByRole('heading', { name: /your birth details/i })).toBeVisible()
   })
@@ -73,9 +77,13 @@ test.describe('Onboarding flow (fresh start)', () => {
   })
 
   test('Step 3: Birth details form renders all required fields', async ({ page }) => {
-    await page.evaluate(() => {
+    // Seed the API key before load so the storage cache hydrates with it (the app reads the key
+    // from the hydrated cache, not synchronously from localStorage). addInitScript runs after the
+    // beforeEach clear on the reload below, so the key survives.
+    await page.addInitScript(() => {
       localStorage.setItem('astro:apiKey', JSON.stringify({ provider: 'claude', key: 'sk-ant-test' }))
     })
+    await page.reload()
     await page.getByRole('button', { name: /get started/i }).click()
     await page.getByRole('heading', { name: /your birth details/i }).waitFor()
     await expect(page.locator('#bf-name')).toBeVisible()
@@ -88,9 +96,13 @@ test.describe('Onboarding flow (fresh start)', () => {
     await page.route('**/api/nominatim/**', route => route.fulfill({
       status: 200, contentType: 'application/json', body: JSON.stringify(NOMINATIM_MOCK),
     }))
-    await page.evaluate(() => {
+    // Seed the API key before load so the storage cache hydrates with it (the app reads the key
+    // from the hydrated cache, not synchronously from localStorage). addInitScript runs after the
+    // beforeEach clear on the reload below, so the key survives.
+    await page.addInitScript(() => {
       localStorage.setItem('astro:apiKey', JSON.stringify({ provider: 'claude', key: 'sk-ant-test' }))
     })
+    await page.reload()
     await page.getByRole('button', { name: /get started/i }).click()
     await page.getByRole('heading', { name: /your birth details/i }).waitFor()
 
@@ -117,9 +129,13 @@ test.describe('Onboarding flow (fresh start)', () => {
     await page.route('**/api/timeapi/**', route => route.fulfill({
       status: 200, contentType: 'application/json', body: JSON.stringify(TIMEAPI_MOCK),
     }))
-    await page.evaluate(() => {
+    // Seed the API key before load so the storage cache hydrates with it (the app reads the key
+    // from the hydrated cache, not synchronously from localStorage). addInitScript runs after the
+    // beforeEach clear on the reload below, so the key survives.
+    await page.addInitScript(() => {
       localStorage.setItem('astro:apiKey', JSON.stringify({ provider: 'claude', key: 'sk-ant-test' }))
     })
+    await page.reload()
     await page.getByRole('button', { name: /get started/i }).click()
     await page.getByRole('heading', { name: /your birth details/i }).waitFor()
 

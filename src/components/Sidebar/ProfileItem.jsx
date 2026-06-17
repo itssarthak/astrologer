@@ -18,20 +18,22 @@ export default function ProfileItem({ profile }) {
       className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
         locked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
       } ${
-        isActive ? 'bg-primary-light border border-primary' : 'hover:bg-surface-2 border border-transparent'
+        isActive ? 'bg-primary-light border border-primary' : 'hover:bg-white/5 border border-transparent'
       }`}>
       <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${
-        isActive ? 'bg-primary text-white' : 'bg-surface-2 text-muted'
+        isActive ? 'bg-primary text-white' : 'bg-white/10 text-gold'
       }`}>
         {initial}
       </div>
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium truncate ${isActive ? 'text-primary' : 'text-text'}`}>{profile.name}</p>
-        <p className="text-xs text-muted truncate">{profile.dob}</p>
+        {/* Inactive items sit on the dark sidebar, so they use light/gold text — not the dark-theme
+            `text-text`/`text-muted`, which is invisible against bg-dark-bg (#3a2010 on #3a2010). */}
+        <p className={`text-sm font-medium truncate ${isActive ? 'text-primary' : 'text-gold'}`}>{profile.name}</p>
+        <p className={`text-xs truncate ${isActive ? 'text-primary/70' : 'text-gold/60'}`}>{profile.dob}</p>
       </div>
       {!isActive && !busy && (
         <button onClick={e => { e.stopPropagation(); removeProfile(profile.id) }}
-          className="text-muted hover:text-red-500 transition-colors text-lg leading-none flex-shrink-0"
+          className="text-gold/50 hover:text-red-400 transition-colors text-lg leading-none flex-shrink-0"
           aria-label={`Remove ${profile.name}`}>
           ×
         </button>
