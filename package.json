@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:eval": "RUN_LLM_EVALS=1 vitest run tests/eval"
   },
   "dependencies": {
     "pyodide": "^0.29.4",

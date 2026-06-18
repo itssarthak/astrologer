@@ -3,8 +3,8 @@ import { runAgent, providerSupportsTools } from '../lib/llm/agent'
 import { getApiKey } from '../lib/storage/keys'
 import { useApiKey } from './useApiKey'
 import { appendMessage, getHistory } from '../lib/storage/chat'
-import { buildSystemPrompt } from '../lib/prompts/soul'
-import { enabledToolsFor, instructionFor, TOOL_GUIDANCE } from '../lib/llm/tabConfig'
+import { assembleSystemPrompt } from '../lib/prompts/systemPrompt'
+import { enabledToolsFor } from '../lib/llm/tabConfig'
 import { trackEvent } from '../lib/analytics'
 
 export function useChat(profile, tab) {
@@ -20,9 +20,7 @@ export function useChat(profile, tab) {
     if (!profile) throw new Error('No active profile')
 
     const tools = enabledToolsFor(tab)
-    const base = buildSystemPrompt(profile)
-    const guidance = tools.length ? `\n\n${TOOL_GUIDANCE}` : ''
-    const systemPrompt = `${base}${guidance}\n\n# This view\n${instructionFor(tab)}${extraContext ? `\n\n${extraContext}` : ''}`
+    const systemPrompt = assembleSystemPrompt(profile, tab, { extraContext, toolsEnabled: tools.length > 0 })
     const history = await getHistory(profile.id, tab)
 
     await appendMessage(profile.id, tab, { role: 'user', content: userMessage })
