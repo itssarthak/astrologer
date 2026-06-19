@@ -1,0 +1,552 @@
+{
+  "seed": 42,
+  "generated_by": ".venv-test/bin/python tests/python/fixtures/gen_guna_milan_samples.py",
+  "tz_offset": 5.5,
+  "note": "Reproducible Guna Milan sample set for comparing our engine vs AstroTalk/AstroSage. current_engine is the CORRECTED output (after the koota rebuild: rashi-based Bhakoot/Varna/Graha-Maitri, standard 9/9/9 Gana, and the Mula/Dhanishta name-alias fix). expected.bhakoot_* is the independent rashi-rule check. Cross-check totals against AstroTalk; paste their per-koota breakdown here to lock as golden values.",
+  "pairs": [
+    {
+      "id": 1,
+      "groom": {
+        "dob": "1988-01-24",
+        "time": "08:15",
+        "city": "Chennai",
+        "lat": 13.0827,
+        "lon": 80.2707,
+        "tz": 5.5,
+        "moon_nakshatra": "Revati",
+        "moon_sign": "Pisces",
+        "gender": "male"
+      },
+      "bride": {
+        "dob": "1989-12-04",
+        "time": "21:47",
+        "city": "Lucknow",
+        "lat": 26.8467,
+        "lon": 80.9462,
+        "tz": 5.5,
+        "moon_nakshatra": "Dhanishta",
+        "moon_sign": "Aquarius",
+        "gender": "female"
+      },
+      "current_engine": {
+        "breakdown": {
+          "varna": {
+            "score": 1,
+            "max": 1
+          },
+          "vashya": {
+            "score": 1,
+            "max": 2
+          },
+          "tara": {
+            "score": 1.5,
+            "max": 3
+          },
+          "yoni": {
+            "score": 0,
+            "max": 4
+          },
+          "graha_maitri": {
+            "score": 3,
+            "max": 5
+          },
+          "gana": {
+            "score": 0,
+            "max": 6
+          },
+          "bhakoot": {
+            "score": 0,
+            "max": 7
+          },
+          "nadi": {
+            "score": 8,
+            "max": 8
+          }
+        },
+        "total": 14.5,
+        "verdict": "Weak"
+      },
+      "expected": {
+        "bhakoot_score": 0,
+        "bhakoot_relation": "2/12",
+        "bhakoot_dosha": true
+      }
+    },
+    {
+      "id": 2,
+      "groom": {
+        "dob": "1987-10-14",
+        "time": "01:01",
+        "city": "Mumbai",
+        "lat": 19.076,
+        "lon": 72.8777,
+        "tz": 5.5,
+        "moon_nakshatra": "Ardra",
+        "moon_sign": "Gemini",
+        "gender": "male"
+      },
+      "bride": {
+        "dob": "1991-04-17",
+        "time": "19:01",
+        "city": "Lucknow",
+        "lat": 26.8467,
+        "lon": 80.9462,
+        "tz": 5.5,
+        "moon_nakshatra": "Rohini",
+        "moon_sign": "Taurus",
+        "gender": "female"
+      },
+      "current_engine": {
+        "breakdown": {
+          "varna": {
+            "score": 0,
+            "max": 1
+          },
+          "vashya": {
+            "score": 1,
+            "max": 2
+          },
+          "tara": {
+            "score": 1.5,
+            "max": 3
+          },
+          "yoni": {
+            "score": 2,
+            "max": 4
+          },
+          "graha_maitri": {
+            "score": 5,
+            "max": 5
+          },
+          "gana": {
+            "score": 6,
+            "max": 6
+          },
+          "bhakoot": {
+            "score": 0,
+            "max": 7
+          },
+          "nadi": {
+            "score": 8,
+            "max": 8
+          }
+        },
+        "total": 23.5,
+        "verdict": "Acceptable"
+      },
+      "expected": {
+        "bhakoot_score": 0,
+        "bhakoot_relation": "2/12",
+        "bhakoot_dosha": true
+      }
+    },
+    {
+      "id": 3,
+      "groom": {
+        "dob": "1991-12-21",
+        "time": "22:34",
+        "city": "Pune",
+        "lat": 18.5204,
+        "lon": 73.8567,
+        "tz": 5.5,
+        "moon_nakshatra": "Ardra",
+        "moon_sign": "Gemini",
+        "gender": "male"
+      },
+      "bride": {
+        "dob": "1992-08-19",
+        "time": "08:51",
+        "city": "Delhi",
+        "lat": 28.6139,
+        "lon": 77.209,
+        "tz": 5.5,
+        "moon_nakshatra": "Ashwini",
+        "moon_sign": "Aries",
+        "gender": "female"
+      },
+      "current_engine": {
+        "breakdown": {
+          "varna": {
+            "score": 0,
+            "max": 1
+          },
+          "vashya": {
+            "score": 1,
+            "max": 2
+          },
+          "tara": {
+            "score": 1.5,
+            "max": 3
+          },
+          "yoni": {
+            "score": 2,
+            "max": 4
+          },
+          "graha_maitri": {
+            "score": 0.5,
+            "max": 5
+          },
+          "gana": {
+            "score": 5,
+            "max": 6
+          },
+          "bhakoot": {
+            "score": 7,
+            "max": 7
+          },
+          "nadi": {
+            "score": 0,
+            "max": 8
+          }
+        },
+        "total": 17.0,
+        "verdict": "Weak"
+      },
+      "expected": {
+        "bhakoot_score": 7,
+        "bhakoot_relation": "3/11",
+        "bhakoot_dosha": false
+      }
+    },
+    {
+      "id": 4,
+      "groom": {
+        "dob": "1990-12-14",
+        "time": "10:17",
+        "city": "Kolkata",
+        "lat": 22.5726,
+        "lon": 88.3639,
+        "tz": 5.5,
+        "moon_nakshatra": "Vishakha",
+        "moon_sign": "Libra",
+        "gender": "male"
+      },
+      "bride": {
+        "dob": "1991-06-04",
+        "time": "02:24",
+        "city": "Mumbai",
+        "lat": 19.076,
+        "lon": 72.8777,
+        "tz": 5.5,
+        "moon_nakshatra": "Dhanishta",
+        "moon_sign": "Capricorn",
+        "gender": "female"
+      },
+      "current_engine": {
+        "breakdown": {
+          "varna": {
+            "score": 0,
+            "max": 1
+          },
+          "vashya": {
+            "score": 1,
+            "max": 2
+          },
+          "tara": {
+            "score": 1.5,
+            "max": 3
+          },
+          "yoni": {
+            "score": 1,
+            "max": 4
+          },
+          "graha_maitri": {
+            "score": 5,
+            "max": 5
+          },
+          "gana": {
+            "score": 6,
+            "max": 6
+          },
+          "bhakoot": {
+            "score": 7,
+            "max": 7
+          },
+          "nadi": {
+            "score": 8,
+            "max": 8
+          }
+        },
+        "total": 29.5,
+        "verdict": "Strong"
+      },
+      "expected": {
+        "bhakoot_score": 7,
+        "bhakoot_relation": "4/10",
+        "bhakoot_dosha": false
+      }
+    },
+    {
+      "id": 5,
+      "groom": {
+        "dob": "1996-06-20",
+        "time": "08:51",
+        "city": "Delhi",
+        "lat": 28.6139,
+        "lon": 77.209,
+        "tz": 5.5,
+        "moon_nakshatra": "Ashlesha",
+        "moon_sign": "Cancer",
+        "gender": "male"
+      },
+      "bride": {
+        "dob": "1999-09-04",
+        "time": "12:05",
+        "city": "Lucknow",
+        "lat": 26.8467,
+        "lon": 80.9462,
+        "tz": 5.5,
+        "moon_nakshatra": "Mrigashira",
+        "moon_sign": "Gemini",
+        "gender": "female"
+      },
+      "current_engine": {
+        "breakdown": {
+          "varna": {
+            "score": 1,
+            "max": 1
+          },
+          "vashya": {
+            "score": 1,
+            "max": 2
+          },
+          "tara": {
+            "score": 1.5,
+            "max": 3
+          },
+          "yoni": {
+            "score": 1,
+            "max": 4
+          },
+          "graha_maitri": {
+            "score": 1,
+            "max": 5
+          },
+          "gana": {
+            "score": 1,
+            "max": 6
+          },
+          "bhakoot": {
+            "score": 0,
+            "max": 7
+          },
+          "nadi": {
+            "score": 8,
+            "max": 8
+          }
+        },
+        "total": 14.5,
+        "verdict": "Weak"
+      },
+      "expected": {
+        "bhakoot_score": 0,
+        "bhakoot_relation": "2/12",
+        "bhakoot_dosha": true
+      }
+    },
+    {
+      "id": 6,
+      "groom": {
+        "dob": "1994-11-20",
+        "time": "11:36",
+        "city": "Chennai",
+        "lat": 13.0827,
+        "lon": 80.2707,
+        "tz": 5.5,
+        "moon_nakshatra": "Mrigashira",
+        "moon_sign": "Taurus",
+        "gender": "male"
+      },
+      "bride": {
+        "dob": "1987-01-22",
+        "time": "07:49",
+        "city": "Bengaluru",
+        "lat": 12.9716,
+        "lon": 77.5946,
+        "tz": 5.5,
+        "moon_nakshatra": "Chitra",
+        "moon_sign": "Virgo",
+        "gender": "female"
+      },
+      "current_engine": {
+        "breakdown": {
+          "varna": {
+            "score": 1,
+            "max": 1
+          },
+          "vashya": {
+            "score": 1,
+            "max": 2
+          },
+          "tara": {
+            "score": 3,
+            "max": 3
+          },
+          "yoni": {
+            "score": 2,
+            "max": 4
+          },
+          "graha_maitri": {
+            "score": 5,
+            "max": 5
+          },
+          "gana": {
+            "score": 0,
+            "max": 6
+          },
+          "bhakoot": {
+            "score": 0,
+            "max": 7
+          },
+          "nadi": {
+            "score": 0,
+            "max": 8
+          }
+        },
+        "total": 12,
+        "verdict": "Weak"
+      },
+      "expected": {
+        "bhakoot_score": 0,
+        "bhakoot_relation": "5/9",
+        "bhakoot_dosha": true
+      }
+    },
+    {
+      "id": 7,
+      "groom": {
+        "dob": "1987-04-28",
+        "time": "03:24",
+        "city": "Bengaluru",
+        "lat": 12.9716,
+        "lon": 77.5946,
+        "tz": 5.5,
+        "moon_nakshatra": "Ashwini",
+        "moon_sign": "Aries",
+        "gender": "male"
+      },
+      "bride": {
+        "dob": "1999-11-27",
+        "time": "11:10",
+        "city": "Hyderabad",
+        "lat": 17.385,
+        "lon": 78.4867,
+        "tz": 5.5,
+        "moon_nakshatra": "Pushya",
+        "moon_sign": "Cancer",
+        "gender": "female"
+      },
+      "current_engine": {
+        "breakdown": {
+          "varna": {
+            "score": 0,
+            "max": 1
+          },
+          "vashya": {
+            "score": 1,
+            "max": 2
+          },
+          "tara": {
+            "score": 1.5,
+            "max": 3
+          },
+          "yoni": {
+            "score": 2,
+            "max": 4
+          },
+          "graha_maitri": {
+            "score": 4,
+            "max": 5
+          },
+          "gana": {
+            "score": 6,
+            "max": 6
+          },
+          "bhakoot": {
+            "score": 7,
+            "max": 7
+          },
+          "nadi": {
+            "score": 8,
+            "max": 8
+          }
+        },
+        "total": 29.5,
+        "verdict": "Strong"
+      },
+      "expected": {
+        "bhakoot_score": 7,
+        "bhakoot_relation": "4/10",
+        "bhakoot_dosha": false
+      }
+    },
+    {
+      "id": 8,
+      "groom": {
+        "dob": "1996-04-22",
+        "time": "08:44",
+        "city": "Mumbai",
+        "lat": 19.076,
+        "lon": 72.8777,
+        "tz": 5.5,
+        "moon_nakshatra": "Mrigashira",
+        "moon_sign": "Taurus",
+        "gender": "male"
+      },
+      "bride": {
+        "dob": "1990-09-24",
+        "time": "07:10",
+        "city": "Jaipur",
+        "lat": 26.9124,
+        "lon": 75.7873,
+        "tz": 5.5,
+        "moon_nakshatra": "Anuradha",
+        "moon_sign": "Scorpio",
+        "gender": "female"
+      },
+      "current_engine": {
+        "breakdown": {
+          "varna": {
+            "score": 0,
+            "max": 1
+          },
+          "vashya": {
+            "score": 1,
+            "max": 2
+          },
+          "tara": {
+            "score": 1.5,
+            "max": 3
+          },
+          "yoni": {
+            "score": 2,
+            "max": 4
+          },
+          "graha_maitri": {
+            "score": 3,
+            "max": 5
+          },
+          "gana": {
+            "score": 6,
+            "max": 6
+          },
+          "bhakoot": {
+            "score": 7,
+            "max": 7
+          },
+          "nadi": {
+            "score": 0,
+            "max": 8
+          }
+        },
+        "total": 20.5,
+        "verdict": "Acceptable"
+      },
+      "expected": {
+        "bhakoot_score": 7,
+        "bhakoot_relation": "7/7",
+        "bhakoot_dosha": false
+      }
+    }
+  ]
+}

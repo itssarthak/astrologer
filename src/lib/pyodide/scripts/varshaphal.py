@@ -11,6 +11,19 @@ NAKSHATRA_NAMES = ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ar
     "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta", "Chitra", "Swati",
     "Vishakha", "Anuradha", "Jyeshtha", "Moola", "Purva Ashadha", "Uttara Ashadha", "Shravana",
     "Dhanishtha", "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati"]
+# The engine emits a couple of alternate transliterations; map them so the Mudda lord isn't
+# silently wrong for those moons. Keys lowercased.
+NAKSHATRA_ALIASES = {"mula": "Moola", "dhanishta": "Dhanishtha"}
+
+def _nak_index(name):
+    if name in NAKSHATRA_NAMES:
+        return NAKSHATRA_NAMES.index(name)
+    key = (name or "").strip().lower()
+    for i, n in enumerate(NAKSHATRA_NAMES):
+        if n.lower() == key:
+            return i
+    canon = NAKSHATRA_ALIASES.get(key)
+    return NAKSHATRA_NAMES.index(canon) if canon else 0
 # Vimshottari dasha lords in sequence + their years (total 120). Nakshatra lord = VIM_ORDER[nak_index % 9].
 VIM_ORDER = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"]
 VIM_YEARS = {"Ketu": 7, "Venus": 20, "Sun": 6, "Moon": 10, "Mars": 7, "Rahu": 18,
@@ -92,8 +105,9 @@ def compute_varshaphal(natal_chart_json, target_year, lat, lon, tz,
     muntha_sign = SIGNS[muntha_idx]
     vl_idx = SIGNS.index(varsha_lagna)
     muntha_house = ((muntha_idx - vl_idx) % 12) + 1
-    # Mudda start lord = lord of natal Moon nakshatra
-    nak_i = NAKSHATRA_NAMES.index(moon_nak) if moon_nak in NAKSHATRA_NAMES else 0
+    # Mudda start lord = lord of natal Moon nakshatra. Tolerate the engine's alternate spellings
+    # ("Mula"/"Dhanishta") and case/spacing so the lord isn't silently wrong for those moons.
+    nak_i = _nak_index(moon_nak)
     start_lord = VIM_ORDER[nak_i % 9]
     # varsha placements (planet -> sign, house from varsha lagna)
     placements = []

@@ -109,12 +109,15 @@ def test_guna_milan_no_gender_is_order_independent():
 
 def test_guna_milan_with_gender_is_pair_consistent_and_directional():
     # The score depends on the actual genders, NOT argument order.
-    assert compute_guna_milan("Rohini", "male", "Magha", "female")["total"] \
-        == compute_guna_milan("Magha", "female", "Rohini", "male")["total"]
-    # Swapping who is groom vs bride can change the directional Varna/Gana kootas.
-    mf = compute_guna_milan("Magha", "male", "Rohini", "female")["breakdown"]
-    fm = compute_guna_milan("Magha", "female", "Rohini", "male")["breakdown"]
-    assert (mf["varna"]["score"], mf["gana"]["score"]) != (fm["varna"]["score"], fm["gana"]["score"])
+    assert compute_guna_milan("Rohini", "male", "Magha", "female", "Cancer", "Leo")["total"] \
+        == compute_guna_milan("Magha", "female", "Rohini", "male", "Leo", "Cancer")["total"]
+    # Swapping who is groom vs bride changes the directional Varna (moon-sign based) and Gana
+    # (nakshatra based) kootas. Ashwini=Deva + Bharani=Manushya: gana is 6 one way, 5 the other;
+    # Cancer=Brahmin + Gemini=Shudra: varna is 1 when the groom outranks the bride, else 0.
+    mf = compute_guna_milan("Ashwini", "male", "Bharani", "female", "Cancer", "Gemini")["breakdown"]
+    fm = compute_guna_milan("Ashwini", "female", "Bharani", "male", "Cancer", "Gemini")["breakdown"]
+    assert (mf["varna"]["score"], mf["gana"]["score"]) == (1, 6)
+    assert (fm["varna"]["score"], fm["gana"]["score"]) == (0, 5)
 
 def test_synastry_returns_guna_milan_and_overlays():
     chart_a = compute_chart("A", "1996-11-22", "13:06", 28.6139, 77.2090, 5.5, "Delhi")

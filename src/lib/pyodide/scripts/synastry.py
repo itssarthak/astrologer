@@ -1,6 +1,6 @@
 import json
 
-from relationships import planet_relation
+from relationships import planet_relation, NAISARGIKA
 from adapter import chart_facts
 from aspects import orb_within_sign, tightness
 
@@ -12,14 +12,18 @@ NAKSHATRA_NAMES = [
     "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati",
 ]
 NAKSHATRA_INDEX = {n: i for i, n in enumerate(NAKSHATRA_NAMES)}
+# The chart engine (jyotishganit) emits a couple of transliteration spellings that differ from the
+# list above. Without these, _nak_idx would silently fall back to 0 (Ashwini) and miscompute every
+# nakshatra-based koota for those moons. Keys are lowercased.
+NAKSHATRA_ALIASES = {"mula": "Moola", "dhanishta": "Dhanishtha"}
 
-VARNA = ["Brahmin", "Kshatriya", "Vaishya", "Shudra"]
-NAK_VARNA = [
-    2,2,0,0,2,3,0,0,3,3,2,0,2,3,3,0,0,3,3,2,0,2,3,3,0,0,2
-]
+VARNA = ["Brahmin", "Kshatriya", "Vaishya", "Shudra"]  # ranks, highest -> lowest (Varna is moon-sign based; see SIGN_VARNA)
+# Standard classical Gana classification, 9 each (Deva / Manushya / Rakshasa), indexed
+# Ashwini..Revati. Confirmed against published Ashtakoota sources (jagannathhora.com,
+# rashidarshan.com). 0=Deva, 1=Manushya, 2=Rakshasa.
 NAK_GANA = [
-    0,1,2,0,0,1,0,0,1,1,0,0,0,1,1,0,0,1,1,0,0,0,1,1,0,0,0
-]  # 0=Deva, 1=Manushya, 2=Rakshasa
+    0,1,2,1,0,1,0,0,2,2,1,1,0,2,0,2,0,2,2,1,1,0,2,2,1,1,0
+]
 NAK_NADI = [
     0,1,2,2,1,0,0,1,2,2,1,0,0,1,2,2,1,0,0,1,2,2,1,0,0,1,2
 ]  # 0=Vata, 1=Pitta, 2=Kapha
@@ -76,12 +80,44 @@ VASHYA_CLASS_SCORE = [
     [1, 1, 1, 1, 2],  # Keeta
 ]
 
-NAK_GRAHA = [
-    4,3,0,1,2,5,4,0,1,3,5,0,1,2,5,4,2,1,4,3,0,1,2,5,4,0,3
-]  # 0=Sun,1=Moon,2=Mars,3=Merc,4=Jup,5=Ven,6=Sat
-GRAHA_FRIEND = {
-    0: {0,1,2,4}, 1: {0,3}, 2: {0,1,4}, 3: {0,5}, 4: {0,1,2}, 5: {3,6}, 6: {3,5}
+# Ruling planet of each moon sign (rashi), used by Graha Maitri. Indexed Aries..Pisces.
+SIGN_LORD = [
+    "Mars", "Venus", "Mercury", "Moon", "Sun", "Mercury",
+    "Venus", "Mars", "Jupiter", "Saturn", "Saturn", "Jupiter",
+]
+# Varna of each moon sign by element (water=Brahmin, fire=Kshatriya, earth=Vaishya, air=Shudra).
+# Values are VARNA ranks: 0=Brahmin (highest) .. 3=Shudra (lowest). Indexed Aries..Pisces.
+SIGN_VARNA = [1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0]
+
+# Graha Maitri points from the two moon-sign lords' mutual Naisargika relationship (out of 5).
+# Standard BV Raman scoring: friend-friend 5, friend-neutral 4, neutral-neutral 3,
+# friend-enemy 1, neutral-enemy 0.5, enemy-enemy 0 (same lord -> 5).
+_GM_SCORE = {
+    ("friend", "friend"): 5,
+    ("friend", "neutral"): 4, ("neutral", "friend"): 4,
+    ("neutral", "neutral"): 3,
+    ("friend", "enemy"): 1, ("enemy", "friend"): 1,
+    ("neutral", "enemy"): 0.5, ("enemy", "neutral"): 0.5,
+    ("enemy", "enemy"): 0,
 }
+
+def _planet_view(p_from, p_to):
+    """How p_from naturally regards p_to: friend | enemy | neutral (Naisargika, directional)."""
+    rec = NAISARGIKA.get(p_from, {})
+    if p_to in rec.get("enemy", set()):
+        return "enemy"
+    if p_to in rec.get("friend", set()):
+        return "friend"
+    return "neutral"
+
+def _graha_maitri_score(sign_a, sign_b):
+    ia, ib = SIGN_INDEX.get(sign_a), SIGN_INDEX.get(sign_b)
+    if ia is None or ib is None:
+        return 3  # neutral fallback when a moon sign is missing
+    la, lb = SIGN_LORD[ia], SIGN_LORD[ib]
+    if la == lb:
+        return 5  # signs ruled by the same planet are fully harmonious
+    return _GM_SCORE[(_planet_view(la, lb), _planet_view(lb, la))]
 
 # --- House-overlay interpretation -------------------------------------------------
 # When one partner's planet falls into a house of the other's chart, it activates that
@@ -146,7 +182,16 @@ def _vashya_score(sign_a, sign_b):
     return VASHYA_CLASS_SCORE[SIGN_VASHYA[ia]][SIGN_VASHYA[ib]]
 
 def _nak_idx(name):
-    return NAKSHATRA_INDEX.get(name, 0)
+    # Resolve a nakshatra name to its index, tolerant of case/spacing and the engine's alternate
+    # spellings (e.g. "Mula"/"Dhanishta"). Defaults to 0 only for a genuinely unknown name.
+    if name in NAKSHATRA_INDEX:
+        return NAKSHATRA_INDEX[name]
+    key = (name or "").strip().lower()
+    for i, n in enumerate(NAKSHATRA_NAMES):
+        if n.lower() == key:
+            return i
+    canon = NAKSHATRA_ALIASES.get(key)
+    return NAKSHATRA_INDEX[canon] if canon else 0
 
 def _tara_ok(src, dst):
     # Dina/Tara koota: count from one's birth star to the other's (inclusive); the 3rd, 5th
@@ -160,11 +205,16 @@ def _tara_score(nak_a, nak_b):
     fwd, rev = _tara_ok(nak_a, nak_b), _tara_ok(nak_b, nak_a)
     return 3 if (fwd and rev) else (1.5 if (fwd or rev) else 0)
 
-def _bhakoot_score(nak_boy, nak_girl):
-    b = nak_boy // 9 + 1
-    g = nak_girl // 9 + 1
-    diff = abs(b - g)
-    return 0 if diff in {6, 8} else 7
+def _bhakoot_score(sign_a, sign_b):
+    # Bhakoot/Rashi koota is based on the two moon SIGNS. Count each sign's position from the
+    # other (both ways); the 2/12 (Dwirdwadash), 5/9 (Nav-Pancham) and 6/8 (Shadashtak)
+    # relationships are Bhakoot dosha -> 0, everything else -> 7.
+    ia, ib = SIGN_INDEX.get(sign_a), SIGN_INDEX.get(sign_b)
+    if ia is None or ib is None:
+        return 7
+    fwd = ((ib - ia) % 12) + 1
+    rev = ((ia - ib) % 12) + 1
+    return 0 if {fwd, rev} in ({2, 12}, {5, 9}, {6, 8}) else 7
 
 # Gana koota points: (groom_gana, bride_gana) -> score. 0=Deva, 1=Manushya, 2=Rakshasa.
 # Directional — e.g. a Rakshasa groom with a Deva bride scores worse than the reverse.
@@ -174,9 +224,13 @@ GANA_KOOTA = {
     (2, 0): 1, (2, 1): 0, (2, 2): 6,
 }
 
-def _varna_score(boy_i, girl_i):
-    # 1 point if the groom's varna is equal or higher than the bride's (lower index = higher).
-    return 1 if NAK_VARNA[boy_i] <= NAK_VARNA[girl_i] else 0
+def _varna_score(groom_sign, bride_sign):
+    # Varna koota is based on the moon SIGN. 1 point if the groom's varna is equal or higher than
+    # the bride's (lower rank index = higher varna). Missing sign -> benefit-of-doubt 1.
+    ig, ib = SIGN_INDEX.get(groom_sign), SIGN_INDEX.get(bride_sign)
+    if ig is None or ib is None:
+        return 1
+    return 1 if SIGN_VARNA[ig] <= SIGN_VARNA[ib] else 0
 
 def _gana_score(boy_i, girl_i):
     return GANA_KOOTA[(NAK_GANA[boy_i], NAK_GANA[girl_i])]
@@ -188,26 +242,21 @@ def compute_guna_milan(nak_a_name, gender_a, nak_b_name, gender_b, sign_a="", si
     vashya = _vashya_score(sign_a, sign_b)
     tara = _tara_score(ia, ib)
     yoni = _yoni_score(ia, ib)
-    graha_x, graha_y = NAK_GRAHA[ia], NAK_GRAHA[ib]
-    x_friend = graha_x in GRAHA_FRIEND.get(graha_y, set())
-    y_friend = graha_y in GRAHA_FRIEND.get(graha_x, set())
-    graha_maitri = (5 if graha_x == graha_y
-                    else 5 if (x_friend and y_friend)
-                    else 4 if (x_friend or y_friend)
-                    else 0)
-    bhakoot = _bhakoot_score(ia, ib)
+    graha_maitri = _graha_maitri_score(sign_a, sign_b)
+    bhakoot = _bhakoot_score(sign_a, sign_b)
     nadi = 8 if NAK_NADI[ia] != NAK_NADI[ib] else 0
 
     # Varna and Gana are genuinely directional (groom -> bride). Use the stated genders to pick
     # the groom. For a same-sex or gender-unknown pair, average both assignments so the score
-    # stays well-defined and order-independent without faking a gender.
+    # stays well-defined and order-independent without faking a gender. Varna keys off the moon
+    # sign; Gana off the nakshatra.
     ga, gb = str(gender_a or "").lower(), str(gender_b or "").lower()
     if ga == "male" and gb == "female":
-        varna, gana = _varna_score(ia, ib), _gana_score(ia, ib)
+        varna, gana = _varna_score(sign_a, sign_b), _gana_score(ia, ib)
     elif ga == "female" and gb == "male":
-        varna, gana = _varna_score(ib, ia), _gana_score(ib, ia)
+        varna, gana = _varna_score(sign_b, sign_a), _gana_score(ib, ia)
     else:
-        varna = (_varna_score(ia, ib) + _varna_score(ib, ia)) / 2
+        varna = (_varna_score(sign_a, sign_b) + _varna_score(sign_b, sign_a)) / 2
         gana = (_gana_score(ia, ib) + _gana_score(ib, ia)) / 2
 
     total = varna + vashya + tara + yoni + graha_maitri + gana + bhakoot + nadi
