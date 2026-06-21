@@ -20,7 +20,7 @@ describe('formatNumerologyContext', () => {
   })
 
   it('still renders without a loshu block (older profiles)', () => {
-    const { loshu, ...legacy } = NUM
+    const { loshu: _loshu, ...legacy } = NUM
     const out = formatNumerologyContext(legacy)
     expect(out).toContain('Life Path: 4')
     expect(out).not.toContain('Lo Shu')
