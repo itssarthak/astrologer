@@ -53,6 +53,10 @@ test('Match shows Guna breakdown, classified overlays, and an auto compatibility
   await expect(page.getByText('Compatibility Read')).toBeVisible()
   await expect(page.getByText('You two balance each other well.')).toBeVisible()
 
+  // Indicative numerology panel, separate from Guna Milan (real compute_numerology_match)
+  await expect(page.getByText('Numerology Compatibility')).toBeVisible()
+  await expect(page.getByText(/indicative, non-classical/i)).toBeVisible()
+
   // The old double-encode bug is gone
   const body = await page.locator('body').innerText()
   expect(body).not.toContain('string indices')
