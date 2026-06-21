@@ -2,15 +2,54 @@
 // an async `execute(args)` that runs in the browser — calling the in-browser Pyodide compute
 // functions, reading saved profiles, geocoding, or web searching. Returns stay concise so
 // they fit comfortably back into the model's context.
-import { computeChart, computeTransit, computeSynastry, computeNumerology, computeNumberCompatibility, computeNumerologyMatch, computeChartFacts, computeVarshaphal } from '../pyodide/index'
+import { computeChart, computeTransit, computeSynastry, computeNumerology, computeNumberCompatibility, computeNumerologyMatch, computeLoshuGrid, computeChartFacts, computeVarshaphal } from '../pyodide/index'
 import { getProfiles, getActiveProfile } from '../storage/profiles'
 import { searchPlaces, fetchTimezoneOffset } from '../geocode'
 import { lookupReference, SHODASAVARGA, DIVISIONALS } from './reference'
 
 // Format the dignity/strength-annotated planet lines shared by get_chart and compute_chart.
-function planetLines(facts) {
-  return Object.entries(facts.planets).map(([name, f]) =>
-    `${name}: ${f.sign} (H${f.house}), ${f.dignity}, ${f.strength}${f.retrograde ? ', retrograde' : ''}`)
+// Includes the shadbala rupas / minimum-required when the chart carries them, so the model
+// can reason about the underlying strength numbers and not just the strong/adequate/weak label.
+export function planetLines(facts) {
+  return Object.entries(facts.planets).map(([name, f]) => {
+    const rupas = f.rupas != null && f.min_required != null ? ` · ${f.rupas}/${f.min_required} rupas` : ''
+    return `${name}: ${f.sign} (H${f.house}), ${f.dignity}, ${f.strength}${f.retrograde ? ', retrograde' : ''}${rupas}`
+  })
+}
+
+// One planet's graha-drishti from the chart facts: which planets/houses it aspects, who aspects
+// it, and who it's conjunct with. Each gives/receives entry is "Target (nth)" where n is the
+// drishti angle. `planetFilter` (optional, case-insensitive) narrows to a single planet.
+export function planetAspects(facts, planetFilter) {
+  const wanted = planetFilter ? planetFilter.trim().toLowerCase() : null
+  const fmt = a => `${a.to_planet ?? `H${a.to_house}`} (${a.aspect_type})`
+  return Object.entries(facts.planets)
+    .filter(([name]) => !wanted || name.toLowerCase() === wanted)
+    .map(([name, f]) => ({
+      planet: name,
+      gives: (f.aspects_gives ?? []).map(fmt),
+      receives: (f.aspects_receives ?? []).map(fmt),
+      conjuncts: f.conjuncts ?? [],
+    }))
+}
+
+// One divisional-chart occupant as a line, annotated with its dignity and nakshatra/pada in
+// that varga (these were previously dropped — only planet/sign/house/retro were surfaced).
+export function divisionalPlacementLine(occ, houseNumber) {
+  const nak = occ.nakshatra ? `${occ.nakshatra}${occ.pada ? ` pada ${occ.pada}` : ''}` : null
+  const extras = [occ.dignities?.dignity, nak].filter(Boolean)
+  return `${occ.celestialBody} in ${occ.sign} (H${houseNumber})${occ.motion_type === 'retrograde' ? ' retro' : ''}` +
+    (extras.length ? ` — ${extras.join(', ')}` : '')
+}
+
+// Trim a synastry cross-aspect to the fields worth handing the model. `to` belongs to the other
+// chart, so its owner is always the opposite of from_owner.
+export function trimCrossAspect(ca) {
+  const toOwner = ca.from_owner === 'A' ? 'B' : 'A'
+  return {
+    from: `${ca.from_owner}:${ca.from}`, to: `${toOwner}:${ca.to}`,
+    type: ca.type, effect: ca.effect, tightness: ca.tightness, orb: ca.orb, weight: ca.weight, note: ca.note,
+  }
 }
 
 
@@ -98,7 +137,7 @@ export const TOOLS = [
         const placements = []
         for (const h of dv.houses) {
           for (const occ of h.occupants ?? []) {
-            placements.push(`${occ.celestialBody} in ${occ.sign} (H${h.number})${occ.motion_type === 'retrograde' ? ' retro' : ''}`)
+            placements.push(divisionalPlacementLine(occ, h.number))
           }
         }
         const ascendant = dv.ascendant ?? dv.houses.find(h => h.number === 1)?.sign
@@ -271,6 +310,10 @@ export const TOOLS = [
         overlay_summary: s.overlay_summary,
         top_supportive: (s.top_supportive ?? []).slice(0, 5),
         top_challenging: (s.top_challenging ?? []).slice(0, 5),
+        // Full planet-to-planet cross-aspect list (orb, tightness, weight) behind the top-5
+        // digest, sorted strongest-first, so the model can go deeper than the summary.
+        cross_aspects: (s.cross_aspects ?? [])
+          .slice().sort((x, y) => (y.weight ?? 0) - (x.weight ?? 0)).map(trimCrossAspect),
         marriage_factors: {
           [a.name]: mf.a?.summary,
           [b.name]: mf.b?.summary,
@@ -310,7 +353,7 @@ export const TOOLS = [
         varsha_lagna: `${v.varsha_lagna} (lord ${v.varsha_lagna_lord})`,
         muntha: `${v.muntha.sign} in house ${v.muntha.house} (lord ${v.muntha.lord})`,
         mudda_dasha: (v.mudda_dasha ?? []).map(d => `${d.lord}: ${d.start} → ${d.end}`),
-        placements: (v.placements ?? []).map(p => `${p.planet} in ${p.sign} (H${p.house})${p.retrograde ? ' retro' : ''}`),
+        placements: (v.placements ?? []).map(p => `${p.planet} in ${p.sign} (H${p.house})${p.retrograde ? ' retro' : ''}${p.dignity ? `, ${p.dignity}` : ''}`),
       }
     },
   },
@@ -348,6 +391,41 @@ export const TOOLS = [
     },
     async execute({ full_name_a, dob_a, gender_a, full_name_b, dob_b, gender_b }) {
       return computeNumerologyMatch(full_name_a, dob_a, gender_a ?? '', full_name_b, dob_b, gender_b ?? '')
+    },
+  },
+  {
+    name: 'loshu_grid',
+    description: "Compute the Lo Shu grid (Vedic numerology magic square) for a date of birth: the 3×3 grid populated from the DOB digits plus the driver (mulank), conductor (bhagyank) and — when gender is male/female — the Kua number. Returns which numbers are missing, which are repeated (strengthened), the Kua, and the planes/arrows of strength and weakness with their meanings. Only needs a date of birth (and optionally gender), not a full name.",
+    parameters: {
+      type: 'object',
+      properties: {
+        dob: { type: 'string', description: 'Date of birth, YYYY-MM-DD.' },
+        gender: { type: 'string', description: "'male', 'female', or 'other'. Drives the Kua number (omitted for 'other'/unknown). Optional." },
+      },
+      required: ['dob'],
+    },
+    async execute({ dob, gender }) {
+      return computeLoshuGrid(dob, gender ?? '')
+    },
+  },
+  {
+    name: 'get_aspects',
+    description: "Get the graha-drishti (planetary aspects) for a saved profile's natal chart: for each planet, which planets and houses it aspects, which planets aspect it, and which planets it is conjunct with (each aspect tagged with its drishti angle). Pass a planet name to focus on one planet. Defaults to the active profile.",
+    parameters: {
+      type: 'object',
+      properties: {
+        planet: { type: 'string', description: 'A planet name (e.g. "Saturn") to focus on. Omit for all planets.' },
+        profile_name: { type: 'string', description: 'Name of a saved profile. Omit for the active profile.' },
+      },
+      required: [],
+    },
+    async execute({ planet, profile_name }) {
+      const profile = findProfileByName(profile_name)
+      if (!profile?.chart) throw new Error(`No saved chart found for "${profile_name ?? 'active profile'}".`)
+      const facts = await computeChartFacts(profile.chart)
+      const aspects = planetAspects(facts, planet)
+      if (planet && !aspects.length) throw new Error(`No planet named "${planet}" found in the chart.`)
+      return { name: profile.name, aspects }
     },
   },
   {
