@@ -39,6 +39,20 @@ def _reduce(n, keep_master=True):
     return n
 
 
+def compute_kua(year, gender):
+    """Eight Mansions (Ba Zhai) Kua number, 1-9. Returns None unless gender is male/female
+    (the classical formula is only defined for those two)."""
+    g = (gender or "").lower()
+    if g not in ("male", "female"):
+        return None
+    s = _reduce(sum(int(d) for d in str(year)), keep_master=False)
+    if g == "male":
+        k = 10 - s
+        return 2 if k == 5 else k
+    k = _reduce(5 + s, keep_master=False)
+    return 8 if k == 5 else k
+
+
 def _name_sum(name, mapping, letter_filter=None):
     letters = [c for c in name.upper() if c.isalpha()]
     if letter_filter:
