@@ -2,7 +2,7 @@
 // an async `execute(args)` that runs in the browser — calling the in-browser Pyodide compute
 // functions, reading saved profiles, geocoding, or web searching. Returns stay concise so
 // they fit comfortably back into the model's context.
-import { computeChart, computeTransit, computeSynastry, computeNumerology, computeNumberCompatibility, computeChartFacts, computeVarshaphal } from '../pyodide/index'
+import { computeChart, computeTransit, computeSynastry, computeNumerology, computeNumberCompatibility, computeNumerologyMatch, computeChartFacts, computeVarshaphal } from '../pyodide/index'
 import { getProfiles, getActiveProfile } from '../storage/profiles'
 import { searchPlaces, fetchTimezoneOffset } from '../geocode'
 import { lookupReference, SHODASAVARGA, DIVISIONALS } from './reference'
@@ -322,12 +322,32 @@ export const TOOLS = [
       properties: {
         full_name: { type: 'string', description: 'Full birth name.' },
         dob: { type: 'string', description: 'Date of birth, YYYY-MM-DD.' },
+        gender: { type: 'string', description: "'male', 'female', or 'other'. Drives the Lo Shu Kua number (omitted for 'other'/unknown). Optional." },
         name_in_use: { type: 'string', description: 'The name the person actually goes by, if different from the birth name. Optional.' },
       },
       required: ['full_name', 'dob'],
     },
-    async execute({ full_name, dob, name_in_use }) {
-      return computeNumerology(full_name, dob, name_in_use ?? null)
+    async execute({ full_name, dob, gender, name_in_use }) {
+      return computeNumerology(full_name, dob, gender ?? null, name_in_use ?? null)
+    },
+  },
+  {
+    name: 'numerology_match',
+    description: "Indicative (non-classical) numerology compatibility between two people. Compares their driver (mulank), conductor (bhagyank), and life-path numbers by ruling-planet friendship, a cross-paired driver-conductor read, and Lo Shu grid complementarity (which numbers one partner is missing that the other supplies). Returns per-dimension ratings and an indicative score out of 10. This is separate from and never replaces the classical 36-point Guna Milan.",
+    parameters: {
+      type: 'object',
+      properties: {
+        full_name_a: { type: 'string', description: 'First person full birth name.' },
+        dob_a: { type: 'string', description: 'First person date of birth, YYYY-MM-DD.' },
+        gender_a: { type: 'string', description: "First person: 'male', 'female', or 'other'. Optional." },
+        full_name_b: { type: 'string', description: 'Second person full birth name.' },
+        dob_b: { type: 'string', description: 'Second person date of birth, YYYY-MM-DD.' },
+        gender_b: { type: 'string', description: "Second person: 'male', 'female', or 'other'. Optional." },
+      },
+      required: ['full_name_a', 'dob_a', 'full_name_b', 'dob_b'],
+    },
+    async execute({ full_name_a, dob_a, gender_a, full_name_b, dob_b, gender_b }) {
+      return computeNumerologyMatch(full_name_a, dob_a, gender_a ?? '', full_name_b, dob_b, gender_b ?? '')
     },
   },
   {
