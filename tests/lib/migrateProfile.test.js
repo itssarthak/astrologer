@@ -57,7 +57,7 @@ describe('recomputeProfile', () => {
       'Ada', '1990-01-15', '12:30', 51.5, -0.12, 0, 'London',
     )
     expect(compute.getYogasAndDoshas).toHaveBeenCalledWith({ fresh: true }, profile)
-    expect(compute.computeNumerology).toHaveBeenCalledWith('Ada', '1990-01-15', null)
+    expect(compute.computeNumerology).toHaveBeenCalledWith('Ada', '1990-01-15', 'female', null)
   })
 
   it('returns an updated profile stamped with the current engine version', async () => {
@@ -76,7 +76,13 @@ describe('recomputeProfile', () => {
   it('passes name_in_use to computeNumerology when present', async () => {
     const compute = makeCompute()
     await recomputeProfile({ ...profile, name_in_use: 'Addy' }, compute)
-    expect(compute.computeNumerology).toHaveBeenCalledWith('Ada', '1990-01-15', 'Addy')
+    expect(compute.computeNumerology).toHaveBeenCalledWith('Ada', '1990-01-15', 'female', 'Addy')
+  })
+
+  it('passes gender into computeNumerology (drives the Lo Shu Kua)', async () => {
+    const compute = makeCompute()
+    await recomputeProfile({ ...profile, gender: 'male' }, compute)
+    expect(compute.computeNumerology).toHaveBeenCalledWith('Ada', '1990-01-15', 'male', null)
   })
 
   it('throws when birth fields are missing', async () => {
