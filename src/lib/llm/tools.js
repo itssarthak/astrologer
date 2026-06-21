@@ -18,17 +18,20 @@ export function planetLines(facts) {
 }
 
 // One planet's graha-drishti from the chart facts: which planets/houses it aspects, who aspects
-// it, and who it's conjunct with. Each gives/receives entry is "Target (nth)" where n is the
-// drishti angle. `planetFilter` (optional, case-insensitive) narrows to a single planet.
+// it, and who it's conjunct with — each tagged "Target (nth)" with the drishti angle. The two
+// directions have different shapes: a `gives` entry targets a planet OR a house
+// ({to_planet|to_house}); a `receives` entry names the aspecting planet ({from_planet}).
+// `planetFilter` (optional, case-insensitive) narrows to a single planet.
 export function planetAspects(facts, planetFilter) {
   const wanted = planetFilter ? planetFilter.trim().toLowerCase() : null
-  const fmt = a => `${a.to_planet ?? `H${a.to_house}`} (${a.aspect_type})`
+  const fmtGives = a => `${a.to_planet ?? `H${a.to_house}`} (${a.aspect_type})`
+  const fmtReceives = a => `${a.from_planet} (${a.aspect_type})`
   return Object.entries(facts.planets)
     .filter(([name]) => !wanted || name.toLowerCase() === wanted)
     .map(([name, f]) => ({
       planet: name,
-      gives: (f.aspects_gives ?? []).map(fmt),
-      receives: (f.aspects_receives ?? []).map(fmt),
+      gives: (f.aspects_gives ?? []).map(fmtGives),
+      receives: (f.aspects_receives ?? []).map(fmtReceives),
       conjuncts: f.conjuncts ?? [],
     }))
 }

@@ -11,7 +11,8 @@ const FACTS = {
     },
     Sun: {
       sign: 'Leo', house: 12, dignity: 'own', strength: 'adequate', retrograde: false,
-      aspects_gives: [], aspects_receives: [{ to_planet: 'Saturn', aspect_type: '7' }], conjuncts: [],
+      // a `receives` entry names the aspecting planet via from_planet (NOT to_planet)
+      aspects_gives: [], aspects_receives: [{ from_planet: 'Saturn', aspect_type: '7' }], conjuncts: [],
     },
   },
 }
@@ -40,6 +41,8 @@ describe('planetAspects', () => {
     expect(out).toHaveLength(1)
     expect(out[0].planet).toBe('Sun')
     expect(out[0].receives).toContain('Saturn (7)')
+    // guard against the from_planet/to_planet mix-up that rendered "Hundefined"
+    expect(out[0].receives.join(' ')).not.toMatch(/undefined/)
   })
 })
 
