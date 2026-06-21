@@ -126,3 +126,15 @@ def test_synastry_returns_guna_milan_and_overlays():
     assert "guna_milan" in result
     assert "a_planets_in_b_houses" in result
     assert "b_planets_in_a_houses" in result
+
+
+def test_numerology_includes_loshu_grid():
+    r = compute_numerology("Sarthak Chhabra", "1996-11-22")
+    assert "loshu" in r
+    assert set(r["loshu"]["counts"].keys()) == {str(n) for n in range(1, 10)}
+    assert r["loshu"]["kua"] is None          # no gender passed
+
+
+def test_numerology_gender_drives_kua():
+    r = compute_numerology("Sarthak Chhabra", "1996-11-22", gender="male")
+    assert r["loshu"]["kua"] == 3

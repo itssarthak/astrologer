@@ -205,13 +205,14 @@ def compute_number_compatibility_json(a, b):
     return json.dumps(compute_number_compatibility(int(a), int(b)))
 
 
-def compute_numerology(full_name, dob, name_in_use=None):
+def compute_numerology(full_name, dob, gender=None, name_in_use=None):
     """
     full_name: str (birth certificate name)
     dob: 'YYYY-MM-DD'
+    gender: str | None ('male'/'female' enables the Kua number in the Lo Shu grid)
     name_in_use: str | None (everyday name, if different from the birth name)
     Returns: dict with life_path, destiny, soul_urge, personality, personal_year,
-             mulank, bhagyank, name_compound, name_in_use
+             mulank, bhagyank, name_compound, loshu, name_in_use
     """
     # Life Path / Bhagyank (Destiny number): reduce all digits in DOB.
     dob_digits = [int(d) for d in dob if d.isdigit()]
@@ -252,9 +253,10 @@ def compute_numerology(full_name, dob, name_in_use=None):
         "mulank": _with_ruler(mulank),
         "bhagyank": _with_ruler(life_path if life_path <= 9 else _reduce(life_path, keep_master=False)),
         "name_compound": name_compound,
+        "loshu": compute_loshu_grid(dob, gender),
         "name_in_use": (_name_numbers(name_in_use) if name_in_use else None),
     }
 
 
-def compute_numerology_json(full_name, dob, name_in_use=None):
-    return json.dumps(compute_numerology(full_name, dob, name_in_use))
+def compute_numerology_json(full_name, dob, gender=None, name_in_use=None):
+    return json.dumps(compute_numerology(full_name, dob, gender, name_in_use))
