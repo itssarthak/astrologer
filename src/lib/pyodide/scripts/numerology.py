@@ -276,6 +276,11 @@ def compute_numerology_match_json(name_a, dob_a, gender_a, name_b, dob_b, gender
     return json.dumps(compute_numerology_match(name_a, dob_a, gender_a, name_b, dob_b, gender_b))
 
 
+def compute_loshu_grid_json(dob, gender=None):
+    """Worker entry point: just the Lo Shu grid (no name required)."""
+    return json.dumps(compute_loshu_grid(dob, gender))
+
+
 def compute_numerology(full_name, dob, gender=None, name_in_use=None):
     """
     full_name: str (birth certificate name)

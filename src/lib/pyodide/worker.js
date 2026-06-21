@@ -21,6 +21,7 @@ const PY_FN = {
   computeNumerology: 'compute_numerology_json',
   computeNumberCompatibility: 'compute_number_compatibility_json',
   computeNumerologyMatch: 'compute_numerology_match_json',
+  computeLoshuGrid: 'compute_loshu_grid_json',
   computeSynastry: 'compute_synastry_json',
   computeChartFacts: 'chart_facts_json',
   computeVarshaphal: 'compute_varshaphal_json',
@@ -97,7 +98,7 @@ from chart import compute_chart_json
 from transit import compute_transit_json
 from yogas import compute_yogas_json
 from doshas import compute_doshas_json
-from numerology import compute_numerology_json, compute_number_compatibility_json, compute_numerology_match_json
+from numerology import compute_numerology_json, compute_number_compatibility_json, compute_numerology_match_json, compute_loshu_grid_json
 from synastry import compute_synastry_json
 from adapter import chart_facts_json
 from varshaphal import compute_varshaphal_json
