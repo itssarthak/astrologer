@@ -46,7 +46,7 @@ export default function StepComputing({ birthData }) {
       const yogasDoshas = await getYogasAndDoshas(chartJson, birthData)
       setCompleted(c => [...c, 'yogas'])
 
-      const numerology = await computeNumerology(birthData.name, birthData.dob)
+      const numerology = await computeNumerology(birthData.name, birthData.dob, birthData.gender ?? null, birthData.name_in_use ?? null)
       setCompleted(c => [...c, 'numerology'])
 
       const profile = {
