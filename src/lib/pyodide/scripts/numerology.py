@@ -39,6 +39,82 @@ def _reduce(n, keep_master=True):
     return n
 
 
+def compute_kua(year, gender):
+    """Eight Mansions (Ba Zhai) Kua number, 1-9. Returns None unless gender is male/female
+    (the classical formula is only defined for those two)."""
+    g = (gender or "").lower()
+    if g not in ("male", "female"):
+        return None
+    s = _reduce(sum(int(d) for d in str(year)), keep_master=False)
+    if g == "male":
+        k = 10 - s
+        return 2 if k == 5 else k
+    k = _reduce(5 + s, keep_master=False)
+    return 8 if k == 5 else k
+
+
+# Lines through the Lo Shu magic square (4-9-2 / 3-5-7 / 8-1-6): rows (planes), columns,
+# diagonals. Geometry is magic-square fact; the meaning summarises the cells' planet rulers
+# (PLANET_RULER) — not imported pop-numerology prose.
+LOSHU_LINES = [
+    ("Mental plane (4-9-2)",    [4, 9, 2]),
+    ("Emotional plane (3-5-7)", [3, 5, 7]),
+    ("Practical plane (8-1-6)", [8, 1, 6]),
+    ("Thought (4-3-8)",         [4, 3, 8]),
+    ("Will (9-5-1)",            [9, 5, 1]),
+    ("Action (2-7-6)",          [2, 7, 6]),
+    ("Diagonal 4-5-6",          [4, 5, 6]),
+    ("Diagonal 2-5-8",          [2, 5, 8]),
+]
+
+LOSHU_LINE_MEANING = {
+    "Mental plane (4-9-2)":    "thinking, drive and imagination (Rahu-Mars-Moon).",
+    "Emotional plane (3-5-7)": "wisdom, balance and detachment (Jupiter-Mercury-Ketu).",
+    "Practical plane (8-1-6)": "method, identity and comfort (Saturn-Sun-Venus).",
+    "Thought (4-3-8)":         "planning and discipline (Rahu-Jupiter-Saturn).",
+    "Will (9-5-1)":            "determination, intellect and identity (Mars-Mercury-Sun).",
+    "Action (2-7-6)":          "instinct, detachment and harmony (Moon-Ketu-Venus).",
+    "Diagonal 4-5-6":          "grounded, steady balance (Rahu-Mercury-Venus).",
+    "Diagonal 2-5-8":          "emotional resilience (Moon-Mercury-Saturn).",
+}
+
+
+def compute_loshu_grid(dob, gender=None):
+    """3x3 Lo Shu grid populated from DOB digits + mulank + bhagyank + kua. 0 is never placed."""
+    parts = dob.split('-')
+    mulank = _reduce(int(parts[2]), keep_master=False)
+    bhagyank = _reduce(sum(int(d) for d in dob if d.isdigit()), keep_master=False)
+    kua = compute_kua(int(parts[0]), gender)
+
+    placed = [int(d) for d in dob if d.isdigit() and d != '0']
+    placed += [mulank, bhagyank]
+    if kua:
+        placed.append(kua)
+    placed = [n for n in placed if 1 <= n <= 9]
+
+    counts = {str(n): placed.count(n) for n in range(1, 10)}
+    missing = [n for n in range(1, 10) if counts[str(n)] == 0]
+    repeated = [n for n in range(1, 10) if counts[str(n)] >= 2]
+
+    lines = []
+    for label, cells in LOSHU_LINES:
+        present = sum(1 for c in cells if counts[str(c)] > 0)
+        state = "full" if present == 3 else ("absent" if present == 0 else "partial")
+        lines.append({"name": label, "cells": cells, "state": state,
+                      "meaning": LOSHU_LINE_MEANING[label]})
+
+    return {
+        "counts": counts,
+        "missing": missing,
+        "repeated": repeated,
+        "kua": kua,
+        "kua_note": None if kua else "Kua omitted (requires male/female).",
+        "lines": lines,
+        "arrows_strength": [l["name"] for l in lines if l["state"] == "full"],
+        "arrows_weakness": [l["name"] for l in lines if l["state"] == "absent"],
+    }
+
+
 def _name_sum(name, mapping, letter_filter=None):
     letters = [c for c in name.upper() if c.isalpha()]
     if letter_filter:
@@ -129,13 +205,85 @@ def compute_number_compatibility_json(a, b):
     return json.dumps(compute_number_compatibility(int(a), int(b)))
 
 
-def compute_numerology(full_name, dob, name_in_use=None):
+def _num_rating(score10):
+    return "Harmonious" if score10 >= 7 else ("Mixed" if score10 >= 4 else "Challenging")
+
+
+def _rel_points(pa, pb):
+    rel = planet_relation(pa, pb) if pa and pb else "neutral"
+    return {"friend": 2, "neutral": 1, "enemy": 0}[rel], rel
+
+
+def _ruler_of(n):
+    return PLANET_RULER.get(n if n <= 9 else _reduce(n, keep_master=False))
+
+
+def compute_numerology_match(name_a, dob_a, gender_a, name_b, dob_b, gender_b):
+    """Indicative (non-classical) numerology compatibility between two people, via the
+    ruling-planet NAISARGIKA friendship table and Lo Shu grid complementarity."""
+    na = compute_numerology(name_a, dob_a, gender_a)
+    nb = compute_numerology(name_b, dob_b, gender_b)
+
+    # Core: like-for-like driver / conductor / life-path via ruling planets.
+    core_pairs, core_pts = {}, 0
+    for key, a_num, b_num in (
+        ("mulank",    na["mulank"]["number"],   nb["mulank"]["number"]),
+        ("bhagyank",  na["bhagyank"]["number"], nb["bhagyank"]["number"]),
+        ("life_path", na["life_path"],          nb["life_path"]),
+    ):
+        pts, rel = _rel_points(_ruler_of(a_num), _ruler_of(b_num))
+        core_pts += pts
+        core_pairs[key] = {"a": a_num, "b": b_num, "relation": rel}
+    core_score = round(core_pts / 6 * 10)
+
+    # Driver-conductor: CROSS pairing (A driver vs B conductor, and vice-versa).
+    a_drv, a_con = na["mulank"]["number"], na["bhagyank"]["number"]
+    b_drv, b_con = nb["mulank"]["number"], nb["bhagyank"]["number"]
+    p1, r1 = _rel_points(_ruler_of(a_drv), _ruler_of(b_con))
+    p2, r2 = _rel_points(_ruler_of(b_drv), _ruler_of(a_con))
+    dc_score = round((p1 + p2) / 4 * 10)
+
+    # Grid complementarity: numbers one partner is missing that the other supplies.
+    ga, gb = na["loshu"], nb["loshu"]
+    a_filled = [n for n in ga["missing"] if n not in gb["missing"]]
+    b_filled = [n for n in gb["missing"] if n not in ga["missing"]]
+    shared = [n for n in ga["repeated"] if n in gb["repeated"]]
+    total_missing = len(ga["missing"]) + len(gb["missing"])
+    grid_score = round((len(a_filled) + len(b_filled)) / total_missing * 10) if total_missing else 5
+
+    overall = round((core_score + dc_score + grid_score) / 3)
+    return {
+        "between": [name_a, name_b],
+        "core": {"pairs": core_pairs, "score": core_score, "rating": _num_rating(core_score)},
+        "driver_conductor": {
+            "a_driver_vs_b_conductor": {"a": a_drv, "b": b_con, "relation": r1},
+            "b_driver_vs_a_conductor": {"a": b_drv, "b": a_con, "relation": r2},
+            "score": dc_score, "rating": _num_rating(dc_score),
+        },
+        "grid": {
+            "a_missing_filled_by_b": a_filled,
+            "b_missing_filled_by_a": b_filled,
+            "shared_strengths": shared,
+            "score": grid_score, "rating": _num_rating(grid_score),
+        },
+        "indicative_score": overall,
+        "indicative_label": "indicative, non-classical",
+        "summary_rating": _num_rating(overall),
+    }
+
+
+def compute_numerology_match_json(name_a, dob_a, gender_a, name_b, dob_b, gender_b):
+    return json.dumps(compute_numerology_match(name_a, dob_a, gender_a, name_b, dob_b, gender_b))
+
+
+def compute_numerology(full_name, dob, gender=None, name_in_use=None):
     """
     full_name: str (birth certificate name)
     dob: 'YYYY-MM-DD'
+    gender: str | None ('male'/'female' enables the Kua number in the Lo Shu grid)
     name_in_use: str | None (everyday name, if different from the birth name)
     Returns: dict with life_path, destiny, soul_urge, personality, personal_year,
-             mulank, bhagyank, name_compound, name_in_use
+             mulank, bhagyank, name_compound, loshu, name_in_use
     """
     # Life Path / Bhagyank (Destiny number): reduce all digits in DOB.
     dob_digits = [int(d) for d in dob if d.isdigit()]
@@ -176,9 +324,10 @@ def compute_numerology(full_name, dob, name_in_use=None):
         "mulank": _with_ruler(mulank),
         "bhagyank": _with_ruler(life_path if life_path <= 9 else _reduce(life_path, keep_master=False)),
         "name_compound": name_compound,
+        "loshu": compute_loshu_grid(dob, gender),
         "name_in_use": (_name_numbers(name_in_use) if name_in_use else None),
     }
 
 
-def compute_numerology_json(full_name, dob, name_in_use=None):
-    return json.dumps(compute_numerology(full_name, dob, name_in_use))
+def compute_numerology_json(full_name, dob, gender=None, name_in_use=None):
+    return json.dumps(compute_numerology(full_name, dob, gender, name_in_use))

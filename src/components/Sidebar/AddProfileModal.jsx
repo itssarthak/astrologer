@@ -28,7 +28,7 @@ export default function AddProfileModal({ onClose }) {
     try {
       const chartJson = await computeChart(formData.name, formData.dob, formData.time, formData.lat, formData.lon, formData.timezone_offset, formData.place)
       const yogasDoshas = await getYogasAndDoshas(chartJson, formData)
-      const numerology = await computeNumerology(formData.name, formData.dob)
+      const numerology = await computeNumerology(formData.name, formData.dob, formData.gender ?? null, formData.name_in_use ?? null)
       if (cancelledRef.current) return // user cancelled while computing — don't create the profile
 
       addProfile({

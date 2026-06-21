@@ -13,7 +13,7 @@ export async function recomputeProfile(profile, compute) {
   }
   const chart = await compute.computeChart(profile.name, profile.dob, profile.time, profile.lat, profile.lon, profile.timezone_offset, profile.place)
   const yd = await compute.getYogasAndDoshas(chart, profile)
-  const numerology = await compute.computeNumerology(profile.name, profile.dob, profile.name_in_use ?? null)
+  const numerology = await compute.computeNumerology(profile.name, profile.dob, profile.gender ?? null, profile.name_in_use ?? null)
   return {
     ...profile,
     chart,

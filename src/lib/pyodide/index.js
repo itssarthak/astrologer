@@ -73,12 +73,16 @@ export async function computeDoshasFallback(chartJson) {
   return compute('computeDoshasFallback', [asJson(chartJson)])
 }
 
-export async function computeNumerology(fullName, dob, nameInUse = null) {
-  return compute('computeNumerology', [fullName, dob, nameInUse])
+export async function computeNumerology(fullName, dob, gender = null, nameInUse = null) {
+  return compute('computeNumerology', [fullName, dob, gender, nameInUse])
 }
 
 export async function computeNumberCompatibility(a, b) {
   return compute('computeNumberCompatibility', [a, b])
+}
+
+export async function computeNumerologyMatch(nameA, dobA, genderA, nameB, dobB, genderB) {
+  return compute('computeNumerologyMatch', [nameA, dobA, genderA ?? '', nameB, dobB, genderB ?? ''])
 }
 
 export async function computeSynastry(chartJsonA, chartJsonB, genderA = '', genderB = '') {

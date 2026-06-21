@@ -4,9 +4,10 @@ import { ProfilesContext } from '../../contexts/ProfilesContext'
 import { PyodideContext } from '../../contexts/PyodideContext'
 import { useChat } from '../../hooks/useChat'
 import { useChatThread } from '../../hooks/useChatThread'
-import { formatSynastryContext } from '../../lib/prompts/formatters'
+import { formatSynastryContext, formatNumerologyMatchContext } from '../../lib/prompts/formatters'
 import { useReportBusy } from '../../contexts/BusyContext'
 import AddProfileModal from '../Sidebar/AddProfileModal'
+import NumerologyMatchPanel from './NumerologyMatchPanel'
 import ChatMessages from '../Chat/ChatMessages'
 import Markdown from '../Chat/Markdown'
 import ChatInput from '../Chat/ChatInput'
@@ -58,10 +59,11 @@ function OverlaySection({ title, overlays }) {
 
 export default function MatchTab() {
   const { activeProfile, profiles } = useContext(ProfilesContext)
-  const { computeSynastry } = useContext(PyodideContext)
+  const { computeSynastry, computeNumerologyMatch } = useContext(PyodideContext)
   const { send, streaming, error, stop } = useChat(activeProfile, 'match')
   const [partnerProfileId, setPartnerProfileId] = useState('')
   const [synastryData, setSynastryData] = useState(null)
+  const [numerologyMatch, setNumerologyMatch] = useState(null)
   const [computing, setComputing] = useState(false)
   const [computeError, setComputeError] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -80,6 +82,7 @@ export default function MatchTab() {
     setStreamingContent('')
     setPartnerProfileId('')
     setSynastryData(null)
+    setNumerologyMatch(null)
     setSynastryRead('')
     setComputeError(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,7 +100,11 @@ export default function MatchTab() {
       // Genders make the Varna/Gana kootas directional (groom -> bride) when known.
       const result = await computeSynastry(activeProfile.chart, partnerProfile.chart, activeProfile.gender, partnerProfile.gender)
       setSynastryData(result)
-      await generateRead(result, partnerProfile)
+      const numMatch = await computeNumerologyMatch(
+        activeProfile.name, activeProfile.dob, activeProfile.gender ?? '',
+        partnerProfile.name, partnerProfile.dob, partnerProfile.gender ?? '')
+      setNumerologyMatch(numMatch)
+      await generateRead(result, partnerProfile, numMatch)
     } catch (err) {
       setComputeError(err.message)
     } finally {
@@ -106,11 +113,12 @@ export default function MatchTab() {
   }
 
   // Auto-generate a full compatibility read once the synastry is computed.
-  const generateRead = async (synastry, partner) => {
+  const generateRead = async (synastry, partner, numMatch) => {
     setGeneratingRead(true)
     setSynastryRead('')
     try {
-      const extraContext = formatSynastryContext(synastry, activeProfile, partner)
+      const extraContext = formatSynastryContext(synastry, activeProfile, partner) +
+        (numMatch ? '\n\n' + formatNumerologyMatchContext(numMatch) : '')
       await send({
         userMessage: 'Give me our full compatibility read.',
         extraContext,
@@ -127,7 +135,8 @@ export default function MatchTab() {
 
   const handleSend = userMessage =>
     submit(userMessage, ({ onChunk }) =>
-      send({ userMessage, extraContext: synastryData ? formatSynastryContext(synastryData, activeProfile, partnerProfile) : '', onChunk }))
+      send({ userMessage, extraContext: (synastryData ? formatSynastryContext(synastryData, activeProfile, partnerProfile) : '') +
+        (numerologyMatch ? '\n\n' + formatNumerologyMatchContext(numerologyMatch) : ''), onChunk }))
 
   // Refresh recomputes the synastry for the selected partner; with none selected there's
   // nothing to recompute, so it just re-syncs the conversation from storage.
@@ -158,7 +167,7 @@ export default function MatchTab() {
           </div>
         ) : (
           <div className="flex gap-2 flex-wrap items-center">
-            <select value={partnerProfileId} onChange={e => { setPartnerProfileId(e.target.value); setSynastryData(null) }}
+            <select value={partnerProfileId} onChange={e => { setPartnerProfileId(e.target.value); setSynastryData(null); setNumerologyMatch(null) }}
               className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-white text-text text-sm focus:outline-none focus:border-primary">
               <option value="">Select partner profile...</option>
               {otherProfiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -248,6 +257,9 @@ export default function MatchTab() {
                 )}
               </div>
             )}
+
+            {/* Numerology compatibility — indicative, separate from Guna Milan */}
+            <NumerologyMatchPanel match={numerologyMatch} />
           </div>
         )}
       </div>

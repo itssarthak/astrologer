@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   getPyodide, computeChart, computeTransit,
   computeYogasFallback, computeDoshasFallback,
-  computeNumerology, computeSynastry,
+  computeNumerology, computeNumerologyMatch, computeSynastry,
 } from '../lib/pyodide/index'
 
 // The Pyodide fallback (yogas.py/doshas.py) and the optional PyJHora Lambda emit slightly
@@ -69,6 +69,7 @@ export function usePyodide() {
     computeChart,
     computeTransit,
     computeNumerology,
+    computeNumerologyMatch,
     computeSynastry,
     getYogasAndDoshas,
   }

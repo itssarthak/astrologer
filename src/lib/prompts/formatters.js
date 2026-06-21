@@ -79,13 +79,36 @@ ${activeDoshas || 'None'}`
 }
 
 export function formatNumerologyContext(numerology) {
-  return `## Computed Numerology Profile (Chaldean primary)
+  const base = `## Computed Numerology Profile (Chaldean primary)
 
 Life Path: ${numerology.life_path}
 Destiny: Chaldean ${numerology.destiny.chaldean} / Pythagorean ${numerology.destiny.pythagorean}
 Soul Urge: Chaldean ${numerology.soul_urge.chaldean} / Pythagorean ${numerology.soul_urge.pythagorean}
 Personality: Chaldean ${numerology.personality.chaldean} / Pythagorean ${numerology.personality.pythagorean}
 Personal Year: ${numerology.personal_year}`
+
+  const g = numerology.loshu
+  if (!g) return base
+  const kua = g.kua != null ? `Kua: ${g.kua}` : (g.kua_note ?? 'Kua: —')
+  return `${base}
+
+### Lo Shu Grid
+Missing: ${g.missing.join(', ') || 'none'}
+Repeated (strong): ${g.repeated.join(', ') || 'none'}
+${kua}
+Arrows of strength: ${g.arrows_strength.join('; ') || 'none'}
+Arrows of weakness: ${g.arrows_weakness.join('; ') || 'none'}`
+}
+
+export function formatNumerologyMatchContext(m) {
+  const fill = arr => (arr && arr.length ? arr.join(', ') : 'none')
+  return `## Numerology Compatibility (${m.indicative_label})
+Between ${m.between[0]} and ${m.between[1]}
+Indicative score: ${m.indicative_score}/10 — ${m.summary_rating}
+Core numbers: ${m.core.rating} (${m.core.score}/10)
+Driver-Conductor (cross): ${m.driver_conductor.rating} (${m.driver_conductor.score}/10)
+Grid complementarity: ${m.grid.rating} (${m.grid.score}/10) — ${m.between[1]} supplies ${fill(m.grid.a_missing_filled_by_b)}; ${m.between[0]} supplies ${fill(m.grid.b_missing_filled_by_a)}; shared strengths ${fill(m.grid.shared_strengths)}
+This is indicative only and does not replace the classical 36-point Guna Milan.`
 }
 
 export function formatSynastryContext(synastryData, profileA, profileB) {

@@ -8,6 +8,7 @@ import { useReportBusy } from '../../contexts/BusyContext'
 import ChatMessages from '../Chat/ChatMessages'
 import ChatInput from '../Chat/ChatInput'
 import ChatToolbar from '../shared/ChatToolbar'
+import LoShuGrid from './LoShuGrid'
 
 const NUM_LABELS = {
   life_path: 'Life Path',
@@ -56,6 +57,7 @@ export default function NumbersTab() {
               )
             })}
           </div>
+          <LoShuGrid grid={numerology.loshu} />
         </div>
       )}
       <ChatMessages messages={messages} streaming={streaming} streamingContent={streamingContent} />

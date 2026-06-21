@@ -15,6 +15,7 @@ export const TOOL_LABELS = {
   match_profiles:     { active: 'Checking compatibility',    past: 'Checked compatibility' },
   compute_numerology: { active: 'Crunching the numbers',     past: 'Crunched the numbers' },
   numerology_compatibility: { active: 'Checking number compatibility', past: 'Checked number compatibility' },
+  numerology_match:   { active: 'Matching the numbers',     past: 'Matched the numbers' },
   geocode_place:      { active: 'Looking up the location',   past: 'Looked up the location' },
   compute_chart:      { active: 'Computing the birth chart', past: 'Computed a birth chart' },
   astro_reference:    { active: 'Confirming the facts',        past: 'Confirmed the facts' },
