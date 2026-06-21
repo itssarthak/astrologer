@@ -53,6 +53,68 @@ def compute_kua(year, gender):
     return 8 if k == 5 else k
 
 
+# Lines through the Lo Shu magic square (4-9-2 / 3-5-7 / 8-1-6): rows (planes), columns,
+# diagonals. Geometry is magic-square fact; the meaning summarises the cells' planet rulers
+# (PLANET_RULER) — not imported pop-numerology prose.
+LOSHU_LINES = [
+    ("Mental plane (4-9-2)",    [4, 9, 2]),
+    ("Emotional plane (3-5-7)", [3, 5, 7]),
+    ("Practical plane (8-1-6)", [8, 1, 6]),
+    ("Thought (4-3-8)",         [4, 3, 8]),
+    ("Will (9-5-1)",            [9, 5, 1]),
+    ("Action (2-7-6)",          [2, 7, 6]),
+    ("Diagonal 4-5-6",          [4, 5, 6]),
+    ("Diagonal 2-5-8",          [2, 5, 8]),
+]
+
+LOSHU_LINE_MEANING = {
+    "Mental plane (4-9-2)":    "thinking, drive and imagination (Rahu-Mars-Moon).",
+    "Emotional plane (3-5-7)": "wisdom, balance and detachment (Jupiter-Mercury-Ketu).",
+    "Practical plane (8-1-6)": "method, identity and comfort (Saturn-Sun-Venus).",
+    "Thought (4-3-8)":         "planning and discipline (Rahu-Jupiter-Saturn).",
+    "Will (9-5-1)":            "determination, intellect and identity (Mars-Mercury-Sun).",
+    "Action (2-7-6)":          "instinct, detachment and harmony (Moon-Ketu-Venus).",
+    "Diagonal 4-5-6":          "grounded, steady balance (Rahu-Mercury-Venus).",
+    "Diagonal 2-5-8":          "emotional resilience (Moon-Mercury-Saturn).",
+}
+
+
+def compute_loshu_grid(dob, gender=None):
+    """3x3 Lo Shu grid populated from DOB digits + mulank + bhagyank + kua. 0 is never placed."""
+    parts = dob.split('-')
+    mulank = _reduce(int(parts[2]), keep_master=False)
+    bhagyank = _reduce(sum(int(d) for d in dob if d.isdigit()), keep_master=False)
+    kua = compute_kua(int(parts[0]), gender)
+
+    placed = [int(d) for d in dob if d.isdigit() and d != '0']
+    placed += [mulank, bhagyank]
+    if kua:
+        placed.append(kua)
+    placed = [n for n in placed if 1 <= n <= 9]
+
+    counts = {str(n): placed.count(n) for n in range(1, 10)}
+    missing = [n for n in range(1, 10) if counts[str(n)] == 0]
+    repeated = [n for n in range(1, 10) if counts[str(n)] >= 2]
+
+    lines = []
+    for label, cells in LOSHU_LINES:
+        present = sum(1 for c in cells if counts[str(c)] > 0)
+        state = "full" if present == 3 else ("absent" if present == 0 else "partial")
+        lines.append({"name": label, "cells": cells, "state": state,
+                      "meaning": LOSHU_LINE_MEANING[label]})
+
+    return {
+        "counts": counts,
+        "missing": missing,
+        "repeated": repeated,
+        "kua": kua,
+        "kua_note": None if kua else "Kua omitted (requires male/female).",
+        "lines": lines,
+        "arrows_strength": [l["name"] for l in lines if l["state"] == "full"],
+        "arrows_weakness": [l["name"] for l in lines if l["state"] == "absent"],
+    }
+
+
 def _name_sum(name, mapping, letter_filter=None):
     letters = [c for c in name.upper() if c.isalpha()]
     if letter_filter:
