@@ -114,7 +114,8 @@ def compute_varshaphal(natal_chart_json, target_year, lat, lon, tz,
     for h in varsha["d1Chart"]["houses"]:
         for o in h.get("occupants", []):
             placements.append({"planet": o["celestialBody"], "sign": o["sign"], "house": h["number"],
-                               "retrograde": o.get("motion_type", "direct") == "retrograde"})
+                               "retrograde": o.get("motion_type", "direct") == "retrograde",
+                               "dignity": (o.get("dignities") or {}).get("dignity", "neutral")})
     return {
         "year": target_year,
         "age": age,

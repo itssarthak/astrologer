@@ -68,3 +68,19 @@ def test_loshu_kua_placed_when_gender_given():
     male = compute_loshu_grid("1996-11-22", "male")
     assert male["kua"] == 3
     assert male["counts"]["3"] == no_g["counts"]["3"] + 1
+
+
+import json
+from numerology import compute_loshu_grid_json
+
+
+def test_loshu_grid_json_roundtrips():
+    raw = compute_loshu_grid_json("1996-11-22", "male")
+    g = json.loads(raw)
+    assert g["kua"] == 3
+    assert set(g["counts"].keys()) == {str(n) for n in range(1, 10)}
+
+
+def test_loshu_grid_json_no_gender():
+    g = json.loads(compute_loshu_grid_json("1996-11-22"))
+    assert g["kua"] is None

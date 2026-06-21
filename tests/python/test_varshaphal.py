@@ -37,6 +37,9 @@ def test_solar_return_near_birthday_and_sun_at_natal_longitude():
     assert natal_sun_sign == "Scorpio"
     sun_place = next(p for p in result["placements"] if p["planet"] == "Sun")
     assert sun_place["sign"] == "Scorpio"
+    # Each placement also carries its dignity in the varsha chart.
+    assert "dignity" in sun_place
+    assert isinstance(sun_place["dignity"], str)
 
 
 def test_muntha_and_lagna_lord():
