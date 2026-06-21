@@ -85,6 +85,10 @@ export async function computeNumerologyMatch(nameA, dobA, genderA, nameB, dobB, 
   return compute('computeNumerologyMatch', [nameA, dobA, genderA ?? '', nameB, dobB, genderB ?? ''])
 }
 
+export async function computeLoshuGrid(dob, gender) {
+  return compute('computeLoshuGrid', [dob, gender ?? ''])
+}
+
 export async function computeSynastry(chartJsonA, chartJsonB, genderA = '', genderB = '') {
   return compute('computeSynastry', [asJson(chartJsonA), asJson(chartJsonB), genderA ?? '', genderB ?? ''])
 }
