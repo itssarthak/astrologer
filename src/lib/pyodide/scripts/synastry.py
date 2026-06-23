@@ -242,17 +242,19 @@ def _gana_score(boy_i, girl_i):
 def _guna_profile(nak_name, sign):
     """Each person's underlying koota attributes (the basis behind the scores): moon sign,
     nakshatra, varna, vashya group, yoni animal, moon-sign lord (Graha Maitri), gana, nadi."""
-    i = _nak_idx(nak_name)
     si = SIGN_INDEX.get(sign, -1)
+    # Guard the nakshatra-indexed fields too: a missing nakshatra must read None, not silently
+    # fall back to _nak_idx's index-0 (Ashwini) yoni/gana/nadi.
+    i = _nak_idx(nak_name) if nak_name else -1
     return {
         "moon_sign": sign or None,
         "nakshatra": nak_name or None,
         "varna": VARNA[SIGN_VARNA[si]] if si >= 0 else None,
         "vashya": VASHYA_NAMES[SIGN_VASHYA[si]] if si >= 0 else None,
-        "yoni": YONI_ANIMALS[NAK_YONI[i]],
+        "yoni": YONI_ANIMALS[NAK_YONI[i]] if i >= 0 else None,
         "sign_lord": SIGN_LORD[si] if si >= 0 else None,
-        "gana": GANA_NAMES[NAK_GANA[i]],
-        "nadi": NADI_NAMES[NAK_NADI[i]],
+        "gana": GANA_NAMES[NAK_GANA[i]] if i >= 0 else None,
+        "nadi": NADI_NAMES[NAK_NADI[i]] if i >= 0 else None,
     }
 
 
