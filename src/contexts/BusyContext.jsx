@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { setUpdateBusy } from '../lib/swUpdate'
 
 // Tracks whether the active tab is mid-request (streaming / computing). Used to block
 // profile switching while a response is in flight — switching mid-stream would land part
@@ -14,11 +15,13 @@ export function useBusy() {
   return useContext(BusyContext)
 }
 
-// A tab calls this with its in-flight state; it reports up and clears on unmount.
+// A tab calls this with its in-flight state; it reports up and clears on unmount. Also feeds the
+// service-worker updater's busy signal so a pending app update never reloads mid-stream.
 export function useReportBusy(isBusy) {
   const { setBusy } = useContext(BusyContext)
   useEffect(() => {
     setBusy(isBusy)
-    return () => setBusy(false)
+    setUpdateBusy(isBusy)
+    return () => { setBusy(false); setUpdateBusy(false) }
   }, [isBusy, setBusy])
 }

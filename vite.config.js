@@ -43,8 +43,12 @@ export default defineConfig({
     tailwindcss(),
     copyPyScripts,
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' (not 'autoUpdate') so the new worker WAITS instead of reloading immediately —
+      // src/lib/registerSwUpdate.js applies the reload only at an idle moment (tab hidden, nothing
+      // streaming). cleanupOutdatedCaches drops the previous precache so old assets don't linger.
+      registerType: 'prompt',
       workbox: {
+        cleanupOutdatedCaches: true,
         // de421.bsp (16 MB) is intentionally NOT in the precache glob — Workbox caps
         // precached files at 2 MiB, and forcing it into the SW install would bloat first
         // load. It's cached at runtime on first chart compute instead (rule below).
