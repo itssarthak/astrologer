@@ -160,3 +160,28 @@ def test_sample_set_bhakoot_matches_expected():
         got = compute_guna_milan(g["moon_nakshatra"], "male", b["moon_nakshatra"], "female",
                                  g["moon_sign"], b["moon_sign"])["breakdown"]["bhakoot"]["score"]
         assert got == p["expected"]["bhakoot_score"], f"pair {p['id']}"
+
+
+# ---------------- Per-person guna profiles (varna/vashya/yoni/sign-lord/gana/nadi) ----------------
+def test_guna_milan_exposes_per_person_profiles():
+    # Ashwini (gana Deva, yoni Horse, nadi Vata) moon in Aries (varna Kshatriya, lord Mars,
+    # vashya Chatushpada) vs Bharani (Manushya, Elephant, Pitta) moon in Taurus.
+    g = compute_guna_milan("Ashwini", "male", "Bharani", "female", "Aries", "Taurus")
+    a, b = g["profiles"]["a"], g["profiles"]["b"]
+    assert a["moon_sign"] == "Aries" and a["nakshatra"] == "Ashwini"
+    assert a["varna"] == "Kshatriya"          # Aries is a fire sign -> Kshatriya
+    assert a["yoni"] == "Horse"               # Ashwini -> Horse
+    assert a["sign_lord"] == "Mars"           # Aries lord
+    assert a["gana"] == "Deva"                # Ashwini -> Deva
+    assert a["nadi"] == "Vata"                # Ashwini -> Vata
+    assert a["vashya"] == "Chatushpada"       # Aries -> quadruped
+    assert b["moon_sign"] == "Taurus" and b["nakshatra"] == "Bharani"
+    assert b["gana"] == "Manushya"            # Bharani -> Manushya
+    assert b["yoni"] == "Elephant"            # Bharani -> Elephant
+
+
+def test_guna_profiles_have_all_keys():
+    g = compute_guna_milan("Rohini", "female", "Magha", "male", "Taurus", "Leo")
+    for side in ("a", "b"):
+        for key in ("moon_sign", "nakshatra", "varna", "vashya", "yoni", "sign_lord", "gana", "nadi"):
+            assert key in g["profiles"][side], f"missing {key} in {side}"

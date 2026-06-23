@@ -309,7 +309,11 @@ export const TOOLS = [
       const mf = s.marriage_factors ?? {}
       return {
         between: [a.name, b.name],
-        guna_milan: { total: s.guna_milan.total, max: 36, verdict: s.guna_milan.verdict, breakdown: s.guna_milan.breakdown },
+        guna_milan: {
+          total: s.guna_milan.total, max: 36, verdict: s.guna_milan.verdict, breakdown: s.guna_milan.breakdown,
+          // Each person's underlying koota attributes (varna, vashya, yoni, sign lord, gana, nadi).
+          profiles: { [a.name]: s.guna_milan.profiles?.a, [b.name]: s.guna_milan.profiles?.b },
+        },
         overlay_summary: s.overlay_summary,
         top_supportive: (s.top_supportive ?? []).slice(0, 5),
         top_challenging: (s.top_challenging ?? []).slice(0, 5),
