@@ -32,6 +32,7 @@ export function initServiceWorkerAutoUpdate() {
 
   function maybeApply() {
     if (shouldApplyUpdate({ needRefresh, hidden: document.visibilityState === 'hidden' })) {
+      needRefresh = false // reload is imminent; don't re-send skipWaiting on further events
       updateSW(true)
     }
   }
