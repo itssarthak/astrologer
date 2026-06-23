@@ -18,6 +18,10 @@ NAKSHATRA_INDEX = {n: i for i, n in enumerate(NAKSHATRA_NAMES)}
 NAKSHATRA_ALIASES = {"mula": "Moola", "dhanishta": "Dhanishtha"}
 
 VARNA = ["Brahmin", "Kshatriya", "Vaishya", "Shudra"]  # ranks, highest -> lowest (Varna is moon-sign based; see SIGN_VARNA)
+# Display names for the per-person koota attributes (indices match the lookup tables below).
+VASHYA_NAMES = ["Chatushpada", "Manava", "Jalachara", "Vanachara", "Keeta"]
+GANA_NAMES = ["Deva", "Manushya", "Rakshasa"]
+NADI_NAMES = ["Vata", "Pitta", "Kapha"]
 # Standard classical Gana classification, 9 each (Deva / Manushya / Rakshasa), indexed
 # Ashwini..Revati. Confirmed against published Ashtakoota sources (jagannathhora.com,
 # rashidarshan.com). 0=Deva, 1=Manushya, 2=Rakshasa.
@@ -235,6 +239,25 @@ def _varna_score(groom_sign, bride_sign):
 def _gana_score(boy_i, girl_i):
     return GANA_KOOTA[(NAK_GANA[boy_i], NAK_GANA[girl_i])]
 
+def _guna_profile(nak_name, sign):
+    """Each person's underlying koota attributes (the basis behind the scores): moon sign,
+    nakshatra, varna, vashya group, yoni animal, moon-sign lord (Graha Maitri), gana, nadi."""
+    si = SIGN_INDEX.get(sign, -1)
+    # Guard the nakshatra-indexed fields too: a missing nakshatra must read None, not silently
+    # fall back to _nak_idx's index-0 (Ashwini) yoni/gana/nadi.
+    i = _nak_idx(nak_name) if nak_name else -1
+    return {
+        "moon_sign": sign or None,
+        "nakshatra": nak_name or None,
+        "varna": VARNA[SIGN_VARNA[si]] if si >= 0 else None,
+        "vashya": VASHYA_NAMES[SIGN_VASHYA[si]] if si >= 0 else None,
+        "yoni": YONI_ANIMALS[NAK_YONI[i]] if i >= 0 else None,
+        "sign_lord": SIGN_LORD[si] if si >= 0 else None,
+        "gana": GANA_NAMES[NAK_GANA[i]] if i >= 0 else None,
+        "nadi": NADI_NAMES[NAK_NADI[i]] if i >= 0 else None,
+    }
+
+
 def compute_guna_milan(nak_a_name, gender_a, nak_b_name, gender_b, sign_a="", sign_b=""):
     ia, ib = _nak_idx(nak_a_name), _nak_idx(nak_b_name)
 
@@ -272,6 +295,11 @@ def compute_guna_milan(nak_a_name, gender_a, nak_b_name, gender_b, sign_a="", si
             "gana": {"score": gana, "max": 6},
             "bhakoot": {"score": bhakoot, "max": 7},
             "nadi": {"score": nadi, "max": 8},
+        },
+        # Each person's underlying attributes behind the koota scores (e.g. A's varna, B's yoni).
+        "profiles": {
+            "a": _guna_profile(nak_a_name, sign_a),
+            "b": _guna_profile(nak_b_name, sign_b),
         },
         "verdict": "Strong" if total >= 24 else "Acceptable" if total >= 18 else "Weak",
     }

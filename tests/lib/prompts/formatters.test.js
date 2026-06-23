@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatNumerologyContext, formatNumerologyMatchContext } from '../../../src/lib/prompts/formatters'
+import { formatNumerologyContext, formatNumerologyMatchContext, formatSynastryContext } from '../../../src/lib/prompts/formatters'
 
 const NUM = {
   life_path: 4,
@@ -37,5 +37,29 @@ describe('formatNumerologyMatchContext', () => {
     expect(out).toContain('indicative, non-classical')
     expect(out).toContain('7/10')
     expect(out).toContain('Harmonious')
+  })
+})
+
+describe('formatSynastryContext per-person gunas', () => {
+  const synastry = {
+    guna_milan: {
+      total: 28, max: 36, verdict: 'Strong',
+      breakdown: { varna: { score: 1, max: 1 }, yoni: { score: 3, max: 4 } },
+      profiles: {
+        a: { moon_sign: 'Aries', nakshatra: 'Ashwini', varna: 'Kshatriya', vashya: 'Chatushpada', yoni: 'Horse', sign_lord: 'Mars', gana: 'Deva', nadi: 'Vata' },
+        b: { moon_sign: 'Taurus', nakshatra: 'Bharani', varna: 'Vaishya', vashya: 'Chatushpada', yoni: 'Elephant', sign_lord: 'Venus', gana: 'Manushya', nadi: 'Pitta' },
+      },
+    },
+    overlay_summary: { supportive: 2, challenging: 1, neutral: 0, lean: 'harmonious' },
+    a_planets_in_b_houses: [], b_planets_in_a_houses: [], top_supportive: [], top_challenging: [],
+  }
+
+  it('renders each person\'s varna/yoni/gana etc.', () => {
+    const out = formatSynastryContext(synastry, { name: 'Alice' }, { name: 'Bob' })
+    expect(out).toContain('Per-person gunas')
+    expect(out).toContain('Alice: Varna Kshatriya')
+    expect(out).toContain('Yoni Horse')
+    expect(out).toContain('Bob: Varna Vaishya')
+    expect(out).toContain('Yoni Elephant')
   })
 })

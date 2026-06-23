@@ -116,6 +116,13 @@ export function formatSynastryContext(synastryData, profileA, profileB) {
   const breakdown = Object.entries(guna_milan.breakdown)
     .map(([k, v]) => `  ${k}: ${v.score}/${v.max}`)
     .join('\n')
+  // Each person's underlying koota attributes so the model can say "A's varna is X, B's yoni is Y".
+  const gunaLine = (name, p) => p
+    ? `  ${name}: Varna ${p.varna}, Vashya ${p.vashya}, Yoni ${p.yoni}, Sign lord ${p.sign_lord}, Gana ${p.gana}, Nadi ${p.nadi} (Moon ${p.moon_sign}, Nakshatra ${p.nakshatra})`
+    : ''
+  const gunaProfiles = guna_milan.profiles
+    ? `\nPer-person gunas:\n${gunaLine(profileA.name, guna_milan.profiles.a)}\n${gunaLine(profileB.name, guna_milan.profiles.b)}`
+    : ''
   const fmt = o => `- ${o.planet} → their H${o.falls_in_house} (${o.house_meaning ?? ''}) — ${(o.effect ?? 'neutral').toUpperCase()}: ${o.note ?? ''}`
   const tally = overlay_summary
     ? `${overlay_summary.supportive} supportive · ${overlay_summary.challenging} challenging · ${overlay_summary.neutral} neutral — overall ${overlay_summary.lean}`
@@ -137,7 +144,7 @@ export function formatSynastryContext(synastryData, profileA, profileB) {
 ### Guna Milan (Ashtakoota)
 Total: ${guna_milan.total}/36 — ${guna_milan.verdict}
 Breakdown:
-${breakdown}
+${breakdown}${gunaProfiles}
 
 ### Planetary overlay balance
 ${tally}
