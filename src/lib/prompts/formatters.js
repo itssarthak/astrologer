@@ -1,3 +1,5 @@
+import { houseMeaning, planetKaraka, dignityEffect, numberMeaning } from '../llm/reference'
+
 // Active Vimshottari period from the chart: { mdLord, adLord }.
 export function activeMahadasha(chart) {
   const md = chart?.dashas?.current?.mahadashas
@@ -44,7 +46,12 @@ export function formatChartContext(chart, yogas, doshas) {
     (h.occupants ?? []).map(o => {
       const dig = DIGNITY_LABEL[o.dignities?.dignity] ?? o.dignities?.dignity ?? 'neutral'
       const retro = o.motion_type === 'retrograde' ? ', retrograde' : ''
-      return `- ${o.celestialBody} in ${o.sign} (house ${h.number}), ${dig}${retro}`
+      const meaning = [
+        planetKaraka(o.celestialBody) && `karaka: ${planetKaraka(o.celestialBody)}`,
+        houseMeaning(h.number) && `house: ${houseMeaning(h.number)}`,
+        dignityEffect(o.dignities?.dignity) && `dignity: ${dignityEffect(o.dignities?.dignity)}`,
+      ].filter(Boolean).join('; ')
+      return `- ${o.celestialBody} in ${o.sign} (house ${h.number}), ${dig}${retro}` + (meaning ? ` — ${meaning}` : '')
     })
   ).join('\n') || 'No placements available'
 
@@ -87,10 +94,17 @@ Soul Urge: Chaldean ${numerology.soul_urge.chaldean} / Pythagorean ${numerology.
 Personality: Chaldean ${numerology.personality.chaldean} / Pythagorean ${numerology.personality.pythagorean}
 Personal Year: ${numerology.personal_year}`
 
+  const numLine = (label, n) => {
+    const m = numberMeaning(n)
+    return m ? `${label}: ${n} (${m.ruler}) — ${m.traits}` : null
+  }
+  const numMeanings = [numLine('Driver', numerology.mulank), numLine('Destiny', numerology.bhagyank)]
+    .filter(Boolean).join('\n')
+
   const g = numerology.loshu
-  if (!g) return base
+  if (!g) return numMeanings ? `${base}\n\n${numMeanings}` : base
   const kua = g.kua != null ? `Kua: ${g.kua}` : (g.kua_note ?? 'Kua: —')
-  return `${base}
+  return `${base}${numMeanings ? '\n\n' + numMeanings : ''}
 
 ### Lo Shu Grid
 Missing: ${g.missing.join(', ') || 'none'}

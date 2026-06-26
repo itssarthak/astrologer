@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatNumerologyContext, formatNumerologyMatchContext, formatSynastryContext } from '../../../src/lib/prompts/formatters'
+import { formatChartContext, formatNumerologyContext, formatNumerologyMatchContext, formatSynastryContext } from '../../../src/lib/prompts/formatters'
 
 const NUM = {
   life_path: 4,
@@ -7,6 +7,8 @@ const NUM = {
   soul_urge: { chaldean: 2, pythagorean: 3 },
   personality: { chaldean: 3, pythagorean: 3 },
   personal_year: 8,
+  mulank: 4,
+  bhagyank: 5,
   loshu: { counts: { '1': 3, '9': 2 }, missing: [5, 7], repeated: [1, 9], kua: 3, kua_note: null,
            arrows_strength: ['Will (9-5-1)'], arrows_weakness: ['Action (2-7-6)'] },
 }
@@ -24,6 +26,31 @@ describe('formatNumerologyContext', () => {
     const out = formatNumerologyContext(legacy)
     expect(out).toContain('Life Path: 4')
     expect(out).not.toContain('Lo Shu')
+  })
+
+  it('includes driver/destiny number meanings', () => {
+    const out = formatNumerologyContext({ ...NUM, mulank: 4, bhagyank: 5 })
+    expect(out).toMatch(/Driver.*4.*Rahu/i)
+    expect(out).toMatch(/Destiny.*5.*Mercury/i)
+  })
+})
+
+describe('formatChartContext', () => {
+  const CHART = {
+    d1Chart: { houses: [
+      { number: 1, sign: 'Aries', occupants: [] },
+      { number: 7, sign: 'Libra', occupants: [
+        { celestialBody: 'Saturn', sign: 'Libra', motion_type: 'direct', dignities: { dignity: 'exalted' } },
+      ] },
+    ] },
+    dashas: { current: { mahadashas: { Venus: { antardashas: { Saturn: {} } } } } },
+  }
+  it('annotates placements with karaka, house and dignity meaning', () => {
+    const out = formatChartContext(CHART, [], {})
+    expect(out).toMatch(/Saturn in Libra \(house 7\)/)
+    expect(out).toMatch(/karaka:.*discipline/i)
+    expect(out).toMatch(/house:.*marriage/i)
+    expect(out).toMatch(/dignity:.*best results|strength/i)
   })
 })
 
