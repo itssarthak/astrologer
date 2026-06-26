@@ -92,6 +92,22 @@ export function transitLine(x, sav) {
   return `${base}${savPart}${karaka ? ` — karaka: ${karaka}` : ''}`
 }
 
+// Attach atomic 1-9 number meanings (ruler + traits) for the driver, conductor and life-path
+// numbers. Master numbers (11/22/33) have no single-digit entry and are simply omitted — the
+// model still has the raw number. Never merges two numbers into a combined reading.
+export function attachNumberMeanings(result) {
+  const pick = n => {
+    const m = numberMeaning(n)
+    return m ? { number: n, ...m } : undefined
+  }
+  const meanings = {}
+  for (const key of ['mulank', 'bhagyank', 'life_path']) {
+    const m = pick(result?.[key])
+    if (m) meanings[key] = m
+  }
+  return { ...result, meanings }
+}
+
 function findProfileByName(name) {
   if (!name) return getActiveProfile()
   const profiles = getProfiles()
@@ -397,7 +413,7 @@ export const TOOLS = [
       required: ['full_name', 'dob'],
     },
     async execute({ full_name, dob, gender, name_in_use }) {
-      return computeNumerology(full_name, dob, gender ?? null, name_in_use ?? null)
+      return attachNumberMeanings(await computeNumerology(full_name, dob, gender ?? null, name_in_use ?? null))
     },
   },
   {

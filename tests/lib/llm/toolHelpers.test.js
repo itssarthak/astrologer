@@ -83,3 +83,15 @@ describe('annotateSavSigns', () => {
     expect(out[1]).toMatch(/Taurus \(22\).*steady/i)
   })
 })
+
+import { attachNumberMeanings } from '../../../src/lib/llm/tools'
+
+describe('attachNumberMeanings', () => {
+  it('adds ruler+traits for mulank, bhagyank and life_path; skips out-of-range', () => {
+    const out = attachNumberMeanings({ mulank: 3, bhagyank: 8, life_path: 11, destiny: { chaldean: 5 } })
+    expect(out.meanings.mulank).toMatchObject({ number: 3, ruler: 'Jupiter' })
+    expect(out.meanings.bhagyank).toMatchObject({ number: 8, ruler: 'Saturn' })
+    expect(out.meanings.life_path).toBeUndefined()   // 11 is a master number, not 1-9
+    expect(out.destiny).toEqual({ chaldean: 5 })     // original fields preserved
+  })
+})
