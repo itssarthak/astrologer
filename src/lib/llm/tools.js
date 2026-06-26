@@ -5,7 +5,7 @@
 import { computeChart, computeTransit, computeSynastry, computeNumerology, computeNumberCompatibility, computeNumerologyMatch, computeLoshuGrid, computeChartFacts, computeVarshaphal } from '../pyodide/index'
 import { getProfiles, getActiveProfile } from '../storage/profiles'
 import { searchPlaces, fetchTimezoneOffset } from '../geocode'
-import { lookupReference, SHODASAVARGA, DIVISIONALS } from './reference'
+import { lookupReference, SHODASAVARGA, DIVISIONALS, houseMeaning, dignityEffect, planetKaraka } from './reference'
 
 // Format the dignity/strength-annotated planet lines shared by get_chart and compute_chart.
 // Includes the shadbala rupas / minimum-required when the chart carries them, so the model
@@ -13,7 +13,13 @@ import { lookupReference, SHODASAVARGA, DIVISIONALS } from './reference'
 export function planetLines(facts) {
   return Object.entries(facts.planets).map(([name, f]) => {
     const rupas = f.rupas != null && f.min_required != null ? ` · ${f.rupas}/${f.min_required} rupas` : ''
-    return `${name}: ${f.sign} (H${f.house}), ${f.dignity}, ${f.strength}${f.retrograde ? ', retrograde' : ''}${rupas}`
+    const base = `${name}: ${f.sign} (H${f.house}), ${f.dignity}, ${f.strength}${f.retrograde ? ', retrograde' : ''}${rupas}`
+    const meaning = [
+      planetKaraka(name) && `karaka: ${planetKaraka(name)}`,
+      houseMeaning(f.house) && `house: ${houseMeaning(f.house)}`,
+      dignityEffect(f.dignity) && `dignity: ${dignityEffect(f.dignity)}`,
+    ].filter(Boolean).join('; ')
+    return meaning ? `${base} — ${meaning}` : base
   })
 }
 
@@ -41,8 +47,10 @@ export function planetAspects(facts, planetFilter) {
 export function divisionalPlacementLine(occ, houseNumber) {
   const nak = occ.nakshatra ? `${occ.nakshatra}${occ.pada ? ` pada ${occ.pada}` : ''}` : null
   const extras = [occ.dignities?.dignity, nak].filter(Boolean)
-  return `${occ.celestialBody} in ${occ.sign} (H${houseNumber})${occ.motion_type === 'retrograde' ? ' retro' : ''}` +
+  const base = `${occ.celestialBody} in ${occ.sign} (H${houseNumber})${occ.motion_type === 'retrograde' ? ' retro' : ''}` +
     (extras.length ? ` — ${extras.join(', ')}` : '')
+  const karaka = planetKaraka(occ.celestialBody)
+  return karaka ? `${base} — karaka: ${karaka}` : base
 }
 
 // Trim a synastry cross-aspect to the fields worth handing the model. `to` belongs to the other
@@ -144,7 +152,7 @@ export const TOOLS = [
           }
         }
         const ascendant = dv.ascendant ?? dv.houses.find(h => h.number === 1)?.sign
-        return { name: profile.name, varga: key, ascendant, placements }
+        return { name: profile.name, varga: key, ascendant, signifies: DIVISIONALS[key]?.signifies, placements }
       }
       // Not a computed standard chart — explain why (and teach the fact), don't fabricate it.
       const standardList = ['d1', ...Object.keys(profile.chart?.divisionalCharts ?? {})].join(', ')
@@ -178,13 +186,13 @@ export const TOOLS = [
         const ca = firstEntry(m.antardashas)
         const cp = ca ? firstEntry(ca[1].pratyantardashas) : null
         current = {
-          mahadasha: { lord: mLord, start: m.start, end: m.end },
-          antardasha: ca ? { lord: ca[0], start: ca[1].start, end: ca[1].end } : null,
-          pratyantardasha: cp ? { lord: cp[0], start: cp[1].start, end: cp[1].end } : null,
+          mahadasha: { lord: mLord, karaka: planetKaraka(mLord), start: m.start, end: m.end },
+          antardasha: ca ? { lord: ca[0], karaka: planetKaraka(ca[0]), start: ca[1].start, end: ca[1].end } : null,
+          pratyantardasha: cp ? { lord: cp[0], karaka: planetKaraka(cp[0]), start: cp[1].start, end: cp[1].end } : null,
         }
       }
       const mahadasha_timeline = Object.entries(dashas.all?.mahadashas ?? {})
-        .map(([lord, m]) => ({ lord, start: m.start, end: m.end }))
+        .map(([lord, m]) => ({ lord, karaka: planetKaraka(lord), start: m.start, end: m.end }))
       let upcoming = null
       const um = firstEntry(dashas.upcoming?.mahadashas)
       if (um) {

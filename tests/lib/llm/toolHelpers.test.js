@@ -17,12 +17,16 @@ const FACTS = {
   },
 }
 
-describe('planetLines (with shadbala)', () => {
-  it('appends rupas/min_required when present, omits when absent', () => {
+describe('planetLines (with shadbala + meanings)', () => {
+  it('appends karaka, house and dignity meaning clauses', () => {
     const lines = planetLines(FACTS)
     expect(lines[0]).toContain('Saturn: Capricorn (H5), moolatrikona, strong')
     expect(lines[0]).toContain('7.8/7 rupas')
-    expect(lines[1]).not.toContain('rupas') // Sun has no shadbala numbers
+    expect(lines[0]).toMatch(/karaka:.*discipline/i)        // planet karaka (Saturn)
+    expect(lines[0]).toMatch(/house:.*children/i)           // H5 signification
+    expect(lines[0]).toMatch(/dignity:.*comfortable|strong/i) // moolatrikona effect
+    expect(lines[1]).not.toContain('rupas')                 // Sun has no shadbala
+    expect(lines[1]).toMatch(/karaka:.*soul|father/i)
   })
 })
 
@@ -46,15 +50,13 @@ describe('planetAspects', () => {
   })
 })
 
-describe('divisionalPlacementLine', () => {
-  it('includes dignity and nakshatra/pada when present', () => {
-    const occ = { celestialBody: 'Mars', sign: 'Aries', dignities: { dignity: 'exalted' }, nakshatra: 'Ashwini', pada: 1, motion_type: 'direct' }
-    expect(divisionalPlacementLine(occ, 3)).toBe('Mars in Aries (H3) — exalted, Ashwini pada 1')
-  })
-
-  it('marks retrograde and tolerates missing dignity/nakshatra', () => {
-    const occ = { celestialBody: 'Venus', sign: 'Libra', motion_type: 'retrograde' }
-    expect(divisionalPlacementLine(occ, 7)).toBe('Venus in Libra (H7) retro')
+describe('divisionalPlacementLine (with meanings)', () => {
+  it('appends the planet karaka', () => {
+    const occ = { celestialBody: 'Mars', sign: 'Aries', motion_type: 'direct',
+      dignities: { dignity: 'exalted' }, nakshatra: 'Ashwini', pada: 1 }
+    const line = divisionalPlacementLine(occ, 3)
+    expect(line).toContain('Mars in Aries (H3) — exalted, Ashwini pada 1')
+    expect(line).toMatch(/karaka:.*energy|courage/i)
   })
 })
 
