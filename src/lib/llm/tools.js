@@ -96,7 +96,9 @@ export function transitLine(x, sav) {
 // numbers. Master numbers (11/22/33) have no single-digit entry and are simply omitted — the
 // model still has the raw number. Never merges two numbers into a combined reading.
 export function attachNumberMeanings(result) {
-  const pick = n => {
+  const numOf = v => (v != null && typeof v === 'object') ? v.number : v
+  const pick = v => {
+    const n = numOf(v)
     const m = numberMeaning(n)
     return m ? { number: n, ...m } : undefined
   }

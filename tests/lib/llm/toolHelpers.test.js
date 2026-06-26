@@ -88,10 +88,15 @@ import { attachNumberMeanings } from '../../../src/lib/llm/tools'
 
 describe('attachNumberMeanings', () => {
   it('adds ruler+traits for mulank, bhagyank and life_path; skips out-of-range', () => {
-    const out = attachNumberMeanings({ mulank: 3, bhagyank: 8, life_path: 11, destiny: { chaldean: 5 } })
+    const out = attachNumberMeanings({ mulank: { number: 3, ruler: 'Jupiter' }, bhagyank: { number: 8, ruler: 'Saturn' }, life_path: 7, destiny: { chaldean: 5 } })
     expect(out.meanings.mulank).toMatchObject({ number: 3, ruler: 'Jupiter' })
     expect(out.meanings.bhagyank).toMatchObject({ number: 8, ruler: 'Saturn' })
-    expect(out.meanings.life_path).toBeUndefined()   // 11 is a master number, not 1-9
+    expect(out.meanings.life_path).toMatchObject({ number: 7, ruler: 'Ketu' })   // bare-int path works
     expect(out.destiny).toEqual({ chaldean: 5 })     // original fields preserved
+  })
+
+  it('omits master numbers (not 1-9)', () => {
+    const out = attachNumberMeanings({ mulank: { number: 11, ruler: 'Moon' } })
+    expect(out.meanings.mulank).toBeUndefined()
   })
 })

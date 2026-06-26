@@ -95,8 +95,9 @@ Personality: Chaldean ${numerology.personality.chaldean} / Pythagorean ${numerol
 Personal Year: ${numerology.personal_year}`
 
   const numLine = (label, n) => {
-    const m = numberMeaning(n)
-    return m ? `${label}: ${n} (${m.ruler}) — ${m.traits}` : null
+    const num = (n != null && typeof n === 'object') ? n.number : n
+    const m = numberMeaning(num)
+    return m ? `${label}: ${num} (${m.ruler}) — ${m.traits}` : null
   }
   const numMeanings = [numLine('Driver', numerology.mulank), numLine('Destiny', numerology.bhagyank)]
     .filter(Boolean).join('\n')
