@@ -378,6 +378,116 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ---
 
+## Task 2b: Annotate transit, varshaphal and ashtakavarga outputs
+
+**Files:**
+- Modify: `src/lib/llm/tools.js` (`transitLine` helper; `get_varshaphal` and `get_ashtakavarga` executes)
+- Test: `tests/lib/llm/toolHelpers.test.js`, `tests/lib/llm/transitSav.test.js`
+
+**Interfaces:**
+- Consumes: `planetKaraka`, `signMeaning` from Task 1.
+- Produces: `transitLine` appends ` — karaka: …` for the transiting planet; `get_varshaphal` placement lines append ` — karaka: …`; `get_ashtakavarga` `strongest`/`weakest` entries gain the sign's `nature`.
+
+- [ ] **Step 1: Write the failing tests**
+
+In `tests/lib/llm/transitSav.test.js`, add a karaka assertion to an existing `transitLine` case (or add one):
+
+```js
+it('appends the transiting planet karaka', () => {
+  const line = transitLine({ planet: 'Saturn', sign: 'Libra', natal_house: 7, retrograde: false }, { Libra: 31 })
+  expect(line).toContain('Saturn in Libra → natal H7')
+  expect(line).toContain('SAV 31 (strong)')
+  expect(line).toMatch(/karaka:.*discipline/i)
+})
+```
+
+Ensure `transitLine` is imported in that test file (it imports from `../../../src/lib/llm/tools`).
+
+In `tests/lib/llm/toolHelpers.test.js`, add a pure-helper test for the ashtakavarga sign-nature annotation:
+
+```js
+import { annotateSavSigns } from '../../../src/lib/llm/tools'
+
+describe('annotateSavSigns', () => {
+  it('labels each sign entry with its bindu and nature', () => {
+    const out = annotateSavSigns([['Scorpio', 32], ['Taurus', 22]])
+    expect(out[0]).toMatch(/Scorpio \(32\).*intense/i)
+    expect(out[1]).toMatch(/Taurus \(22\).*steady/i)
+  })
+})
+```
+
+- [ ] **Step 2: Run the tests to verify they fail**
+
+Run: `npx vitest run tests/lib/llm/transitSav.test.js tests/lib/llm/toolHelpers.test.js`
+Expected: FAIL — `karaka:` absent; `annotateSavSigns` not exported.
+
+- [ ] **Step 3: Update `transitLine` and add `annotateSavSigns`**
+
+In `src/lib/llm/tools.js`, ensure the reference import includes `signMeaning` (and `planetKaraka` from Task 2):
+
+```js
+import { lookupReference, SHODASAVARGA, DIVISIONALS, houseMeaning, signMeaning, dignityEffect, planetKaraka, numberMeaning } from './reference'
+```
+
+Replace `transitLine` (lines 70–74) with:
+
+```js
+export function transitLine(x, sav) {
+  const base = `${x.planet} in ${x.sign} → natal H${x.natal_house}${x.retrograde ? ' (retro)' : ''}`
+  const bindu = sav?.[x.sign]
+  const savPart = bindu == null ? '' : ` · SAV ${bindu} (${savBand(bindu)})`
+  const karaka = planetKaraka(x.planet)
+  return `${base}${savPart}${karaka ? ` — karaka: ${karaka}` : ''}`
+}
+```
+
+Add the ashtakavarga helper near the other exported helpers (after `savBand`):
+
+```js
+// Label each [sign, bindu] SAV entry with the sign's nature, so the model can read what life-area
+// flavour a strong/weak sign carries. Atomic: sign nature only — never merged with a planet.
+export function annotateSavSigns(entries) {
+  return entries.map(([sign, bindu]) => {
+    const nat = signMeaning(sign)?.nature
+    return `${sign} (${bindu})${nat ? ` — ${nat}` : ''}`
+  })
+}
+```
+
+- [ ] **Step 4: Wire `annotateSavSigns` into `get_ashtakavarga`**
+
+In `get_ashtakavarga` execute, replace the `strongest`/`weakest` lines (currently lines 261–262):
+
+```js
+        strongest: annotateSavSigns(sorted.slice(0, 3)),
+        weakest: annotateSavSigns(sorted.slice(-3)),
+```
+
+- [ ] **Step 5: Add karaka to `get_varshaphal` placements**
+
+In `get_varshaphal` execute, change the `placements` map (currently line 363) to append the karaka:
+
+```js
+        placements: (v.placements ?? []).map(p => `${p.planet} in ${p.sign} (H${p.house})${p.retrograde ? ' retro' : ''}${p.dignity ? `, ${p.dignity}` : ''}${planetKaraka(p.planet) ? ` — karaka: ${planetKaraka(p.planet)}` : ''}`),
+```
+
+- [ ] **Step 6: Run the tests to verify they pass**
+
+Run: `npx vitest run tests/lib/llm/transitSav.test.js tests/lib/llm/toolHelpers.test.js`
+Expected: PASS.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/lib/llm/tools.js tests/lib/llm/transitSav.test.js tests/lib/llm/toolHelpers.test.js
+git commit -m "feat(tools): attach karaka to transit/varshaphal and sign nature to ashtakavarga
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
+```
+
+---
+
 ## Task 3: Annotate numerology tool output with number traits
 
 **Files:**
@@ -630,13 +740,12 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - House significations → Tasks 1, 2 (`get_chart`/divisional/dasha via `houseMeaning`), 4 (formatters). ✔
 - Planet karakas → Tasks 2, 4 (`planetKaraka`). ✔
 - Divisional read-guide → Task 2 (`signifies` on `get_divisional`). ✔ (per-occupant karaka also added.)
-- Sign natures → Task 1 table + `astro_reference` (Task 5); attached to ashtakavarga is **not** wired — see note below.
+- Sign natures → Task 1 table + `astro_reference` (Task 5); attached to `get_ashtakavarga` in Task 2b. ✔
+- Transit / varshaphal karaka → Task 2b (`transitLine`, `get_varshaphal`). ✔
 - Numerology number meanings → Tasks 3 (tool), 4 (formatter). ✔
 - Dignity-effect text → Tasks 1, 2, 4 (`dignityEffect`). ✔
 - Atomic-only guarantee → enforced structurally (single-arg accessors) + asserted (master-number omission test, no combination lookup exists). ✔
 - Tone untouched → no tone-prompt edits in any task. ✔
-
-**Deliberate scope trim (YAGNI):** `get_ashtakavarga` sign-nature annotation and `get_today_transit`/`get_varshaphal` per-planet karaka from the spec's "where meaning is missing" list are **not** in these tasks — `transitLine`/varshaphal already carry SAV/dignity strength, and adding sign nature to bindu lists risks bloating every transit turn for little gain. If wanted, they are one-line follow-ups using the same accessors. Flagging here rather than silently dropping.
 
 **Placeholder scan:** No TBD/TODO; every code step shows complete code. ✔
 
