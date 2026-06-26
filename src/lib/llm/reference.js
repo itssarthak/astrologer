@@ -78,6 +78,92 @@ export const GLOSSARY = {
 
 const norm = s => (s || '').trim().toLowerCase()
 
+// House significations (BPHS-tradition karakatvas) + Parashari classifications. Atomic facts:
+// what each bhava governs and which functional group it belongs to. The model merges these with
+// placements — this table never encodes "planet X in house Y means Z".
+export const HOUSES = {
+  1:  { signifies: 'the self, body, vitality, personality and overall direction of life', classifications: ['kendra', 'trikona'] },
+  2:  { signifies: 'wealth, family, speech, food and accumulated resources', classifications: [] },
+  3:  { signifies: 'courage, younger siblings, effort, communication and short journeys', classifications: ['upachaya'] },
+  4:  { signifies: 'home, mother, property, vehicles, schooling and inner peace', classifications: ['kendra'] },
+  5:  { signifies: 'children, intelligence, creativity, romance and past-life merit', classifications: ['trikona'] },
+  6:  { signifies: 'enemies, debts, disease, obstacles, daily work and service', classifications: ['dusthana', 'upachaya'] },
+  7:  { signifies: 'marriage, spouse, partnerships and business relations', classifications: ['kendra'] },
+  8:  { signifies: 'longevity, sudden events, inheritance, the hidden and transformation', classifications: ['dusthana'] },
+  9:  { signifies: 'fortune, dharma, father, higher learning, long journeys and the guru', classifications: ['trikona'] },
+  10: { signifies: 'career, status, profession, public standing and authority', classifications: ['kendra', 'upachaya'] },
+  11: { signifies: 'gains, income, friends, elder siblings and fulfilment of desires', classifications: ['upachaya'] },
+  12: { signifies: 'loss, expenditure, foreign lands, isolation, sleep and liberation', classifications: ['dusthana'] },
+}
+
+// Sign natures — element, quality (modality), ruling planet, one-line temperament.
+export const SIGNS = {
+  Aries:       { element: 'fire',  quality: 'cardinal', ruler: 'Mars',    nature: 'assertive, pioneering, impulsive' },
+  Taurus:      { element: 'earth', quality: 'fixed',    ruler: 'Venus',   nature: 'steady, sensual, possessive' },
+  Gemini:      { element: 'air',   quality: 'mutable',  ruler: 'Mercury', nature: 'curious, communicative, restless' },
+  Cancer:      { element: 'water', quality: 'cardinal', ruler: 'Moon',    nature: 'nurturing, emotional, protective' },
+  Leo:         { element: 'fire',  quality: 'fixed',    ruler: 'Sun',     nature: 'proud, generous, authoritative' },
+  Virgo:       { element: 'earth', quality: 'mutable',  ruler: 'Mercury', nature: 'analytical, precise, critical' },
+  Libra:       { element: 'air',   quality: 'cardinal', ruler: 'Venus',   nature: 'harmonious, relational, indecisive' },
+  Scorpio:     { element: 'water', quality: 'fixed',    ruler: 'Mars',    nature: 'intense, secretive, transformative' },
+  Sagittarius: { element: 'fire',  quality: 'mutable',  ruler: 'Jupiter', nature: 'optimistic, philosophical, blunt' },
+  Capricorn:   { element: 'earth', quality: 'cardinal', ruler: 'Saturn',  nature: 'disciplined, ambitious, reserved' },
+  Aquarius:    { element: 'air',   quality: 'fixed',    ruler: 'Saturn',  nature: 'unconventional, humanitarian, detached' },
+  Pisces:      { element: 'water', quality: 'mutable',  ruler: 'Jupiter', nature: 'compassionate, imaginative, escapist' },
+}
+
+// Single-digit (1-9) numerology meanings. Ruler matches PLANET_RULER in numerology.py (Chaldean).
+export const NUMEROLOGY_NUMBERS = {
+  1: { ruler: 'Sun',     traits: 'leadership, individuality, drive, a strong ego' },
+  2: { ruler: 'Moon',    traits: 'sensitivity, cooperation, emotion, diplomacy' },
+  3: { ruler: 'Jupiter', traits: 'optimism, expression, wisdom, expansion' },
+  4: { ruler: 'Rahu',    traits: 'structure built unconventionally, system-building, restlessness' },
+  5: { ruler: 'Mercury', traits: 'communication, versatility, quick intellect, restlessness' },
+  6: { ruler: 'Venus',   traits: 'love, beauty, harmony, responsibility, comfort' },
+  7: { ruler: 'Ketu',    traits: 'introspection, spirituality, detachment, analysis' },
+  8: { ruler: 'Saturn',  traits: 'discipline, ambition, hard-won success, delay' },
+  9: { ruler: 'Mars',    traits: 'energy, courage, drive, a capacity for conflict' },
+}
+
+// Effect of a planet's dignity on its results. Keyed by the canonical set (dignity.py); raw
+// jyotishganit variants are normalised by dignityEffect() before lookup.
+export const DIGNITY_EFFECT = {
+  exalted:      'at greatest strength — delivers its best results',
+  moolatrikona: 'very strong, in its most comfortable portion',
+  own:          'strong and at ease in its own sign',
+  friend:       'comfortable in a friendly sign — supportive results',
+  neutral:      'neither helped nor hindered by the sign',
+  enemy:        'strained in an unfriendly sign — results come harder',
+  debilitated:  'at greatest weakness — struggles to deliver its results',
+}
+
+// Raw jyotishganit dignity strings → canonical DIGNITY_EFFECT keys.
+const DIGNITY_ALIAS = {
+  deep_exaltation: 'exalted', deep_debilitation: 'debilitated', own_sign: 'own',
+}
+
+export function houseMeaning(n) {
+  return HOUSES[Number(n)]?.signifies
+}
+export function signMeaning(sign) {
+  if (!sign) return undefined
+  const key = Object.keys(SIGNS).find(s => s.toLowerCase() === String(sign).trim().toLowerCase())
+  return key ? SIGNS[key] : undefined
+}
+export function numberMeaning(n) {
+  return NUMEROLOGY_NUMBERS[Number(n)]
+}
+export function dignityEffect(s) {
+  if (!s) return undefined
+  const key = String(s).trim().toLowerCase()
+  return DIGNITY_EFFECT[DIGNITY_ALIAS[key] ?? key]
+}
+export function planetKaraka(name) {
+  if (!name) return undefined
+  const key = Object.keys(PLANETS).find(p => p.toLowerCase() === String(name).trim().toLowerCase())
+  return key ? PLANETS[key].karaka : undefined
+}
+
 // Look up a term across the reference. Returns an array of {topic, key, ...fact} matches.
 export function lookupReference(term) {
   const q = norm(term)
@@ -103,6 +189,22 @@ export function lookupReference(term) {
   // Glossary
   for (const [key, def] of Object.entries(GLOSSARY)) {
     if (key === q || key.includes(q) || q.includes(key)) out.push({ topic: 'term', term: key, definition: def })
+  }
+  // Houses (e.g. "7th house", "house 10", "10th")
+  const hMatch = id.match(/^(?:house)?(\d{1,2})(?:st|nd|rd|th)?(?:house)?$/)
+  if (hMatch) {
+    const hn = Number(hMatch[1])
+    if (HOUSES[hn]) out.push({ topic: 'house', house: hn, ...HOUSES[hn] })
+  }
+  // Signs
+  for (const [sign, v] of Object.entries(SIGNS)) {
+    if (norm(sign) === q || (q.length > 3 && norm(sign).includes(q))) out.push({ topic: 'sign', sign, ...v })
+  }
+  // Numerology numbers (e.g. "number 8", "8")
+  const nMatch = id.match(/^(?:number)?(\d)$/)
+  if (nMatch) {
+    const nn = Number(nMatch[1])
+    if (NUMEROLOGY_NUMBERS[nn]) out.push({ topic: 'number', number: nn, ...NUMEROLOGY_NUMBERS[nn] })
   }
   // Special topics
   if (/vimshottari|dasha|period/.test(q)) out.push({ topic: 'dasha-system', ...VIMSHOTTARI })
