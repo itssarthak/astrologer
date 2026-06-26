@@ -534,7 +534,7 @@ export const TOOLS = [
   },
   {
     name: 'astro_reference',
-    description: "Look up an authoritative Vedic-astrology FACT to confirm it before answering — do NOT rely on memory for which charts/terms exist or what they mean. Covers: divisional charts (e.g. 'd5' → Panchamsa, non-standard; 'trimsamsa' → D30; 'navamsa' → D9) including which are standard, planet natures & karakas, the Vimshottari dasha order/years, and core terms (lagna, kendra, dusthana, karaka, ashtakavarga, …). Returns the matching facts, or an empty list if there's no entry (in which case say you're not certain rather than inventing one). USE THIS whenever the user names a chart/term/number you're not 100% sure of.",
+    description: "Look up an authoritative Vedic-astrology FACT to confirm it before answering — do NOT rely on memory for which charts/terms exist or what they mean. Covers: divisional charts (e.g. 'd5' → Panchamsa, non-standard; 'trimsamsa' → D30; 'navamsa' → D9) including which are standard, planet natures & karakas, the Vimshottari dasha order/years, house significations (e.g. '7th house' → marriage), sign natures (e.g. 'Scorpio'), numerology numbers (e.g. 'number 8'), and core terms (lagna, kendra, dusthana, karaka, ashtakavarga, …). Returns the matching facts, or an empty list if there's no entry (in which case say you're not certain rather than inventing one). USE THIS whenever the user names a chart/term/number you're not 100% sure of.",
     parameters: {
       type: 'object',
       properties: { term: { type: 'string', description: "The chart id, name, planet, number, or term to confirm — e.g. 'd5', 'trimsamsa', 'Saturn', 'kendra', 'vimshottari'." } },

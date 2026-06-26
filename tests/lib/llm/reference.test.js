@@ -32,7 +32,7 @@ it('the standard Shodasavarga set is the 16 classical charts', () => {
 })
 
 import {
-  HOUSES, SIGNS, NUMEROLOGY_NUMBERS, DIGNITY_EFFECT,
+  HOUSES, SIGNS, NUMEROLOGY_NUMBERS,
   houseMeaning, signMeaning, numberMeaning, dignityEffect, planetKaraka,
 } from '../../../src/lib/llm/reference'
 
