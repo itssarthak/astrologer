@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { planetLines, planetAspects, divisionalPlacementLine, trimCrossAspect } from '../../../src/lib/llm/tools'
+import { planetLines, planetAspects, divisionalPlacementLine, trimCrossAspect, annotateSavSigns } from '../../../src/lib/llm/tools'
 
 const FACTS = {
   planets: {
@@ -66,5 +66,13 @@ describe('trimCrossAspect', () => {
     expect(trimCrossAspect(ca)).toEqual({
       from: 'A:Jupiter', to: 'B:Venus', type: 'aspect', effect: 'supportive', tightness: 'tight', orb: 0.5, weight: 1.5, note: 'warms',
     })
+  })
+})
+
+describe('annotateSavSigns', () => {
+  it('labels each sign entry with its bindu and nature', () => {
+    const out = annotateSavSigns([['Scorpio', 32], ['Taurus', 22]])
+    expect(out[0]).toMatch(/Scorpio \(32\).*intense/i)
+    expect(out[1]).toMatch(/Taurus \(22\).*steady/i)
   })
 })

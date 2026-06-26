@@ -5,7 +5,7 @@
 import { computeChart, computeTransit, computeSynastry, computeNumerology, computeNumberCompatibility, computeNumerologyMatch, computeLoshuGrid, computeChartFacts, computeVarshaphal } from '../pyodide/index'
 import { getProfiles, getActiveProfile } from '../storage/profiles'
 import { searchPlaces, fetchTimezoneOffset } from '../geocode'
-import { lookupReference, SHODASAVARGA, DIVISIONALS, houseMeaning, dignityEffect, planetKaraka } from './reference'
+import { lookupReference, SHODASAVARGA, DIVISIONALS, houseMeaning, signMeaning, dignityEffect, planetKaraka, numberMeaning } from './reference'
 
 // Format the dignity/strength-annotated planet lines shared by get_chart and compute_chart.
 // Includes the shadbala rupas / minimum-required when the chart carries them, so the model
@@ -72,13 +72,24 @@ export function savBand(bindu) {
   return 'weak'
 }
 
+// Label each [sign, bindu] SAV entry with the sign's nature, so the model can read what life-area
+// flavour a strong/weak sign carries. Atomic: sign nature only — never merged with a planet.
+export function annotateSavSigns(entries) {
+  return entries.map(([sign, bindu]) => {
+    const nat = signMeaning(sign)?.nature
+    return `${sign} (${bindu})${nat ? ` — ${nat}` : ''}`
+  })
+}
+
 // Render one transit planet line, annotated with the natal SAV bindu of the sign it's
 // transiting (and a quick strength read). `sav` is the natal sign→bindu map; the suffix
 // is omitted when it's missing (older charts) or has no entry for the sign.
 export function transitLine(x, sav) {
   const base = `${x.planet} in ${x.sign} → natal H${x.natal_house}${x.retrograde ? ' (retro)' : ''}`
   const bindu = sav?.[x.sign]
-  return bindu == null ? base : `${base} · SAV ${bindu} (${savBand(bindu)})`
+  const savPart = bindu == null ? '' : ` · SAV ${bindu} (${savBand(bindu)})`
+  const karaka = planetKaraka(x.planet)
+  return `${base}${savPart}${karaka ? ` — karaka: ${karaka}` : ''}`
 }
 
 function findProfileByName(name) {
@@ -266,8 +277,8 @@ export const TOOLS = [
       const result = {
         name: profile.name,
         sav,
-        strongest: sorted.slice(0, 3).map(([s, v]) => `${s} (${v})`),
-        weakest: sorted.slice(-3).map(([s, v]) => `${s} (${v})`),
+        strongest: annotateSavSigns(sorted.slice(0, 3)),
+        weakest: annotateSavSigns(sorted.slice(-3)),
       }
       if (planet) {
         const bhav = av[`${planet.toLowerCase()}Bhav`]
@@ -368,7 +379,7 @@ export const TOOLS = [
         varsha_lagna: `${v.varsha_lagna} (lord ${v.varsha_lagna_lord})`,
         muntha: `${v.muntha.sign} in house ${v.muntha.house} (lord ${v.muntha.lord})`,
         mudda_dasha: (v.mudda_dasha ?? []).map(d => `${d.lord}: ${d.start} → ${d.end}`),
-        placements: (v.placements ?? []).map(p => `${p.planet} in ${p.sign} (H${p.house})${p.retrograde ? ' retro' : ''}${p.dignity ? `, ${p.dignity}` : ''}`),
+        placements: (v.placements ?? []).map(p => `${p.planet} in ${p.sign} (H${p.house})${p.retrograde ? ' retro' : ''}${p.dignity ? `, ${p.dignity}` : ''}${planetKaraka(p.planet) ? ` — karaka: ${planetKaraka(p.planet)}` : ''}`),
       }
     },
   },
