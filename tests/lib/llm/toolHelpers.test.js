@@ -58,6 +58,13 @@ describe('divisionalPlacementLine (with meanings)', () => {
     expect(line).toContain('Mars in Aries (H3) — exalted, Ashwini pada 1')
     expect(line).toMatch(/karaka:.*energy|courage/i)
   })
+
+  it('marks retrograde and tolerates missing dignity/nakshatra', () => {
+    const occ = { celestialBody: 'Venus', sign: 'Libra', motion_type: 'retrograde' }
+    const line = divisionalPlacementLine(occ, 7)
+    expect(line).toContain('Venus in Libra (H7) retro')
+    expect(line).toMatch(/karaka:.*love|marriage/i)
+  })
 })
 
 describe('trimCrossAspect', () => {
