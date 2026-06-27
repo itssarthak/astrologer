@@ -116,8 +116,9 @@ export default function ChatTab() {
           onToggleHandsFree={voice.toggleHandsFree}
           extraControls={hasChart && (
             <button onClick={() => setChartOpen(o => !o)} title={chartOpen ? 'Hide chart' : 'Show chart'}
+              aria-label={chartOpen ? 'Hide chart' : 'Show chart'} aria-pressed={chartOpen}
               className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-surface-2 transition-colors">
-              {chartOpen ? '🪐' : '☆'}
+              <span aria-hidden="true">{chartOpen ? '🪐' : '☆'}</span>
             </button>
           )} />
         <ChatMessages messages={messages} streaming={busy} streamingContent={streamingContent} streamingTools={liveTools}
