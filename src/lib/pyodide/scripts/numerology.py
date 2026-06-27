@@ -265,6 +265,9 @@ def compute_numerology_match(name_a, dob_a, gender_a, name_b, dob_b, gender_b):
             "b_missing_filled_by_a": b_filled,
             "shared_strengths": shared,
             "score": grid_score, "rating": _num_rating(grid_score),
+            # Full per-person Lo Shu grids so the UI can render both side-by-side.
+            "a_grid": ga,
+            "b_grid": gb,
         },
         "indicative_score": overall,
         "indicative_label": "indicative, non-classical",

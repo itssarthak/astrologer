@@ -117,12 +117,15 @@ Arrows of weakness: ${g.arrows_weakness.join('; ') || 'none'}`
 
 export function formatNumerologyMatchContext(m) {
   const fill = arr => (arr && arr.length ? arr.join(', ') : 'none')
+  // Each person's full Lo Shu grid, mirroring the two grids the Match tab now renders.
+  const gridLines = (name, g) => g ? `${name}'s Lo Shu — Missing: ${g.missing.join(', ') || 'none'}; Repeated (strong): ${g.repeated.join(', ') || 'none'}; Arrows of strength: ${g.arrows_strength.join('; ') || 'none'}; Arrows of weakness: ${g.arrows_weakness.join('; ') || 'none'}` : null
+  const grids = [gridLines(m.between[0], m.grid.a_grid), gridLines(m.between[1], m.grid.b_grid)].filter(Boolean).join('\n')
   return `## Numerology Compatibility (${m.indicative_label})
 Between ${m.between[0]} and ${m.between[1]}
 Indicative score: ${m.indicative_score}/10 — ${m.summary_rating}
 Core numbers: ${m.core.rating} (${m.core.score}/10)
 Driver-Conductor (cross): ${m.driver_conductor.rating} (${m.driver_conductor.score}/10)
-Grid complementarity: ${m.grid.rating} (${m.grid.score}/10) — ${m.between[1]} supplies ${fill(m.grid.a_missing_filled_by_b)}; ${m.between[0]} supplies ${fill(m.grid.b_missing_filled_by_a)}; shared strengths ${fill(m.grid.shared_strengths)}
+Grid complementarity: ${m.grid.rating} (${m.grid.score}/10) — ${m.between[1]} supplies ${fill(m.grid.a_missing_filled_by_b)}; ${m.between[0]} supplies ${fill(m.grid.b_missing_filled_by_a)}; shared strengths ${fill(m.grid.shared_strengths)}${grids ? '\n' + grids : ''}
 This is indicative only and does not replace the classical 36-point Guna Milan.`
 }
 

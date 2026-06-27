@@ -63,6 +63,18 @@ describe('formatNumerologyMatchContext', () => {
     expect(out).toContain('7/10')
     expect(out).toContain('Harmonious')
   })
+
+  it('includes each partner\'s full Lo Shu grid', () => {
+    const m = { between: ['A', 'B'], indicative_score: 7, indicative_label: 'indicative, non-classical',
+      summary_rating: 'Harmonious',
+      core: { rating: 'Harmonious', score: 8 }, driver_conductor: { rating: 'Mixed', score: 5 },
+      grid: { rating: 'Mixed', score: 6, a_missing_filled_by_b: [5], b_missing_filled_by_a: [2], shared_strengths: [9],
+        a_grid: { missing: [5, 7], repeated: [1], arrows_strength: [], arrows_weakness: [] },
+        b_grid: { missing: [3], repeated: [9], arrows_strength: [], arrows_weakness: [] } } }
+    const out = formatNumerologyMatchContext(m)
+    expect(out).toContain("A's Lo Shu")
+    expect(out).toContain("B's Lo Shu")
+  })
 })
 
 describe('formatSynastryContext per-person gunas', () => {

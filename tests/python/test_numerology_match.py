@@ -28,6 +28,17 @@ def test_match_is_deterministic():
     assert compute_numerology_match(*args) == compute_numerology_match(*args)
 
 
+def test_match_includes_full_per_person_grids():
+    m = compute_numerology_match("Sarthak Chhabra", "1996-11-22", "male",
+                                 "Alice Smith", "1990-06-15", "female")
+    for key in ("a_grid", "b_grid"):
+        g = m["grid"][key]
+        assert set(g["counts"].keys()) == {str(n) for n in range(1, 10)}
+        assert isinstance(g["missing"], list)
+        assert isinstance(g["repeated"], list)
+        assert "arrows_strength" in g and "arrows_weakness" in g
+
+
 def test_match_driver_conductor_is_cross_paired():
     m = compute_numerology_match("A B", "1996-11-22", "male", "C D", "1990-06-15", "female")
     dc = m["driver_conductor"]
