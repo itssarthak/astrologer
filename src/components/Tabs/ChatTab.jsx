@@ -27,6 +27,9 @@ export default function ChatTab() {
   const [speakingId, setSpeakingId] = useState(null)
   // Right-side chart panel: collapsible (desktop) / above-chat section (mobile).
   const [chartOpen, setChartOpen] = useState(true)
+  // A tapped template prompt that REPLACES the input. A fresh {text} object each tap so
+  // re-picking the same chip re-fills (unlike mic inject, which appends a transcript).
+  const [promptFill, setPromptFill] = useState(undefined)
 
   const tts = useTextToSpeech()
 
@@ -79,7 +82,7 @@ export default function ChatTab() {
   }, [stt])
 
   // Template chip pick = fill the input (no auto-send), reusing the mic-injection wiring.
-  const handlePickPrompt = useCallback(text => setMicInject(text), [])
+  const handlePickPrompt = useCallback(text => setPromptFill({ text }), [])
 
   if (!activeProfile) return <div className="flex-1 flex items-center justify-center text-muted text-sm">No profile selected</div>
 
@@ -132,7 +135,7 @@ export default function ChatTab() {
         <ChatInput onSend={handleSend} busy={busy} onStop={stop} placeholder="Ask your astrologer anything..."
           micSupported={stt.supported && !voice.handsFree}
           listening={stt.listening} interim={stt.interim}
-          onMicToggle={handleMicToggle} injectText={micInject} />
+          onMicToggle={handleMicToggle} injectText={micInject} replaceText={promptFill} />
       </div>
     </div>
   )

@@ -7,6 +7,10 @@ export default function ChatInput({
   micSupported = false, listening = false, interim = '', onMicToggle,
   // When set (changes), its value is injected into the textarea (final transcript review).
   injectText,
+  // A {text} signal that REPLACES the textarea contents (e.g. a tapped template prompt).
+  // Distinct from injectText's append so picking a chip overwrites rather than concatenates,
+  // and re-picking the same chip re-fills even if its text is unchanged (new object each tap).
+  replaceText,
 }) {
   const [value, setValue] = useState('')
   const textareaRef = useRef(null)
@@ -19,6 +23,16 @@ export default function ChatInput({
       if (injectText) setValue(prev => (prev ? prev + ' ' : '') + injectText)
     }
   }, [injectText])
+
+  // Replace the textarea with a template prompt. Keyed on object identity, so the parent
+  // sends a fresh {text} each tap and re-picking the same chip still re-fills.
+  const lastReplace = useRef(undefined)
+  useEffect(() => {
+    if (replaceText !== undefined && replaceText !== lastReplace.current) {
+      lastReplace.current = replaceText
+      if (replaceText?.text) setValue(replaceText.text)
+    }
+  }, [replaceText])
 
   // Esc stops an in-flight reply from anywhere on the page (not only the textarea).
   useEffect(() => {
