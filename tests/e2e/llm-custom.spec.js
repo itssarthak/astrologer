@@ -86,7 +86,7 @@ test.describe('Custom LLM provider — request routing', () => {
   })
 })
 
-test.describe('Today tab computes exactly once', () => {
+test.describe('Transit read via template prompt', () => {
   test('transit read is generated with a single LLM call (no duplicate)', async ({ page }) => {
     test.setTimeout(180_000)
     await seedProfile(page, { provider: 'claude', key: 'sk-ant-test' })
@@ -102,17 +102,27 @@ test.describe('Today tab computes exactly once', () => {
 
     await page.goto(BASE)
     await expect(page).toHaveURL(/\/app/)
-    await page.getByRole('button', { name: /^today$/i }).first().click()
+
+    // Today is now a template chip in the Chat view — click the chip, then send.
+    await page.getByRole('button', { name: /today's transit read/i }).click()
+    await page.locator('textarea').press('Enter')
 
     await expect(page.getByText('Single read.')).toBeVisible({ timeout: 150_000 })
     // Give any erroneous second run a chance to fire, then assert it didn't.
     await page.waitForTimeout(1500)
     expect(calls).toBe(1)
 
-    // Leaving and returning to the Today tab must NOT recompute — today's read is cached.
-    await page.getByRole('button', { name: /^chat$/i }).first().click()
-    await page.getByRole('button', { name: /^today$/i }).first().click()
-    await expect(page.getByText('Single read.')).toBeVisible()
+    // MEANINGFUL GUARD: Template chips live exclusively in the empty-state greeting, which
+    // renders only when `messages.length === 0 && !streaming` (see ChatMessages.jsx).
+    // After the first send the chat has at least one message, so the empty-state (and its
+    // chips) must be gone — they CANNOT reappear unless the message history was wiped or
+    // the empty-state condition regressed.  This assertion IS falsifiable: if the chip
+    // wrongly re-rendered it would be clickable again and could silently re-fire an LLM
+    // call, which this guard would catch.
+    await expect(page.getByRole('button', { name: /today's transit read/i })).toHaveCount(0)
+
+    // Additionally confirm no auto-recompute occurred — no timer, no re-mount, no passive
+    // trigger fires a second LLM call on the non-empty chat view.
     await page.waitForTimeout(1000)
     expect(calls).toBe(1)
   })

@@ -1,8 +1,6 @@
 // src/components/TabBar/TabBar.jsx
 const TABS = [
   { id: 'chat', label: 'Chat' },
-  { id: 'today', label: 'Today' },
-  { id: 'chart', label: 'Chart' },
   { id: 'numbers', label: 'Numbers' },
   { id: 'match', label: 'Match' },
 ]

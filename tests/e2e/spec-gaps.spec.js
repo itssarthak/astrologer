@@ -24,11 +24,13 @@ async function seed(page) {
   }, [JSON.stringify([PROFILE]), JSON.stringify({ provider: 'claude', key: 'sk-ant-test' })])
 }
 
-test('Chart card shows the active Vimshottari dasha', async ({ page }) => {
+test('Chart panel shows the active Vimshottari dasha', async ({ page }) => {
   await seed(page)
+  // Explicit desktop viewport: ChartPanel is open by default only on md+ breakpoints (≥768px).
+  await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto(BASE)
   await expect(page).toHaveURL(/\/app/)
-  await page.getByRole('button', { name: /^chart$/i }).first().click()
+  // Chart is embedded in the Chat view (no separate Chart tab); the panel is open by default.
 
   await expect(page.getByText('Dasha:')).toBeVisible()
   // Fixture's active mahadasha lord is Mercury (only appears in the dasha pill, not the SVG)
@@ -37,9 +39,11 @@ test('Chart card shows the active Vimshottari dasha', async ({ page }) => {
 
 test('Sidebar shows the Python engine status indicator', async ({ page }) => {
   await seed(page)
+  // Explicit desktop viewport: sidebar (with engine status) is only visible on md+ breakpoints.
+  await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto(BASE)
   await expect(page).toHaveURL(/\/app/)
-  // Desktop sidebar (viewport is 1280 wide) shows the engine status; it starts loading and
-  // becomes ready. Either way the indicator text mentions the Python engine.
+  // Desktop sidebar shows the engine status; it starts loading and becomes ready.
+  // Either way the indicator text mentions the Python engine.
   await expect(page.getByText(/python engine/i)).toBeVisible()
 })

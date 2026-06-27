@@ -176,9 +176,10 @@ test.describe('MainApp with existing profile', () => {
     await expect(page.getByText('Test Person').first()).toBeVisible()
   })
 
-  test('all five tab buttons are visible', async ({ page }) => {
+  test('all tab buttons are visible', async ({ page }) => {
     await expect(page).toHaveURL(/\/app/, { timeout: 5000 })
-    for (const tab of ['Chat', 'Today', 'Chart', 'Numbers', 'Match']) {
+    // Today and Chart are merged into the Chat view; only three nav tabs remain.
+    for (const tab of ['Chat', 'Numbers', 'Match']) {
       await expect(page.getByRole('button', { name: new RegExp(tab, 'i') }).first()).toBeVisible()
     }
   })

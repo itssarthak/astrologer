@@ -5,8 +5,6 @@ import Sidebar from '../components/Sidebar/Sidebar'
 import TabBar from '../components/TabBar/TabBar'
 import BottomNav from '../components/TabBar/BottomNav'
 import ChatTab from '../components/Tabs/ChatTab'
-import TodayTab from '../components/Tabs/TodayTab'
-import ChartTab from '../components/Tabs/ChartTab'
 import NumbersTab from '../components/Tabs/NumbersTab'
 import MatchTab from '../components/Tabs/MatchTab'
 import GitHubLink from '../components/shared/GitHubLink'
@@ -16,8 +14,6 @@ import { trackEvent } from '../lib/analytics'
 
 const TAB_COMPONENTS = {
   chat: ChatTab,
-  today: TodayTab,
-  chart: ChartTab,
   numbers: NumbersTab,
   match: MatchTab,
 }
