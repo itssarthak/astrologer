@@ -14,7 +14,7 @@ export default function NumerologyMatchPanel({ match }) {
   if (!match) return null
   const fill = arr => (arr && arr.length ? arr.join(', ') : '—')
   return (
-    <div className="border-t border-border pt-3 flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between">
         <span className="text-sm font-semibold text-text">Numerology Compatibility</span>
         <span className="text-xs text-muted">{match.indicative_score}/10 · {match.summary_rating}</span>
