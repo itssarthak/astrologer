@@ -57,6 +57,14 @@ def test_combined_completion_newly_completed_by_union():
     assert src == {4: "a", 9: "b", 2: "a"}
 
 
+def test_combined_completion_vertical_plane_is_a_plane():
+    # The vertical lines (Thought/Will/Action) are planes too — not a lesser "column".
+    c = _combined_completions(_grid({9: 1, 5: 1}), _grid({1: 1}))
+    line = next(l for l in c["completed_lines"] if l["name"] == "Will plane (9-5-1)")
+    assert line["type"] == "plane"
+    assert line["raj_yog"] is False
+
+
 def test_combined_completion_diagonal_is_raj_yog():
     # Diagonal 2-5-8: A holds 2 and 5, B supplies 8.
     c = _combined_completions(_grid({2: 1, 5: 1}), _grid({8: 1}))

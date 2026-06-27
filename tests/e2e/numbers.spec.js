@@ -17,7 +17,7 @@ const NUMEROLOGY = {
     counts: { '1': 2, '2': 0, '3': 0, '4': 1, '5': 1, '6': 2, '7': 0, '8': 0, '9': 2 },
     missing: [2, 3, 7, 8], repeated: [1, 6, 9], kua: null,
     kua_note: 'Kua omitted (requires male/female).',
-    lines: [], arrows_strength: [], arrows_weakness: ['Thought (4-3-8)'],
+    lines: [], arrows_strength: [], arrows_weakness: ['Thought plane (4-3-8)'],
   },
 }
 

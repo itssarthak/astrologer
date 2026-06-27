@@ -8,7 +8,7 @@ const NUM = {
   personality: { chaldean: 3, pythagorean: 3 },
   personal_year: 8,
   loshu: { counts: { '1': 3, '9': 2 }, missing: [5, 7], repeated: [1, 9], kua: 3, kua_note: null,
-           arrows_strength: ['Will (9-5-1)'], arrows_weakness: ['Action (2-7-6)'] },
+           arrows_strength: ['Will plane (9-5-1)'], arrows_weakness: ['Action plane (2-7-6)'] },
 }
 
 describe('formatNumerologyContext', () => {
@@ -16,7 +16,7 @@ describe('formatNumerologyContext', () => {
     const out = formatNumerologyContext(NUM)
     expect(out).toContain('Lo Shu')
     expect(out).toContain('Missing: 5, 7')
-    expect(out).toContain('Will (9-5-1)')
+    expect(out).toContain('Will plane (9-5-1)')
   })
 
   it('still renders without a loshu block (older profiles)', () => {

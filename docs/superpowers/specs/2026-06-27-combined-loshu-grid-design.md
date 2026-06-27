@@ -48,7 +48,7 @@ rejected — it would duplicate sourced facts into the frontend.)
       "name": "Mental plane (4-9-2)",
       "cells": [4, 9, 2],
       "meaning": "<sourced planet-ruler meaning>",
-      "type": "plane" | "column" | "diagonal",
+      "type": "plane" | "diagonal",   # all six rows+columns are planes
       "raj_yog": <bool, true for diagonals>,
       "from": [ {"number": 4, "source": "a"|"b"|"both"}, ... ]  # one per cell
     },
@@ -62,8 +62,9 @@ Logic: build merged counts = a_grid.counts + b_grid.counts per digit. For each o
 the 8 `LOSHU_LINES`, compute line state (`full` when all 3 cells > 0) for A alone,
 B alone, and merged. Keep a line iff merged is `full` and neither A nor B alone was
 `full`. `source` per cell: `both` if A and B both > 0, else `a` / `b`. `type`:
-diagonal for the two "Diagonal …" lines, plane for the three "… plane …" lines,
-column otherwise. `raj_yog = (type == "diagonal")`. `has_raj_yog = any(raj_yog)`.
+diagonal for the two "Diagonal …" lines, plane for the other six (three horizontal
++ three vertical — all are Lo Shu planes). `raj_yog = (type == "diagonal")`.
+`has_raj_yog = any(raj_yog)`.
 
 The combined grid cell counts need no new field — the UI derives the A|B split from
 the existing `grid.a_grid.counts` and `grid.b_grid.counts`.

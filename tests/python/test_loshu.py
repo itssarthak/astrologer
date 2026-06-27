@@ -54,7 +54,7 @@ def test_loshu_lines_and_arrows_present():
     g = compute_loshu_grid("1996-11-22")
     names = {l["name"] for l in g["lines"]}
     assert "Mental plane (4-9-2)" in names
-    assert "Will (9-5-1)" in names
+    assert "Will plane (9-5-1)" in names
     for l in g["lines"]:
         assert l["state"] in ("full", "partial", "absent")
         assert l["meaning"]

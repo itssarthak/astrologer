@@ -53,16 +53,17 @@ def compute_kua(year, gender):
     return 8 if k == 5 else k
 
 
-# Lines through the Lo Shu magic square (4-9-2 / 3-5-7 / 8-1-6): rows (planes), columns,
-# diagonals. Geometry is magic-square fact; the meaning summarises the cells' planet rulers
-# (PLANET_RULER) — not imported pop-numerology prose.
+# Lines through the Lo Shu magic square (4-9-2 / 3-5-7 / 8-1-6): the six planes — three
+# horizontal (rows) and three vertical (columns) — plus the two diagonals. Geometry is
+# magic-square fact; the meaning summarises the cells' planet rulers (PLANET_RULER) — not
+# imported pop-numerology prose.
 LOSHU_LINES = [
     ("Mental plane (4-9-2)",    [4, 9, 2]),
     ("Emotional plane (3-5-7)", [3, 5, 7]),
     ("Practical plane (8-1-6)", [8, 1, 6]),
-    ("Thought (4-3-8)",         [4, 3, 8]),
-    ("Will (9-5-1)",            [9, 5, 1]),
-    ("Action (2-7-6)",          [2, 7, 6]),
+    ("Thought plane (4-3-8)",   [4, 3, 8]),
+    ("Will plane (9-5-1)",      [9, 5, 1]),
+    ("Action plane (2-7-6)",    [2, 7, 6]),
     ("Diagonal 4-5-6",          [4, 5, 6]),
     ("Diagonal 2-5-8",          [2, 5, 8]),
 ]
@@ -71,9 +72,9 @@ LOSHU_LINE_MEANING = {
     "Mental plane (4-9-2)":    "thinking, drive and imagination (Rahu-Mars-Moon).",
     "Emotional plane (3-5-7)": "wisdom, balance and detachment (Jupiter-Mercury-Ketu).",
     "Practical plane (8-1-6)": "method, identity and comfort (Saturn-Sun-Venus).",
-    "Thought (4-3-8)":         "planning and discipline (Rahu-Jupiter-Saturn).",
-    "Will (9-5-1)":            "determination, intellect and identity (Mars-Mercury-Sun).",
-    "Action (2-7-6)":          "instinct, detachment and harmony (Moon-Ketu-Venus).",
+    "Thought plane (4-3-8)":   "planning and discipline (Rahu-Jupiter-Saturn).",
+    "Will plane (9-5-1)":      "determination, intellect and identity (Mars-Mercury-Sun).",
+    "Action plane (2-7-6)":    "instinct, detachment and harmony (Moon-Ketu-Venus).",
     "Diagonal 4-5-6":          "grounded, steady balance (Rahu-Mercury-Venus).",
     "Diagonal 2-5-8":          "emotional resilience (Moon-Mercury-Saturn).",
 }
@@ -219,11 +220,8 @@ def _ruler_of(n):
 
 
 def _line_type(name):
-    if name.startswith("Diagonal"):
-        return "diagonal"
-    if "plane" in name:
-        return "plane"
-    return "column"
+    # The six rows+columns are all planes; the two diagonals are the Raj-Yog lines.
+    return "diagonal" if name.startswith("Diagonal") else "plane"
 
 
 def _combined_completions(ga, gb):
