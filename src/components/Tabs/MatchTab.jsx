@@ -7,13 +7,11 @@ import { useChatThread } from '../../hooks/useChatThread'
 import { formatSynastryContext, formatNumerologyMatchContext } from '../../lib/prompts/formatters'
 import { useReportBusy } from '../../contexts/BusyContext'
 import AddProfileModal from '../Sidebar/AddProfileModal'
-import NumerologyMatchPanel from './NumerologyMatchPanel'
 import ChatMessages from '../Chat/ChatMessages'
-import Markdown from '../Chat/Markdown'
 import ChatInput from '../Chat/ChatInput'
 import ChatToolbar from '../shared/ChatToolbar'
 import LoadingSpinner from '../shared/LoadingSpinner'
-import { LEAN_BADGE, GUNA_ATTRS, FactorRow, OverlaySection } from './Match/matchPrimitives'
+import MatchResultCard from './Match/MatchResultCard'
 
 export default function MatchTab() {
   const { activeProfile, profiles } = useContext(ProfilesContext)
@@ -106,15 +104,16 @@ export default function MatchTab() {
 
   if (!activeProfile) return <div className="flex-1 flex items-center justify-center text-muted text-sm">No profile selected</div>
 
-  const guna = synastryData?.guna_milan
-  const summary = synastryData?.overlay_summary
+  // The Read tab shows the live stream while generating, otherwise the last saved read.
+  const lastRead = [...messages].reverse().find(m => m.role === 'assistant')?.content ?? ''
+  const readForTab = generatingRead ? synastryRead : lastRead
 
   return (
     <div className="flex flex-col h-full">
       <ChatToolbar title="Kundali Match" onRefresh={refresh} onClear={clearChat}
         refreshDisabled={computing || streaming || generatingRead} clearDisabled={streaming || messages.length === 0} />
 
-      <div className="p-4 border-b border-border flex flex-col gap-3 overflow-y-auto flex-shrink-0 max-h-[55%]">
+      <div className="p-4 border-b border-border flex flex-col gap-3 overflow-y-auto flex-shrink-0 max-h-[45%]">
         {otherProfiles.length === 0 ? (
           <div className="flex flex-col gap-2 items-start">
             <p className="text-sm text-muted">Add a second profile to compute compatibility.</p>
@@ -141,110 +140,16 @@ export default function MatchTab() {
         {computeError && <p className="text-xs text-red-500">{computeError}</p>}
 
         {synastryData && (
-          <div className="bg-surface border border-border rounded-xl p-3 flex flex-col gap-3">
-            {/* Guna Milan */}
-            <div>
-              <div className="flex items-baseline justify-between">
-                <span className="text-sm font-semibold text-text">Guna Milan</span>
-                <span className="text-2xl font-bold text-primary">
-                  {guna?.total ?? '—'}<span className="text-sm text-muted font-normal">/36</span>
-                  <span className="ml-2 text-xs text-muted font-medium">{guna?.verdict}</span>
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 mt-2">
-                {Object.entries(guna?.breakdown ?? {}).map(([k, v]) => (
-                  <div key={k} className="flex justify-between text-xs text-muted">
-                    <span className="capitalize">{k.replace(/_/g, ' ')}</span>
-                    <span className="font-medium text-text-2">{v.score}/{v.max}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Each person's underlying gunas (varna, yoni, gana, …) behind the koota scores */}
-              {guna?.profiles && (
-                <div className="grid grid-cols-2 gap-x-4 mt-3 pt-2 border-t border-border/60">
-                  {[[activeProfile?.name, guna.profiles.a], [partnerProfile?.name, guna.profiles.b]].map(([who, p], i) => (
-                    <div key={i} className="flex flex-col gap-0.5">
-                      <span className="text-xs font-semibold text-text-2 truncate">{who}</span>
-                      {p && GUNA_ATTRS.map(([key, label]) => (
-                        <div key={key} className="flex justify-between text-[11px] text-muted">
-                          <span>{label}</span>
-                          <span className="text-text-2">{p[key] ?? '—'}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Planetary overlays */}
-            {summary && (
-              <div className="border-t border-border pt-3 flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-text">Planetary compatibility</span>
-                  <span className={`text-xs capitalize px-2 py-0.5 rounded-full font-medium ${LEAN_BADGE[summary.lean] ?? LEAN_BADGE.mixed}`}>
-                    {summary.lean}
-                  </span>
-                </div>
-                <div className="flex gap-3 text-xs">
-                  <span className="text-green-700">● {summary.supportive} supportive</span>
-                  <span className="text-red-600">● {summary.challenging} challenging</span>
-                  <span className="text-muted">● {summary.neutral} neutral</span>
-                </div>
-                {summary.lean === 'challenging' && (
-                  <p className="text-xs text-text-2">
-                    {synastryData.challenging_until
-                      ? <>Heightened by the current periods — eases after <span className="font-medium">{synastryData.challenging_until}</span>.</>
-                      : 'A steady feature of the match rather than a passing phase — one to manage.'}
-                  </p>
-                )}
-                <OverlaySection title={`${activeProfile.name} → ${partnerProfile?.name}`} overlays={synastryData.a_planets_in_b_houses ?? []} />
-                <OverlaySection title={`${partnerProfile?.name} → ${activeProfile.name}`} overlays={synastryData.b_planets_in_a_houses ?? []} />
-              </div>
-            )}
-
-            {/* Strongest currents — the ranked cross-aspect + overlay digest */}
-            {((synastryData.top_supportive?.length > 0) || (synastryData.top_challenging?.length > 0)) && (
-              <div className="border-t border-border pt-3 flex flex-col gap-2">
-                <span className="text-sm font-semibold text-text">Strongest currents</span>
-                {(synastryData.top_supportive ?? []).map((s, i) => (
-                  <FactorRow key={`s${i}`} text={s} effect="supportive" />
-                ))}
-                {(synastryData.top_challenging ?? []).map((s, i) => (
-                  <FactorRow key={`c${i}`} text={s} effect="challenging" />
-                ))}
-              </div>
-            )}
-
-            {/* Marriage significators + current period */}
-            {synastryData.marriage_factors && (
-              <div className="border-t border-border pt-3 flex flex-col gap-1">
-                <span className="text-sm font-semibold text-text">Marriage significators</span>
-                <p className="text-xs text-text-2">
-                  <span className="font-medium">{activeProfile.name}:</span> {synastryData.marriage_factors.a?.summary ?? '—'}
-                </p>
-                <p className="text-xs text-text-2">
-                  <span className="font-medium">{partnerProfile?.name}:</span> {synastryData.marriage_factors.b?.summary ?? '—'}
-                </p>
-                {synastryData.dasha_overlap?.note && (
-                  <p className="text-xs text-muted mt-1">Current period: {synastryData.dasha_overlap.note}</p>
-                )}
-              </div>
-            )}
-
-            {/* Numerology compatibility — indicative, separate from Guna Milan */}
-            <NumerologyMatchPanel match={numerologyMatch} />
-          </div>
+          <MatchResultCard
+            synastryData={synastryData}
+            numerologyMatch={numerologyMatch}
+            activeProfile={activeProfile}
+            partnerProfile={partnerProfile}
+            read={readForTab}
+            generatingRead={generatingRead}
+          />
         )}
       </div>
-
-      {(generatingRead || synastryRead) && (
-        <div className="p-4 border-b border-border bg-surface overflow-y-auto flex-shrink-0 max-h-[40%]">
-          <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">Compatibility Read</p>
-          <div className="text-sm text-text leading-relaxed">{synastryRead ? <Markdown>{synastryRead}</Markdown> : '...'}</div>
-        </div>
-      )}
 
       <ChatMessages messages={messages} streaming={streaming} streamingContent={streamingContent} />
       {error && <p className="px-4 py-2 text-xs text-red-500 bg-red-50 border-t border-red-100">{error}</p>}
