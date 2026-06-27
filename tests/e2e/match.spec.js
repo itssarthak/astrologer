@@ -39,21 +39,23 @@ test('Match shows Guna breakdown, classified overlays, and an auto compatibility
   await page.locator('select').selectOption('prof-b')
   await page.getByRole('button', { name: 'Match →' }).click()
 
-  // Guna Milan card with real breakdown (the old UI rendered an empty 'kuttas' grid)
+  // Compatibility tab is active by default — Guna Milan card with real breakdown
   await expect(page.getByText('Guna Milan')).toBeVisible({ timeout: 150_000 })
   await expect(page.getByText('/36')).toBeVisible()
-  await expect(page.getByText(/nadi/i)).toBeVisible() // a koota from the breakdown
+  await expect(page.getByText(/nadi/i).first()).toBeVisible() // a koota from the breakdown
 
-  // Enriched planetary overlay section
+  // Planetary content lives on the Planets tab now.
+  await page.getByRole('button', { name: /^Planets/ }).click()
   await expect(page.getByText('Planetary compatibility')).toBeVisible()
   await expect(page.getByText(/supportive/i).first()).toBeVisible()
   await expect(page.getByText(/challenging/i).first()).toBeVisible()
 
-  // Auto-generated compatibility read (from the mocked LLM)
-  await expect(page.getByText('Compatibility Read')).toBeVisible()
-  await expect(page.getByText('You two balance each other well.')).toBeVisible()
+  // The LLM read lives on the Read tab (no more "Compatibility Read" band heading).
+  await page.getByRole('button', { name: /^Read/ }).click()
+  await expect(page.getByText('You two balance each other well.').first()).toBeVisible()
 
-  // Indicative numerology panel, separate from Guna Milan (real compute_numerology_match)
+  // Numerology lives on the Numerology tab.
+  await page.getByRole('button', { name: /^Numerology/ }).click()
   await expect(page.getByText('Numerology Compatibility')).toBeVisible()
   await expect(page.getByText(/indicative, non-classical/i)).toBeVisible()
 
