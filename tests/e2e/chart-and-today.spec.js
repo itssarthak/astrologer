@@ -1,4 +1,5 @@
-// E2E for the Chart (D1) renderer and the Today transit fix.
+// E2E for the ChartPanel (D1 renderer) embedded in the Chat view, and the Today transit
+// template prompt. Today and Chart are merged into the Chat tab — there are no separate tabs.
 // Uses a real captured natal chart as a fixture so these run fast and deterministically,
 // and mocks the Anthropic streaming endpoint so the Today read completes without a key.
 
@@ -40,16 +41,15 @@ async function seedProfile(page) {
   }, [JSON.stringify([PROFILE]), JSON.stringify({ provider: 'claude', key: 'sk-ant-test' })])
 }
 
-test.describe('Chart tab (D1 renderer)', () => {
+test.describe('ChartPanel (D1 renderer embedded in Chat view)', () => {
   test('renders the North Indian chart with real signs and planets', async ({ page }) => {
     await seedProfile(page)
     await page.goto(BASE)
     await expect(page).toHaveURL(/\/app/)
 
-    await page.getByRole('button', { name: /^chart$/i }).first().click()
-
+    // Chart panel is visible by default in the Chat view on desktop (1280px wide).
     // Target the Kundli chart specifically (viewBox 0 0 360 360) — other SVGs exist on the
-    // page now (e.g. the GitHub icon), so `svg.first()` is no longer the chart.
+    // page (e.g. the GitHub icon), so `svg.first()` is no longer the chart.
     const svg = page.locator('svg[viewBox="0 0 360 360"]')
     await expect(svg).toBeVisible()
 
@@ -67,7 +67,7 @@ test.describe('Chart tab (D1 renderer)', () => {
   test('D9 sub-tab renders without errors', async ({ page }) => {
     await seedProfile(page)
     await page.goto(BASE)
-    await page.getByRole('button', { name: /^chart$/i }).first().click()
+    // Chart panel is open by default; click the D9 sub-tab inside it.
     await page.getByRole('button', { name: /^D9$/ }).click()
     // D9 has its own ascendant + houses; the SVG should still render (no "not available")
     await expect(page.locator('svg[viewBox="0 0 360 360"]')).toBeVisible()
@@ -75,8 +75,8 @@ test.describe('Chart tab (D1 renderer)', () => {
   })
 })
 
-test.describe('Today tab (transit fix)', () => {
-  test('computes transit and shows a read — no raw JSON error', async ({ page }) => {
+test.describe('Today transit template prompt', () => {
+  test('template chip fills the input and the chat response contains the transit read', async ({ page }) => {
     test.setTimeout(180_000) // first Pyodide load
 
     await seedProfile(page)
@@ -86,7 +86,12 @@ test.describe('Today tab (transit fix)', () => {
 
     await page.goto(BASE)
     await expect(page).toHaveURL(/\/app/)
-    await page.getByRole('button', { name: /^today$/i }).first().click()
+
+    // Click the "Today's transit read" template chip (visible in the empty-state greeting).
+    await page.getByRole('button', { name: /today's transit read/i }).click()
+
+    // The input should be pre-filled; submit it.
+    await page.locator('textarea').press('Enter')
 
     // The transit read (from the mocked LLM) should appear, proving computeTransit
     // returned valid data and generateRead ran.

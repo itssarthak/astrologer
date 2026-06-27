@@ -7,7 +7,7 @@ import {
 
 // The Pyodide fallback (yogas.py/doshas.py) and the optional PyJHora Lambda emit slightly
 // different yoga shapes ({name,category,planets} vs {name,description}). Normalize both to one
-// canonical contract so consumers (ChartTab, the get_chart tool) never branch on the source:
+// canonical contract so consumers (the Chart panel, the get_chart tool) never branch on the source:
 //   yogas_active: [{ name, category|null, description|null }]
 //   doshas:       { <key>: { present: boolean, text: string } }
 export function normalizeYogasDoshas({ yogas_active, doshas } = {}) {

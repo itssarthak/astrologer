@@ -24,11 +24,11 @@ async function seed(page) {
   }, [JSON.stringify([PROFILE]), JSON.stringify({ provider: 'claude', key: 'sk-ant-test' })])
 }
 
-test('Chart card shows the active Vimshottari dasha', async ({ page }) => {
+test('Chart panel shows the active Vimshottari dasha', async ({ page }) => {
   await seed(page)
   await page.goto(BASE)
   await expect(page).toHaveURL(/\/app/)
-  await page.getByRole('button', { name: /^chart$/i }).first().click()
+  // Chart is embedded in the Chat view (no separate Chart tab); the panel is open by default.
 
   await expect(page.getByText('Dasha:')).toBeVisible()
   // Fixture's active mahadasha lord is Mercury (only appears in the dasha pill, not the SVG)

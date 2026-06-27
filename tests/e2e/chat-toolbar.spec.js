@@ -42,7 +42,8 @@ test.describe('ChatToolbar', () => {
     await page.goto(BASE)
     await expect(page).toHaveURL(/\/app/)
 
-    for (const tab of ['Chat', 'Chart', 'Numbers', 'Match']) {
+    // Chart is merged into the Chat view; only Chat/Numbers/Match tabs remain.
+    for (const tab of ['Chat', 'Numbers', 'Match']) {
       await page.getByRole('button', { name: new RegExp(`^${tab}$`, 'i') }).first().click()
       await expect(page.getByRole('button', { name: /refresh/i })).toBeVisible()
       await expect(page.getByRole('button', { name: /clear chat/i })).toBeVisible()
