@@ -24,6 +24,10 @@ export default function MatchTab() {
   const [computeError, setComputeError] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [synastryRead, setSynastryRead] = useState('')
+  // The completed auto-generated compatibility read, pinned so the Read tab keeps showing it
+  // even after the user asks follow-up questions in the chat below (which append later
+  // assistant messages). A fresh compute / profile change replaces it.
+  const [savedRead, setSavedRead] = useState('')
   const [generatingRead, setGeneratingRead] = useState(false)
   // Match resets extra synastry state on profile change (below), so it opts out of the
   // hook's reset effect and drives the message reload itself.
@@ -39,6 +43,7 @@ export default function MatchTab() {
     setPartnerProfileId('')
     setSynastryData(null)
     setNumerologyMatch(null)
+    setSavedRead('')
     setSynastryRead('')
     setComputeError(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -72,14 +77,17 @@ export default function MatchTab() {
   const generateRead = async (synastry, partner, numMatch) => {
     setGeneratingRead(true)
     setSynastryRead('')
+    setSavedRead('')
     try {
       const extraContext = formatSynastryContext(synastry, activeProfile, partner) +
         (numMatch ? '\n\n' + formatNumerologyMatchContext(numMatch) : '')
-      await send({
+      const fullRead = await send({
         userMessage: 'Give me our full compatibility read.',
         extraContext,
         onChunk: chunk => setSynastryRead(prev => prev + chunk),
       })
+      // Pin the completed read for the Read tab, then clear the live buffer.
+      setSavedRead(fullRead ?? '')
       reload()
       setSynastryRead('')
     } catch {
@@ -104,9 +112,11 @@ export default function MatchTab() {
 
   if (!activeProfile) return <div className="flex-1 flex items-center justify-center text-muted text-sm">No profile selected</div>
 
-  // The Read tab shows the live stream while generating, otherwise the last saved read.
+  // The Read tab shows the live stream while generating, otherwise the pinned compatibility
+  // read (kept across follow-up chat). Fall back to the latest assistant message only when a
+  // saved read isn't in state yet — e.g. revisiting a thread computed in an earlier session.
   const lastRead = [...messages].reverse().find(m => m.role === 'assistant')?.content ?? ''
-  const readForTab = generatingRead ? synastryRead : lastRead
+  const readForTab = generatingRead ? synastryRead : (savedRead || lastRead)
 
   return (
     <div className="flex flex-col h-full">
