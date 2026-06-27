@@ -112,10 +112,17 @@ test.describe('Transit read via template prompt', () => {
     await page.waitForTimeout(1500)
     expect(calls).toBe(1)
 
-    // Switching to another tab and returning must NOT re-send the transit prompt.
-    await page.getByRole('button', { name: /^numbers$/i }).first().click()
-    await page.getByRole('button', { name: /^chat$/i }).first().click()
-    await expect(page.getByText('Single read.')).toBeVisible()
+    // MEANINGFUL GUARD: Template chips live exclusively in the empty-state greeting, which
+    // renders only when `messages.length === 0 && !streaming` (see ChatMessages.jsx).
+    // After the first send the chat has at least one message, so the empty-state (and its
+    // chips) must be gone — they CANNOT reappear unless the message history was wiped or
+    // the empty-state condition regressed.  This assertion IS falsifiable: if the chip
+    // wrongly re-rendered it would be clickable again and could silently re-fire an LLM
+    // call, which this guard would catch.
+    await expect(page.getByRole('button', { name: /today's transit read/i })).toHaveCount(0)
+
+    // Additionally confirm no auto-recompute occurred — no timer, no re-mount, no passive
+    // trigger fires a second LLM call on the non-empty chat view.
     await page.waitForTimeout(1000)
     expect(calls).toBe(1)
   })

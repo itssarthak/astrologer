@@ -42,6 +42,10 @@ async function seedProfile(page) {
 }
 
 test.describe('ChartPanel (D1 renderer embedded in Chat view)', () => {
+  // Explicit desktop viewport: ChartPanel is open by default only on md+ breakpoints (≥768px).
+  // Without this the test depends on the Playwright default width which is not guaranteed.
+  test.use({ viewport: { width: 1280, height: 800 } })
+
   test('renders the North Indian chart with real signs and planets', async ({ page }) => {
     await seedProfile(page)
     await page.goto(BASE)
