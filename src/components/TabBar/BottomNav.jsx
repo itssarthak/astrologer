@@ -1,8 +1,6 @@
 // src/components/TabBar/BottomNav.jsx
 const TABS = [
   { id: 'chat', label: 'Chat', icon: '💬' },
-  { id: 'today', label: 'Today', icon: '☀️' },
-  { id: 'chart', label: 'Chart', icon: '🪐' },
   { id: 'numbers', label: 'Numbers', icon: '✨' },
   { id: 'match', label: 'Match', icon: '❤️' },
 ]
