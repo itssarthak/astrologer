@@ -8,21 +8,38 @@ const COMBINED = {
   has_raj_yog: true,
   completed_lines: [
     {
-      name: 'Diagonal 2-5-8', cells: [2, 5, 8], meaning: 'emotional resilience (Moon-Mercury-Saturn).',
-      type: 'diagonal', raj_yog: true,
-      from: [{ number: 2, source: 'a' }, { number: 5, source: 'a' }, { number: 8, source: 'b' }],
+      name: 'Practical plane (8-1-6)', meaning: 'method, identity and comfort.', type: 'plane', orientation: 'horizontal',
+      raj_yog: false, from: [{ number: 8, source: 'a' }, { number: 1, source: 'both' }, { number: 6, source: 'b' }],
     },
+    {
+      name: 'Thought plane (4-3-8)', meaning: 'planning and discipline.', type: 'plane', orientation: 'vertical',
+      raj_yog: false, from: [{ number: 4, source: 'a' }, { number: 3, source: 'a' }, { number: 8, source: 'b' }],
+    },
+    {
+      name: 'Diagonal 2-5-8', meaning: 'emotional resilience (Moon-Mercury-Saturn).', type: 'diagonal', orientation: 'diagonal',
+      raj_yog: true, from: [{ number: 2, source: 'a' }, { number: 5, source: 'a' }, { number: 8, source: 'b' }],
+    },
+  ],
+  diagonals: [
+    { name: 'Diagonal 4-5-6', newly: false, from: null, missing_in_merged: [6] },
+    { name: 'Diagonal 2-5-8', meaning: 'emotional resilience (Moon-Mercury-Saturn).', newly: true, missing_in_merged: [], from: [{ number: 2, source: 'a' }, { number: 5, source: 'a' }, { number: 8, source: 'b' }] },
   ],
 }
 
 describe('CombinedLoShuGrid', () => {
-  it('renders the legend, completed line, sourced meaning and Raj Yog badge', () => {
+  it('groups completed lines under horizontal / vertical / diagonal headers', () => {
     render(<CombinedLoShuGrid aGrid={A_GRID} bGrid={B_GRID} combined={COMBINED} names={['Alice', 'Bob']} />)
     expect(screen.getByText('Alice')).toBeTruthy()
     expect(screen.getByText('Bob')).toBeTruthy()
+    expect(screen.getByText('Horizontal planes')).toBeTruthy()
+    expect(screen.getByText('Vertical planes')).toBeTruthy()
+    expect(screen.getByText('Diagonals (Raj Yog)')).toBeTruthy()
+    // The vertical plane is shown as such, not lumped with horizontals.
+    expect(screen.getByText('Thought plane (4-3-8)')).toBeTruthy()
+    expect(screen.getByText('Practical plane (8-1-6)')).toBeTruthy()
     expect(screen.getByText(/emotional resilience/)).toBeTruthy()
     expect(screen.getAllByText(/Raj Yog/).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(/8 from Bob/)).toBeTruthy()
+    expect(screen.getAllByText(/8 from Bob/).length).toBeGreaterThanOrEqual(1)
   })
 
   it('renders nothing without a combined block', () => {
@@ -30,8 +47,18 @@ describe('CombinedLoShuGrid', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('notes when the pairing completes no new lines', () => {
-    render(<CombinedLoShuGrid aGrid={A_GRID} bGrid={B_GRID} combined={{ has_raj_yog: false, completed_lines: [] }} names={['Alice', 'Bob']} />)
-    expect(screen.getByText(/No new planes/)).toBeTruthy()
+  it('always shows the diagonals row with the Raj Yog status when none complete', () => {
+    const combined = {
+      has_raj_yog: false, completed_lines: [],
+      diagonals: [
+        { name: 'Diagonal 4-5-6', newly: false, missing_in_merged: [5] },
+        { name: 'Diagonal 2-5-8', newly: false, missing_in_merged: [5] },
+      ],
+    }
+    render(<CombinedLoShuGrid aGrid={A_GRID} bGrid={B_GRID} combined={combined} names={['Alice', 'Bob']} />)
+    expect(screen.getByText('Horizontal planes')).toBeTruthy()
+    expect(screen.getByText('Vertical planes')).toBeTruthy()
+    expect(screen.getByText(/none completed/)).toBeTruthy()
+    expect(screen.getByText(/still missing 5/)).toBeTruthy()
   })
 })

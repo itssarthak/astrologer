@@ -120,13 +120,24 @@ export function formatNumerologyMatchContext(m) {
   // Each person's full Lo Shu grid, mirroring the two grids the Match tab now renders.
   const gridLines = (name, g) => g ? `${name}'s Lo Shu — Missing: ${g.missing.join(', ') || 'none'}; Repeated (strong): ${g.repeated.join(', ') || 'none'}; Arrows of strength: ${g.arrows_strength.join('; ') || 'none'}; Arrows of weakness: ${g.arrows_weakness.join('; ') || 'none'}` : null
   const grids = [gridLines(m.between[0], m.grid.a_grid), gridLines(m.between[1], m.grid.b_grid)].filter(Boolean).join('\n')
-  // Lines newly completed by the union of both grids, with who supplies each cell.
+  // Lines newly completed by the union of both grids, grouped by orientation, with who
+  // supplies each cell. Both diagonals are always reported so the Raj-Yog status is explicit.
   const src = s => (s === 'a' ? m.between[0] : s === 'b' ? m.between[1] : 'both')
-  const done = m.combined?.completed_lines ?? []
-  const completed = done.length
-    ? 'Lines completed jointly (full via the union, not held by either alone):\n' +
-      done.map(l => `  - ${l.name}${l.raj_yog ? ' [Raj Yog]' : ''} — ${l.meaning} (${l.from.map(f => `${f.number} from ${src(f.source)}`).join('; ')})`).join('\n')
-    : 'No Lo Shu lines are newly completed by the pairing.'
+  const c = m.combined ?? {}
+  const attr = l => l.from.map(f => `${f.number} from ${src(f.source)}`).join('; ')
+  const fmtLine = l => `  - ${l.name} — ${l.meaning} (${attr(l)})`
+  const done = c.completed_lines ?? []
+  const sect = (label, rows) => `${label}:${rows.length ? '\n' + rows.join('\n') : ' none'}`
+  const diagsNewly = (c.diagonals ?? []).filter(d => d.newly)
+  const diagMissing = [...new Set((c.diagonals ?? []).flatMap(d => d.missing_in_merged ?? []))].sort((a, b) => a - b)
+  const completed = [
+    'Lines completed jointly (full via the union, not held by either alone):',
+    sect('Horizontal planes', done.filter(l => l.orientation === 'horizontal').map(fmtLine)),
+    sect('Vertical planes', done.filter(l => l.orientation === 'vertical').map(fmtLine)),
+    diagsNewly.length
+      ? sect('Diagonals (Raj Yog)', diagsNewly.map(d => `  - ${d.name} [Raj Yog] — ${d.meaning} (${attr(d)})`))
+      : `Diagonals (Raj Yog): none completed${diagMissing.length ? ` — grid still missing ${diagMissing.join(', ')}` : ''}`,
+  ].join('\n')
   // "Raj Yog" here is the popular-numerology term — keep it distinct from a classical Raja Yoga.
   const rajNote = m.combined?.has_raj_yog
     ? '\nNote: "Raj Yog" above is the popular-numerology label for a jointly completed Lo Shu diagonal within this indicative layer, NOT a classical Vedic Raja Yoga.'

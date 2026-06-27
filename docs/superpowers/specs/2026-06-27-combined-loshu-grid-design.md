@@ -49,9 +49,15 @@ rejected — it would duplicate sourced facts into the frontend.)
       "cells": [4, 9, 2],
       "meaning": "<sourced planet-ruler meaning>",
       "type": "plane" | "diagonal",   # all six rows+columns are planes
+      "orientation": "horizontal" | "vertical" | "diagonal",
       "raj_yog": <bool, true for diagonals>,
       "from": [ {"number": 4, "source": "a"|"b"|"both"}, ... ]  # one per cell
     },
+    ...
+  ],
+  "diagonals": [   # ALWAYS both diagonals, so Raj-Yog status is never dropped
+    { "name": "Diagonal 4-5-6", "cells": [4,5,6], "newly": <bool>,
+      "meaning": "...", "from": [...] | null, "missing_in_merged": [<cells absent in merged>] },
     ...
   ],
   "has_raj_yog": <bool>
@@ -74,8 +80,11 @@ the existing `grid.a_grid.counts` and `grid.b_grid.counts`.
 Props: `aGrid`, `bGrid`, `combined`, `names` ([a, b]).
 - Renders the 3×3 combined grid with per-person colour-coded digit copies.
 - A legend mapping colour → name.
-- "Completed together" list: each line shows its meaning, a type/Raj-Yog badge,
-  and the per-cell "X from <who>" contributions. Raj-Yog top-line summary.
+- "Completed together" — grouped under three headers so orientation is explicit:
+  **Horizontal planes**, **Vertical planes**, **Diagonals (Raj Yog)**. Each completed
+  line shows its meaning and per-cell "X from <who>" contributions. The Diagonals
+  header is ALWAYS shown: completed diagonals carry the Raj-Yog badge; otherwise it
+  states "none completed — grid still missing <cells>". Empty plane groups show "—".
 - Renders nothing if `combined` is absent (older cached matches).
 
 Embedded in `NumerologyMatchPanel.jsx` below the two per-person grids.

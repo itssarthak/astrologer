@@ -76,16 +76,25 @@ describe('formatNumerologyMatchContext', () => {
     expect(out).toContain("B's Lo Shu")
   })
 
-  it('lists jointly completed lines and frames Raj Yog honestly', () => {
+  it('groups completed lines by orientation and frames Raj Yog honestly', () => {
     const m = { between: ['A', 'B'], indicative_score: 7, indicative_label: 'indicative, non-classical',
       summary_rating: 'Harmonious',
       core: { rating: 'Harmonious', score: 8 }, driver_conductor: { rating: 'Mixed', score: 5 },
       grid: { rating: 'Mixed', score: 6, a_missing_filled_by_b: [5], b_missing_filled_by_a: [2], shared_strengths: [9] },
-      combined: { has_raj_yog: true, completed_lines: [
-        { name: 'Diagonal 2-5-8', meaning: 'emotional resilience.', type: 'diagonal', raj_yog: true,
-          from: [{ number: 2, source: 'a' }, { number: 5, source: 'both' }, { number: 8, source: 'b' }] },
-      ] } }
+      combined: { has_raj_yog: true,
+        completed_lines: [
+          { name: 'Action plane (2-7-6)', meaning: 'instinct, detachment and harmony.', orientation: 'vertical',
+            raj_yog: false, from: [{ number: 2, source: 'a' }, { number: 7, source: 'b' }, { number: 6, source: 'both' }] },
+        ],
+        diagonals: [
+          { name: 'Diagonal 4-5-6', newly: false, missing_in_merged: [5] },
+          { name: 'Diagonal 2-5-8', meaning: 'emotional resilience.', newly: true,
+            from: [{ number: 2, source: 'a' }, { number: 5, source: 'both' }, { number: 8, source: 'b' }] },
+        ] } }
     const out = formatNumerologyMatchContext(m)
+    expect(out).toContain('Vertical planes')
+    expect(out).toContain('Action plane (2-7-6)')
+    expect(out).toContain('Horizontal planes: none')
     expect(out).toContain('Diagonal 2-5-8')
     expect(out).toContain('[Raj Yog]')
     expect(out).toContain('8 from B')

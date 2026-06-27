@@ -224,30 +224,56 @@ def _line_type(name):
     return "diagonal" if name.startswith("Diagonal") else "plane"
 
 
+def _orientation(idx, name):
+    # LOSHU_LINES is ordered: 3 rows (horizontal), 3 columns (vertical), then 2 diagonals.
+    if name.startswith("Diagonal"):
+        return "diagonal"
+    return "horizontal" if idx < 3 else "vertical"
+
+
+def _sources(cells, ca, cb):
+    """Per-cell attribution: which partner supplies each number of a line."""
+    out = []
+    for c in cells:
+        a_has, b_has = ca[str(c)] > 0, cb[str(c)] > 0
+        out.append({"number": c, "source": "both" if a_has and b_has else ("a" if a_has else "b")})
+    return out
+
+
 def _combined_completions(ga, gb):
     """Lo Shu lines newly completed by the UNION of two grids — full in the merged grid
-    but not full in either partner alone (the partnership's value-add). Diagonals are
-    flagged raj_yog (the popular-numerology term for a jointly completed diagonal)."""
+    but not full in either partner alone (the partnership's value-add). Each line carries its
+    orientation (horizontal/vertical plane, or diagonal). The two diagonals are reported
+    always (with their merged-missing cells when incomplete) so the Raj-Yog status — the
+    popular-numerology term for a jointly completed diagonal — is never silently dropped."""
     ca, cb = ga["counts"], gb["counts"]
     merged = {str(n): ca[str(n)] + cb[str(n)] for n in range(1, 10)}
 
     def full(counts, cells):
         return all(counts[str(c)] > 0 for c in cells)
 
-    completed = []
-    for name, cells in LOSHU_LINES:
-        if not full(merged, cells) or full(ca, cells) or full(cb, cells):
-            continue
-        frm = []
-        for c in cells:
-            a_has, b_has = ca[str(c)] > 0, cb[str(c)] > 0
-            frm.append({"number": c, "source": "both" if a_has and b_has else ("a" if a_has else "b")})
-        t = _line_type(name)
-        completed.append({
-            "name": name, "cells": cells, "meaning": LOSHU_LINE_MEANING[name],
-            "type": t, "raj_yog": t == "diagonal", "from": frm,
-        })
-    return {"completed_lines": completed, "has_raj_yog": any(l["raj_yog"] for l in completed)}
+    completed, diagonals = [], []
+    for idx, (name, cells) in enumerate(LOSHU_LINES):
+        orient = _orientation(idx, name)
+        newly = full(merged, cells) and not full(ca, cells) and not full(cb, cells)
+        if newly:
+            completed.append({
+                "name": name, "cells": cells, "meaning": LOSHU_LINE_MEANING[name],
+                "type": _line_type(name), "orientation": orient,
+                "raj_yog": orient == "diagonal", "from": _sources(cells, ca, cb),
+            })
+        if orient == "diagonal":
+            diagonals.append({
+                "name": name, "cells": cells, "meaning": LOSHU_LINE_MEANING[name],
+                "newly": newly,
+                "from": _sources(cells, ca, cb) if newly else None,
+                "missing_in_merged": [c for c in cells if merged[str(c)] == 0],
+            })
+    return {
+        "completed_lines": completed,
+        "diagonals": diagonals,
+        "has_raj_yog": any(d["newly"] for d in diagonals),
+    }
 
 
 def compute_numerology_match(name_a, dob_a, gender_a, name_b, dob_b, gender_b):

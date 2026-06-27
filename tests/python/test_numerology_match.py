@@ -51,6 +51,7 @@ def test_combined_completion_newly_completed_by_union():
     assert "Mental plane (4-9-2)" in names
     line = next(l for l in c["completed_lines"] if l["name"] == "Mental plane (4-9-2)")
     assert line["type"] == "plane"
+    assert line["orientation"] == "horizontal"
     assert line["raj_yog"] is False
     assert line["meaning"]  # sourced planet-ruler meaning carried through
     src = {f["number"]: f["source"] for f in line["from"]}
@@ -62,6 +63,7 @@ def test_combined_completion_vertical_plane_is_a_plane():
     c = _combined_completions(_grid({9: 1, 5: 1}), _grid({1: 1}))
     line = next(l for l in c["completed_lines"] if l["name"] == "Will plane (9-5-1)")
     assert line["type"] == "plane"
+    assert line["orientation"] == "vertical"
     assert line["raj_yog"] is False
 
 
@@ -70,8 +72,20 @@ def test_combined_completion_diagonal_is_raj_yog():
     c = _combined_completions(_grid({2: 1, 5: 1}), _grid({8: 1}))
     line = next(l for l in c["completed_lines"] if l["name"] == "Diagonal 2-5-8")
     assert line["type"] == "diagonal"
+    assert line["orientation"] == "diagonal"
     assert line["raj_yog"] is True
     assert c["has_raj_yog"] is True
+
+
+def test_combined_diagonals_always_reported_with_missing_when_incomplete():
+    # Both partners miss the centre 5, so neither diagonal can complete — but both must still
+    # be reported, with the blocking cell surfaced.
+    c = _combined_completions(_grid({4: 1, 6: 1, 2: 1, 8: 1}), _grid({4: 1}))
+    assert len(c["diagonals"]) == 2
+    assert c["has_raj_yog"] is False
+    for d in c["diagonals"]:
+        assert d["newly"] is False
+        assert 5 in d["missing_in_merged"]
 
 
 def test_combined_excludes_lines_already_full_for_one_partner():
@@ -87,6 +101,7 @@ def test_match_has_combined_block():
     assert "combined" in m
     assert isinstance(m["combined"]["completed_lines"], list)
     assert isinstance(m["combined"]["has_raj_yog"], bool)
+    assert len(m["combined"]["diagonals"]) == 2  # both diagonals reported regardless
     # Every surfaced line must genuinely be newly completed by the union.
     ga, gb = m["grid"]["a_grid"]["counts"], m["grid"]["b_grid"]["counts"]
     for line in m["combined"]["completed_lines"]:

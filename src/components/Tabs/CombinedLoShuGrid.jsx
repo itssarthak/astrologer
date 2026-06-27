@@ -15,6 +15,29 @@ export default function CombinedLoShuGrid({ aGrid, bGrid, combined, names }) {
   const cb = bGrid.counts ?? {}
   const who = src => (src === 'a' ? nameA : src === 'b' ? nameB : 'both')
   const lines = combined.completed_lines ?? []
+  const horizontal = lines.filter(l => l.orientation === 'horizontal')
+  const vertical = lines.filter(l => l.orientation === 'vertical')
+  const diagonals = combined.diagonals ?? []
+  const newlyDiagonals = diagonals.filter(d => d.newly)
+  const diagMissing = [...new Set(diagonals.flatMap(d => d.missing_in_merged ?? []))].sort((a, b) => a - b)
+
+  const contributions = line => line.from.map(f => `${f.number} from ${who(f.source)}`).join(' · ')
+  const lineRow = (line, rajYog = false) => (
+    <div key={line.name} className="text-[11px] text-muted">
+      <span className="text-text-2">{line.name}</span>
+      {rajYog && (
+        <span className="ml-1 text-[10px] uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 rounded px-1">Raj Yog</span>
+      )}
+      <span> — {line.meaning}</span>
+      <div className="text-muted">{contributions(line)}</div>
+    </div>
+  )
+  const group = (title, rows) => (
+    <div>
+      <p className="text-[11px] font-semibold text-text-2">{title}</p>
+      {rows.length ? rows : <p className="text-[11px] text-muted">—</p>}
+    </div>
+  )
 
   return (
     <div className="mt-3">
@@ -44,23 +67,17 @@ export default function CombinedLoShuGrid({ aGrid, bGrid, combined, names }) {
           )
         })}
       </div>
-      {lines.length > 0 ? (
-        <div className="mt-2 flex flex-col gap-1.5">
-          <p className="text-[11px] font-semibold text-text-2">Completed together</p>
-          {lines.map(line => (
-            <div key={line.name} className="text-[11px] text-muted">
-              <span className="text-text-2">{line.name}</span>
-              {line.raj_yog && (
-                <span className="ml-1 text-[10px] uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 rounded px-1">Raj Yog</span>
-              )}
-              <span> — {line.meaning}</span>
-              <div className="text-muted">{line.from.map(f => `${f.number} from ${who(f.source)}`).join(' · ')}</div>
-            </div>
-          ))}
+      <div className="mt-2 flex flex-col gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Completed together</p>
+        {group('Horizontal planes', horizontal.map(l => lineRow(l)))}
+        {group('Vertical planes', vertical.map(l => lineRow(l)))}
+        <div>
+          <p className="text-[11px] font-semibold text-text-2">Diagonals (Raj Yog)</p>
+          {newlyDiagonals.length
+            ? newlyDiagonals.map(d => lineRow(d, true))
+            : <p className="text-[11px] text-muted">none completed{diagMissing.length ? ` — grid still missing ${diagMissing.join(', ')}` : ''}</p>}
         </div>
-      ) : (
-        <p className="mt-2 text-[11px] text-muted">No new planes or lines completed by the pairing.</p>
-      )}
+      </div>
     </div>
   )
 }
