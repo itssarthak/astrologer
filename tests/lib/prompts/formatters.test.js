@@ -75,6 +75,22 @@ describe('formatNumerologyMatchContext', () => {
     expect(out).toContain("A's Lo Shu")
     expect(out).toContain("B's Lo Shu")
   })
+
+  it('lists jointly completed lines and frames Raj Yog honestly', () => {
+    const m = { between: ['A', 'B'], indicative_score: 7, indicative_label: 'indicative, non-classical',
+      summary_rating: 'Harmonious',
+      core: { rating: 'Harmonious', score: 8 }, driver_conductor: { rating: 'Mixed', score: 5 },
+      grid: { rating: 'Mixed', score: 6, a_missing_filled_by_b: [5], b_missing_filled_by_a: [2], shared_strengths: [9] },
+      combined: { has_raj_yog: true, completed_lines: [
+        { name: 'Diagonal 2-5-8', meaning: 'emotional resilience.', type: 'diagonal', raj_yog: true,
+          from: [{ number: 2, source: 'a' }, { number: 5, source: 'both' }, { number: 8, source: 'b' }] },
+      ] } }
+    const out = formatNumerologyMatchContext(m)
+    expect(out).toContain('Diagonal 2-5-8')
+    expect(out).toContain('[Raj Yog]')
+    expect(out).toContain('8 from B')
+    expect(out).toContain('NOT a classical Vedic Raja Yoga')
+  })
 })
 
 describe('formatSynastryContext per-person gunas', () => {

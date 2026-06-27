@@ -218,6 +218,40 @@ def _ruler_of(n):
     return PLANET_RULER.get(n if n <= 9 else _reduce(n, keep_master=False))
 
 
+def _line_type(name):
+    if name.startswith("Diagonal"):
+        return "diagonal"
+    if "plane" in name:
+        return "plane"
+    return "column"
+
+
+def _combined_completions(ga, gb):
+    """Lo Shu lines newly completed by the UNION of two grids — full in the merged grid
+    but not full in either partner alone (the partnership's value-add). Diagonals are
+    flagged raj_yog (the popular-numerology term for a jointly completed diagonal)."""
+    ca, cb = ga["counts"], gb["counts"]
+    merged = {str(n): ca[str(n)] + cb[str(n)] for n in range(1, 10)}
+
+    def full(counts, cells):
+        return all(counts[str(c)] > 0 for c in cells)
+
+    completed = []
+    for name, cells in LOSHU_LINES:
+        if not full(merged, cells) or full(ca, cells) or full(cb, cells):
+            continue
+        frm = []
+        for c in cells:
+            a_has, b_has = ca[str(c)] > 0, cb[str(c)] > 0
+            frm.append({"number": c, "source": "both" if a_has and b_has else ("a" if a_has else "b")})
+        t = _line_type(name)
+        completed.append({
+            "name": name, "cells": cells, "meaning": LOSHU_LINE_MEANING[name],
+            "type": t, "raj_yog": t == "diagonal", "from": frm,
+        })
+    return {"completed_lines": completed, "has_raj_yog": any(l["raj_yog"] for l in completed)}
+
+
 def compute_numerology_match(name_a, dob_a, gender_a, name_b, dob_b, gender_b):
     """Indicative (non-classical) numerology compatibility between two people, via the
     ruling-planet NAISARGIKA friendship table and Lo Shu grid complementarity."""
@@ -269,6 +303,7 @@ def compute_numerology_match(name_a, dob_a, gender_a, name_b, dob_b, gender_b):
             "a_grid": ga,
             "b_grid": gb,
         },
+        "combined": _combined_completions(ga, gb),
         "indicative_score": overall,
         "indicative_label": "indicative, non-classical",
         "summary_rating": _num_rating(overall),

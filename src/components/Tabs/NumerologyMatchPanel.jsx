@@ -2,6 +2,7 @@
 // Indicative (non-classical) numerology compatibility — rendered SEPARATELY from Guna Milan
 // and never blended into the 36-point score.
 import LoShuGrid from './LoShuGrid'
+import CombinedLoShuGrid from './CombinedLoShuGrid'
 
 const DIMS = [
   ['core', 'Core numbers'],
@@ -42,6 +43,7 @@ export default function NumerologyMatchPanel({ match }) {
           ))}
         </div>
       )}
+      <CombinedLoShuGrid aGrid={match.grid.a_grid} bGrid={match.grid.b_grid} combined={match.combined} names={match.between} />
     </div>
   )
 }

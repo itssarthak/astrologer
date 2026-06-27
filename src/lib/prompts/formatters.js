@@ -120,12 +120,24 @@ export function formatNumerologyMatchContext(m) {
   // Each person's full Lo Shu grid, mirroring the two grids the Match tab now renders.
   const gridLines = (name, g) => g ? `${name}'s Lo Shu — Missing: ${g.missing.join(', ') || 'none'}; Repeated (strong): ${g.repeated.join(', ') || 'none'}; Arrows of strength: ${g.arrows_strength.join('; ') || 'none'}; Arrows of weakness: ${g.arrows_weakness.join('; ') || 'none'}` : null
   const grids = [gridLines(m.between[0], m.grid.a_grid), gridLines(m.between[1], m.grid.b_grid)].filter(Boolean).join('\n')
+  // Lines newly completed by the union of both grids, with who supplies each cell.
+  const src = s => (s === 'a' ? m.between[0] : s === 'b' ? m.between[1] : 'both')
+  const done = m.combined?.completed_lines ?? []
+  const completed = done.length
+    ? 'Lines completed jointly (full via the union, not held by either alone):\n' +
+      done.map(l => `  - ${l.name}${l.raj_yog ? ' [Raj Yog]' : ''} — ${l.meaning} (${l.from.map(f => `${f.number} from ${src(f.source)}`).join('; ')})`).join('\n')
+    : 'No Lo Shu lines are newly completed by the pairing.'
+  // "Raj Yog" here is the popular-numerology term — keep it distinct from a classical Raja Yoga.
+  const rajNote = m.combined?.has_raj_yog
+    ? '\nNote: "Raj Yog" above is the popular-numerology label for a jointly completed Lo Shu diagonal within this indicative layer, NOT a classical Vedic Raja Yoga.'
+    : ''
   return `## Numerology Compatibility (${m.indicative_label})
 Between ${m.between[0]} and ${m.between[1]}
 Indicative score: ${m.indicative_score}/10 — ${m.summary_rating}
 Core numbers: ${m.core.rating} (${m.core.score}/10)
 Driver-Conductor (cross): ${m.driver_conductor.rating} (${m.driver_conductor.score}/10)
 Grid complementarity: ${m.grid.rating} (${m.grid.score}/10) — ${m.between[1]} supplies ${fill(m.grid.a_missing_filled_by_b)}; ${m.between[0]} supplies ${fill(m.grid.b_missing_filled_by_a)}; shared strengths ${fill(m.grid.shared_strengths)}${grids ? '\n' + grids : ''}
+${completed}${rajNote}
 This is indicative only and does not replace the classical 36-point Guna Milan.`
 }
 
