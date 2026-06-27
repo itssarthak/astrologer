@@ -1,6 +1,9 @@
 // src/components/Tabs/NumerologyMatchPanel.jsx
 // Indicative (non-classical) numerology compatibility — rendered SEPARATELY from Guna Milan
 // and never blended into the 36-point score.
+import LoShuGrid from './LoShuGrid'
+import CombinedLoShuGrid from './CombinedLoShuGrid'
+
 const DIMS = [
   ['core', 'Core numbers'],
   ['driver_conductor', 'Driver–Conductor'],
@@ -30,6 +33,17 @@ export default function NumerologyMatchPanel({ match }) {
       <p className="text-xs text-muted mt-1">
         {match.between[1]} supplies {fill(match.grid.a_missing_filled_by_b)} · {match.between[0]} supplies {fill(match.grid.b_missing_filled_by_a)} · shared strengths {fill(match.grid.shared_strengths)}
       </p>
+      {match.grid.a_grid && match.grid.b_grid && (
+        <div className="flex flex-wrap gap-x-6 gap-y-3 mt-1">
+          {[[match.between[0], match.grid.a_grid], [match.between[1], match.grid.b_grid]].map(([name, grid]) => (
+            <div key={name} className="flex flex-col">
+              <span className="text-xs font-semibold text-text-2 truncate">{name}</span>
+              <LoShuGrid grid={grid} />
+            </div>
+          ))}
+        </div>
+      )}
+      <CombinedLoShuGrid aGrid={match.grid.a_grid} bGrid={match.grid.b_grid} combined={match.combined} names={match.between} />
     </div>
   )
 }

@@ -53,16 +53,17 @@ def compute_kua(year, gender):
     return 8 if k == 5 else k
 
 
-# Lines through the Lo Shu magic square (4-9-2 / 3-5-7 / 8-1-6): rows (planes), columns,
-# diagonals. Geometry is magic-square fact; the meaning summarises the cells' planet rulers
-# (PLANET_RULER) — not imported pop-numerology prose.
+# Lines through the Lo Shu magic square (4-9-2 / 3-5-7 / 8-1-6): the six planes — three
+# horizontal (rows) and three vertical (columns) — plus the two diagonals. Geometry is
+# magic-square fact; the meaning summarises the cells' planet rulers (PLANET_RULER) — not
+# imported pop-numerology prose.
 LOSHU_LINES = [
     ("Mental plane (4-9-2)",    [4, 9, 2]),
     ("Emotional plane (3-5-7)", [3, 5, 7]),
     ("Practical plane (8-1-6)", [8, 1, 6]),
-    ("Thought (4-3-8)",         [4, 3, 8]),
-    ("Will (9-5-1)",            [9, 5, 1]),
-    ("Action (2-7-6)",          [2, 7, 6]),
+    ("Thought plane (4-3-8)",   [4, 3, 8]),
+    ("Will plane (9-5-1)",      [9, 5, 1]),
+    ("Action plane (2-7-6)",    [2, 7, 6]),
     ("Diagonal 4-5-6",          [4, 5, 6]),
     ("Diagonal 2-5-8",          [2, 5, 8]),
 ]
@@ -71,9 +72,9 @@ LOSHU_LINE_MEANING = {
     "Mental plane (4-9-2)":    "thinking, drive and imagination (Rahu-Mars-Moon).",
     "Emotional plane (3-5-7)": "wisdom, balance and detachment (Jupiter-Mercury-Ketu).",
     "Practical plane (8-1-6)": "method, identity and comfort (Saturn-Sun-Venus).",
-    "Thought (4-3-8)":         "planning and discipline (Rahu-Jupiter-Saturn).",
-    "Will (9-5-1)":            "determination, intellect and identity (Mars-Mercury-Sun).",
-    "Action (2-7-6)":          "instinct, detachment and harmony (Moon-Ketu-Venus).",
+    "Thought plane (4-3-8)":   "planning and discipline (Rahu-Jupiter-Saturn).",
+    "Will plane (9-5-1)":      "determination, intellect and identity (Mars-Mercury-Sun).",
+    "Action plane (2-7-6)":    "instinct, detachment and harmony (Moon-Ketu-Venus).",
     "Diagonal 4-5-6":          "grounded, steady balance (Rahu-Mercury-Venus).",
     "Diagonal 2-5-8":          "emotional resilience (Moon-Mercury-Saturn).",
 }
@@ -218,6 +219,63 @@ def _ruler_of(n):
     return PLANET_RULER.get(n if n <= 9 else _reduce(n, keep_master=False))
 
 
+def _line_type(name):
+    # The six rows+columns are all planes; the two diagonals are the Raj-Yog lines.
+    return "diagonal" if name.startswith("Diagonal") else "plane"
+
+
+def _orientation(idx, name):
+    # LOSHU_LINES is ordered: 3 rows (horizontal), 3 columns (vertical), then 2 diagonals.
+    if name.startswith("Diagonal"):
+        return "diagonal"
+    return "horizontal" if idx < 3 else "vertical"
+
+
+def _sources(cells, ca, cb):
+    """Per-cell attribution: which partner supplies each number of a line."""
+    out = []
+    for c in cells:
+        a_has, b_has = ca[str(c)] > 0, cb[str(c)] > 0
+        out.append({"number": c, "source": "both" if a_has and b_has else ("a" if a_has else "b")})
+    return out
+
+
+def _combined_completions(ga, gb):
+    """Lo Shu lines newly completed by the UNION of two grids — full in the merged grid
+    but not full in either partner alone (the partnership's value-add). Each line carries its
+    orientation (horizontal/vertical plane, or diagonal). The two diagonals are reported
+    always (with their merged-missing cells when incomplete) so the Raj-Yog status — the
+    popular-numerology term for a jointly completed diagonal — is never silently dropped."""
+    ca, cb = ga["counts"], gb["counts"]
+    merged = {str(n): ca[str(n)] + cb[str(n)] for n in range(1, 10)}
+
+    def full(counts, cells):
+        return all(counts[str(c)] > 0 for c in cells)
+
+    completed, diagonals = [], []
+    for idx, (name, cells) in enumerate(LOSHU_LINES):
+        orient = _orientation(idx, name)
+        newly = full(merged, cells) and not full(ca, cells) and not full(cb, cells)
+        if newly:
+            completed.append({
+                "name": name, "cells": cells, "meaning": LOSHU_LINE_MEANING[name],
+                "type": _line_type(name), "orientation": orient,
+                "raj_yog": orient == "diagonal", "from": _sources(cells, ca, cb),
+            })
+        if orient == "diagonal":
+            diagonals.append({
+                "name": name, "cells": cells, "meaning": LOSHU_LINE_MEANING[name],
+                "newly": newly,
+                "from": _sources(cells, ca, cb) if newly else None,
+                "missing_in_merged": [c for c in cells if merged[str(c)] == 0],
+            })
+    return {
+        "completed_lines": completed,
+        "diagonals": diagonals,
+        "has_raj_yog": any(d["newly"] for d in diagonals),
+    }
+
+
 def compute_numerology_match(name_a, dob_a, gender_a, name_b, dob_b, gender_b):
     """Indicative (non-classical) numerology compatibility between two people, via the
     ruling-planet NAISARGIKA friendship table and Lo Shu grid complementarity."""
@@ -265,7 +323,11 @@ def compute_numerology_match(name_a, dob_a, gender_a, name_b, dob_b, gender_b):
             "b_missing_filled_by_a": b_filled,
             "shared_strengths": shared,
             "score": grid_score, "rating": _num_rating(grid_score),
+            # Full per-person Lo Shu grids so the UI can render both side-by-side.
+            "a_grid": ga,
+            "b_grid": gb,
         },
+        "combined": _combined_completions(ga, gb),
         "indicative_score": overall,
         "indicative_label": "indicative, non-classical",
         "summary_rating": _num_rating(overall),

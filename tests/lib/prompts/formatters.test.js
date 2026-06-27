@@ -8,7 +8,7 @@ const NUM = {
   personality: { chaldean: 3, pythagorean: 3 },
   personal_year: 8,
   loshu: { counts: { '1': 3, '9': 2 }, missing: [5, 7], repeated: [1, 9], kua: 3, kua_note: null,
-           arrows_strength: ['Will (9-5-1)'], arrows_weakness: ['Action (2-7-6)'] },
+           arrows_strength: ['Will plane (9-5-1)'], arrows_weakness: ['Action plane (2-7-6)'] },
 }
 
 describe('formatNumerologyContext', () => {
@@ -16,7 +16,7 @@ describe('formatNumerologyContext', () => {
     const out = formatNumerologyContext(NUM)
     expect(out).toContain('Lo Shu')
     expect(out).toContain('Missing: 5, 7')
-    expect(out).toContain('Will (9-5-1)')
+    expect(out).toContain('Will plane (9-5-1)')
   })
 
   it('still renders without a loshu block (older profiles)', () => {
@@ -62,6 +62,43 @@ describe('formatNumerologyMatchContext', () => {
     expect(out).toContain('indicative, non-classical')
     expect(out).toContain('7/10')
     expect(out).toContain('Harmonious')
+  })
+
+  it('includes each partner\'s full Lo Shu grid', () => {
+    const m = { between: ['A', 'B'], indicative_score: 7, indicative_label: 'indicative, non-classical',
+      summary_rating: 'Harmonious',
+      core: { rating: 'Harmonious', score: 8 }, driver_conductor: { rating: 'Mixed', score: 5 },
+      grid: { rating: 'Mixed', score: 6, a_missing_filled_by_b: [5], b_missing_filled_by_a: [2], shared_strengths: [9],
+        a_grid: { missing: [5, 7], repeated: [1], arrows_strength: [], arrows_weakness: [] },
+        b_grid: { missing: [3], repeated: [9], arrows_strength: [], arrows_weakness: [] } } }
+    const out = formatNumerologyMatchContext(m)
+    expect(out).toContain("A's Lo Shu")
+    expect(out).toContain("B's Lo Shu")
+  })
+
+  it('groups completed lines by orientation and frames Raj Yog honestly', () => {
+    const m = { between: ['A', 'B'], indicative_score: 7, indicative_label: 'indicative, non-classical',
+      summary_rating: 'Harmonious',
+      core: { rating: 'Harmonious', score: 8 }, driver_conductor: { rating: 'Mixed', score: 5 },
+      grid: { rating: 'Mixed', score: 6, a_missing_filled_by_b: [5], b_missing_filled_by_a: [2], shared_strengths: [9] },
+      combined: { has_raj_yog: true,
+        completed_lines: [
+          { name: 'Action plane (2-7-6)', meaning: 'instinct, detachment and harmony.', orientation: 'vertical',
+            raj_yog: false, from: [{ number: 2, source: 'a' }, { number: 7, source: 'b' }, { number: 6, source: 'both' }] },
+        ],
+        diagonals: [
+          { name: 'Diagonal 4-5-6', newly: false, missing_in_merged: [5] },
+          { name: 'Diagonal 2-5-8', meaning: 'emotional resilience.', newly: true,
+            from: [{ number: 2, source: 'a' }, { number: 5, source: 'both' }, { number: 8, source: 'b' }] },
+        ] } }
+    const out = formatNumerologyMatchContext(m)
+    expect(out).toContain('Vertical planes')
+    expect(out).toContain('Action plane (2-7-6)')
+    expect(out).toContain('Horizontal planes: none')
+    expect(out).toContain('Diagonal 2-5-8')
+    expect(out).toContain('[Raj Yog]')
+    expect(out).toContain('8 from B')
+    expect(out).toContain('NOT a classical Vedic Raja Yoga')
   })
 })
 

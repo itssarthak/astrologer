@@ -6,10 +6,10 @@ const GRID = {
   counts: { '1': 3, '2': 0, '3': 1, '4': 2, '5': 0, '6': 1, '7': 0, '8': 1, '9': 2 },
   missing: [2, 5, 7], repeated: [1, 4, 9], kua: 3, kua_note: null,
   lines: [
-    { name: 'Will (9-5-1)', cells: [9, 5, 1], state: 'partial', meaning: 'determination...' },
+    { name: 'Will plane (9-5-1)', cells: [9, 5, 1], state: 'partial', meaning: 'determination...' },
     { name: 'Mental plane (4-9-2)', cells: [4, 9, 2], state: 'partial', meaning: 'thinking...' },
   ],
-  arrows_strength: [], arrows_weakness: ['Action (2-7-6)'],
+  arrows_strength: [], arrows_weakness: ['Action plane (2-7-6)'],
 }
 
 describe('LoShuGrid', () => {
