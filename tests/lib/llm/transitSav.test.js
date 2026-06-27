@@ -17,20 +17,32 @@ describe('transitLine', () => {
 
   it('appends SAV bindu + band when available for the transiting sign', () => {
     const line = transitLine({ planet: 'Saturn', sign: 'Aquarius', natal_house: 1, retrograde: false }, sav)
-    expect(line).toBe('Saturn in Aquarius → natal H1 · SAV 27 (average)')
+    expect(line).toContain('Saturn in Aquarius → natal H1 · SAV 27 (average)')
+    expect(line).toMatch(/karaka:.*discipline/i)
   })
 
   it('marks retrograde and bands strong/weak', () => {
-    expect(transitLine({ planet: 'Jupiter', sign: 'Leo', natal_house: 7, retrograde: true }, sav))
-      .toBe('Jupiter in Leo → natal H7 (retro) · SAV 32 (strong)')
-    expect(transitLine({ planet: 'Mars', sign: 'Aries', natal_house: 3, retrograde: false }, sav))
-      .toBe('Mars in Aries → natal H3 · SAV 20 (weak)')
+    const jup = transitLine({ planet: 'Jupiter', sign: 'Leo', natal_house: 7, retrograde: true }, sav)
+    expect(jup).toContain('Jupiter in Leo → natal H7 (retro) · SAV 32 (strong)')
+    expect(jup).toMatch(/karaka:.*wisdom|wealth/i)
+    const mar = transitLine({ planet: 'Mars', sign: 'Aries', natal_house: 3, retrograde: false }, sav)
+    expect(mar).toContain('Mars in Aries → natal H3 · SAV 20 (weak)')
+    expect(mar).toMatch(/karaka:.*energy|courage/i)
   })
 
   it('omits the SAV suffix when the sign has no bindu (older charts / missing sav)', () => {
-    expect(transitLine({ planet: 'Sun', sign: 'Pisces', natal_house: 2, retrograde: false }, sav))
-      .toBe('Sun in Pisces → natal H2')
-    expect(transitLine({ planet: 'Sun', sign: 'Pisces', natal_house: 2, retrograde: false }, undefined))
-      .toBe('Sun in Pisces → natal H2')
+    const line1 = transitLine({ planet: 'Sun', sign: 'Pisces', natal_house: 2, retrograde: false }, sav)
+    expect(line1).toContain('Sun in Pisces → natal H2')
+    expect(line1).toMatch(/karaka:.*soul|father/i)
+    const line2 = transitLine({ planet: 'Sun', sign: 'Pisces', natal_house: 2, retrograde: false }, undefined)
+    expect(line2).toContain('Sun in Pisces → natal H2')
+    expect(line2).toMatch(/karaka:.*soul|father/i)
+  })
+
+  it('appends the transiting planet karaka', () => {
+    const line = transitLine({ planet: 'Saturn', sign: 'Libra', natal_house: 7, retrograde: false }, { Libra: 31 })
+    expect(line).toContain('Saturn in Libra → natal H7')
+    expect(line).toContain('SAV 31 (strong)')
+    expect(line).toMatch(/karaka:.*discipline/i)
   })
 })

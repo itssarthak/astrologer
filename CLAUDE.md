@@ -37,3 +37,9 @@ how a piece of data should be surfaced — ask before implementing.
   and `vite.config.js` (`PY_SCRIPTS`); new tools need a label in `src/lib/llm/toolLabels.js`.
 - Never hallucinate astrological facts (see `src/assets/soul.md`): rules come from sourced
   classical definitions; surface only what was computed.
+- **Tool/context outputs attach atomic sourced meanings, never pre-merged synthesis.** When a tool
+  or formatter returns a placement, period, varga, or number, it appends the relevant *single-key*
+  meaning from `src/lib/llm/reference.js` (house signification, planet karaka, sign nature, dignity
+  effect, number traits) as separate labelled facts — so the model never invents a primitive. It
+  must NOT pre-compute the meaning of a *combination* (e.g. a `(planet, house)` lookup); merging
+  primitives into a reading is the model's job.

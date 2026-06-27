@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { planetLines, planetAspects, divisionalPlacementLine, trimCrossAspect } from '../../../src/lib/llm/tools'
+import { planetLines, planetAspects, divisionalPlacementLine, trimCrossAspect, annotateSavSigns } from '../../../src/lib/llm/tools'
 
 const FACTS = {
   planets: {
@@ -17,12 +17,16 @@ const FACTS = {
   },
 }
 
-describe('planetLines (with shadbala)', () => {
-  it('appends rupas/min_required when present, omits when absent', () => {
+describe('planetLines (with shadbala + meanings)', () => {
+  it('appends karaka, house and dignity meaning clauses', () => {
     const lines = planetLines(FACTS)
     expect(lines[0]).toContain('Saturn: Capricorn (H5), moolatrikona, strong')
     expect(lines[0]).toContain('7.8/7 rupas')
-    expect(lines[1]).not.toContain('rupas') // Sun has no shadbala numbers
+    expect(lines[0]).toMatch(/karaka:.*discipline/i)        // planet karaka (Saturn)
+    expect(lines[0]).toMatch(/house:.*children/i)           // H5 signification
+    expect(lines[0]).toMatch(/dignity:.*comfortable|strong/i) // moolatrikona effect
+    expect(lines[1]).not.toContain('rupas')                 // Sun has no shadbala
+    expect(lines[1]).toMatch(/karaka:.*soul|father/i)
   })
 })
 
@@ -46,15 +50,20 @@ describe('planetAspects', () => {
   })
 })
 
-describe('divisionalPlacementLine', () => {
-  it('includes dignity and nakshatra/pada when present', () => {
-    const occ = { celestialBody: 'Mars', sign: 'Aries', dignities: { dignity: 'exalted' }, nakshatra: 'Ashwini', pada: 1, motion_type: 'direct' }
-    expect(divisionalPlacementLine(occ, 3)).toBe('Mars in Aries (H3) — exalted, Ashwini pada 1')
+describe('divisionalPlacementLine (with meanings)', () => {
+  it('appends the planet karaka', () => {
+    const occ = { celestialBody: 'Mars', sign: 'Aries', motion_type: 'direct',
+      dignities: { dignity: 'exalted' }, nakshatra: 'Ashwini', pada: 1 }
+    const line = divisionalPlacementLine(occ, 3)
+    expect(line).toContain('Mars in Aries (H3) — exalted, Ashwini pada 1')
+    expect(line).toMatch(/karaka:.*energy|courage/i)
   })
 
   it('marks retrograde and tolerates missing dignity/nakshatra', () => {
     const occ = { celestialBody: 'Venus', sign: 'Libra', motion_type: 'retrograde' }
-    expect(divisionalPlacementLine(occ, 7)).toBe('Venus in Libra (H7) retro')
+    const line = divisionalPlacementLine(occ, 7)
+    expect(line).toContain('Venus in Libra (H7) retro')
+    expect(line).toMatch(/karaka:.*love|marriage/i)
   })
 })
 
@@ -64,5 +73,30 @@ describe('trimCrossAspect', () => {
     expect(trimCrossAspect(ca)).toEqual({
       from: 'A:Jupiter', to: 'B:Venus', type: 'aspect', effect: 'supportive', tightness: 'tight', orb: 0.5, weight: 1.5, note: 'warms',
     })
+  })
+})
+
+describe('annotateSavSigns', () => {
+  it('labels each sign entry with its bindu and nature', () => {
+    const out = annotateSavSigns([['Scorpio', 32], ['Taurus', 22]])
+    expect(out[0]).toMatch(/Scorpio \(32\).*intense/i)
+    expect(out[1]).toMatch(/Taurus \(22\).*steady/i)
+  })
+})
+
+import { attachNumberMeanings } from '../../../src/lib/llm/tools'
+
+describe('attachNumberMeanings', () => {
+  it('adds ruler+traits for mulank, bhagyank and life_path; skips out-of-range', () => {
+    const out = attachNumberMeanings({ mulank: { number: 3, ruler: 'Jupiter' }, bhagyank: { number: 8, ruler: 'Saturn' }, life_path: 7, destiny: { chaldean: 5 } })
+    expect(out.meanings.mulank).toMatchObject({ number: 3, ruler: 'Jupiter' })
+    expect(out.meanings.bhagyank).toMatchObject({ number: 8, ruler: 'Saturn' })
+    expect(out.meanings.life_path).toMatchObject({ number: 7, ruler: 'Ketu' })   // bare-int path works
+    expect(out.destiny).toEqual({ chaldean: 5 })     // original fields preserved
+  })
+
+  it('omits master numbers (not 1-9)', () => {
+    const out = attachNumberMeanings({ mulank: { number: 11, ruler: 'Moon' } })
+    expect(out.meanings.mulank).toBeUndefined()
   })
 })

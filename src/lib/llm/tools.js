@@ -5,7 +5,7 @@
 import { computeChart, computeTransit, computeSynastry, computeNumerology, computeNumberCompatibility, computeNumerologyMatch, computeLoshuGrid, computeChartFacts, computeVarshaphal } from '../pyodide/index'
 import { getProfiles, getActiveProfile } from '../storage/profiles'
 import { searchPlaces, fetchTimezoneOffset } from '../geocode'
-import { lookupReference, SHODASAVARGA, DIVISIONALS } from './reference'
+import { lookupReference, SHODASAVARGA, DIVISIONALS, houseMeaning, signMeaning, dignityEffect, planetKaraka, numberMeaning } from './reference'
 
 // Format the dignity/strength-annotated planet lines shared by get_chart and compute_chart.
 // Includes the shadbala rupas / minimum-required when the chart carries them, so the model
@@ -13,7 +13,13 @@ import { lookupReference, SHODASAVARGA, DIVISIONALS } from './reference'
 export function planetLines(facts) {
   return Object.entries(facts.planets).map(([name, f]) => {
     const rupas = f.rupas != null && f.min_required != null ? ` · ${f.rupas}/${f.min_required} rupas` : ''
-    return `${name}: ${f.sign} (H${f.house}), ${f.dignity}, ${f.strength}${f.retrograde ? ', retrograde' : ''}${rupas}`
+    const base = `${name}: ${f.sign} (H${f.house}), ${f.dignity}, ${f.strength}${f.retrograde ? ', retrograde' : ''}${rupas}`
+    const meaning = [
+      planetKaraka(name) && `karaka: ${planetKaraka(name)}`,
+      houseMeaning(f.house) && `house: ${houseMeaning(f.house)}`,
+      dignityEffect(f.dignity) && `dignity: ${dignityEffect(f.dignity)}`,
+    ].filter(Boolean).join('; ')
+    return meaning ? `${base} — ${meaning}` : base
   })
 }
 
@@ -41,8 +47,10 @@ export function planetAspects(facts, planetFilter) {
 export function divisionalPlacementLine(occ, houseNumber) {
   const nak = occ.nakshatra ? `${occ.nakshatra}${occ.pada ? ` pada ${occ.pada}` : ''}` : null
   const extras = [occ.dignities?.dignity, nak].filter(Boolean)
-  return `${occ.celestialBody} in ${occ.sign} (H${houseNumber})${occ.motion_type === 'retrograde' ? ' retro' : ''}` +
+  const base = `${occ.celestialBody} in ${occ.sign} (H${houseNumber})${occ.motion_type === 'retrograde' ? ' retro' : ''}` +
     (extras.length ? ` — ${extras.join(', ')}` : '')
+  const karaka = planetKaraka(occ.celestialBody)
+  return karaka ? `${base} — karaka: ${karaka}` : base
 }
 
 // Trim a synastry cross-aspect to the fields worth handing the model. `to` belongs to the other
@@ -64,13 +72,42 @@ export function savBand(bindu) {
   return 'weak'
 }
 
+// Label each [sign, bindu] SAV entry with the sign's nature, so the model can read what life-area
+// flavour a strong/weak sign carries. Atomic: sign nature only — never merged with a planet.
+export function annotateSavSigns(entries) {
+  return entries.map(([sign, bindu]) => {
+    const nat = signMeaning(sign)?.nature
+    return `${sign} (${bindu})${nat ? ` — ${nat}` : ''}`
+  })
+}
+
 // Render one transit planet line, annotated with the natal SAV bindu of the sign it's
 // transiting (and a quick strength read). `sav` is the natal sign→bindu map; the suffix
 // is omitted when it's missing (older charts) or has no entry for the sign.
 export function transitLine(x, sav) {
   const base = `${x.planet} in ${x.sign} → natal H${x.natal_house}${x.retrograde ? ' (retro)' : ''}`
   const bindu = sav?.[x.sign]
-  return bindu == null ? base : `${base} · SAV ${bindu} (${savBand(bindu)})`
+  const savPart = bindu == null ? '' : ` · SAV ${bindu} (${savBand(bindu)})`
+  const karaka = planetKaraka(x.planet)
+  return `${base}${savPart}${karaka ? ` — karaka: ${karaka}` : ''}`
+}
+
+// Attach atomic 1-9 number meanings (ruler + traits) for the driver, conductor and life-path
+// numbers. Master numbers (11/22/33) have no single-digit entry and are simply omitted — the
+// model still has the raw number. Never merges two numbers into a combined reading.
+export function attachNumberMeanings(result) {
+  const numOf = v => (v != null && typeof v === 'object') ? v.number : v
+  const pick = v => {
+    const n = numOf(v)
+    const m = numberMeaning(n)
+    return m ? { number: n, ...m } : undefined
+  }
+  const meanings = {}
+  for (const key of ['mulank', 'bhagyank', 'life_path']) {
+    const m = pick(result?.[key])
+    if (m) meanings[key] = m
+  }
+  return { ...result, meanings }
 }
 
 function findProfileByName(name) {
@@ -144,7 +181,7 @@ export const TOOLS = [
           }
         }
         const ascendant = dv.ascendant ?? dv.houses.find(h => h.number === 1)?.sign
-        return { name: profile.name, varga: key, ascendant, placements }
+        return { name: profile.name, varga: key, ascendant, signifies: DIVISIONALS[key]?.signifies, placements }
       }
       // Not a computed standard chart — explain why (and teach the fact), don't fabricate it.
       const standardList = ['d1', ...Object.keys(profile.chart?.divisionalCharts ?? {})].join(', ')
@@ -178,13 +215,13 @@ export const TOOLS = [
         const ca = firstEntry(m.antardashas)
         const cp = ca ? firstEntry(ca[1].pratyantardashas) : null
         current = {
-          mahadasha: { lord: mLord, start: m.start, end: m.end },
-          antardasha: ca ? { lord: ca[0], start: ca[1].start, end: ca[1].end } : null,
-          pratyantardasha: cp ? { lord: cp[0], start: cp[1].start, end: cp[1].end } : null,
+          mahadasha: { lord: mLord, karaka: planetKaraka(mLord), start: m.start, end: m.end },
+          antardasha: ca ? { lord: ca[0], karaka: planetKaraka(ca[0]), start: ca[1].start, end: ca[1].end } : null,
+          pratyantardasha: cp ? { lord: cp[0], karaka: planetKaraka(cp[0]), start: cp[1].start, end: cp[1].end } : null,
         }
       }
       const mahadasha_timeline = Object.entries(dashas.all?.mahadashas ?? {})
-        .map(([lord, m]) => ({ lord, start: m.start, end: m.end }))
+        .map(([lord, m]) => ({ lord, karaka: planetKaraka(lord), start: m.start, end: m.end }))
       let upcoming = null
       const um = firstEntry(dashas.upcoming?.mahadashas)
       if (um) {
@@ -258,8 +295,8 @@ export const TOOLS = [
       const result = {
         name: profile.name,
         sav,
-        strongest: sorted.slice(0, 3).map(([s, v]) => `${s} (${v})`),
-        weakest: sorted.slice(-3).map(([s, v]) => `${s} (${v})`),
+        strongest: annotateSavSigns(sorted.slice(0, 3)),
+        weakest: annotateSavSigns(sorted.slice(-3)),
       }
       if (planet) {
         const bhav = av[`${planet.toLowerCase()}Bhav`]
@@ -360,7 +397,7 @@ export const TOOLS = [
         varsha_lagna: `${v.varsha_lagna} (lord ${v.varsha_lagna_lord})`,
         muntha: `${v.muntha.sign} in house ${v.muntha.house} (lord ${v.muntha.lord})`,
         mudda_dasha: (v.mudda_dasha ?? []).map(d => `${d.lord}: ${d.start} → ${d.end}`),
-        placements: (v.placements ?? []).map(p => `${p.planet} in ${p.sign} (H${p.house})${p.retrograde ? ' retro' : ''}${p.dignity ? `, ${p.dignity}` : ''}`),
+        placements: (v.placements ?? []).map(p => `${p.planet} in ${p.sign} (H${p.house})${p.retrograde ? ' retro' : ''}${p.dignity ? `, ${p.dignity}` : ''}${planetKaraka(p.planet) ? ` — karaka: ${planetKaraka(p.planet)}` : ''}`),
       }
     },
   },
@@ -378,7 +415,7 @@ export const TOOLS = [
       required: ['full_name', 'dob'],
     },
     async execute({ full_name, dob, gender, name_in_use }) {
-      return computeNumerology(full_name, dob, gender ?? null, name_in_use ?? null)
+      return attachNumberMeanings(await computeNumerology(full_name, dob, gender ?? null, name_in_use ?? null))
     },
   },
   {
@@ -499,7 +536,7 @@ export const TOOLS = [
   },
   {
     name: 'astro_reference',
-    description: "Look up an authoritative Vedic-astrology FACT to confirm it before answering — do NOT rely on memory for which charts/terms exist or what they mean. Covers: divisional charts (e.g. 'd5' → Panchamsa, non-standard; 'trimsamsa' → D30; 'navamsa' → D9) including which are standard, planet natures & karakas, the Vimshottari dasha order/years, and core terms (lagna, kendra, dusthana, karaka, ashtakavarga, …). Returns the matching facts, or an empty list if there's no entry (in which case say you're not certain rather than inventing one). USE THIS whenever the user names a chart/term/number you're not 100% sure of.",
+    description: "Look up an authoritative Vedic-astrology FACT to confirm it before answering — do NOT rely on memory for which charts/terms exist or what they mean. Covers: divisional charts (e.g. 'd5' → Panchamsa, non-standard; 'trimsamsa' → D30; 'navamsa' → D9) including which are standard, planet natures & karakas, the Vimshottari dasha order/years, house significations (e.g. '7th house' → marriage), sign natures (e.g. 'Scorpio'), numerology numbers (e.g. 'number 8'), and core terms (lagna, kendra, dusthana, karaka, ashtakavarga, …). Returns the matching facts, or an empty list if there's no entry (in which case say you're not certain rather than inventing one). USE THIS whenever the user names a chart/term/number you're not 100% sure of.",
     parameters: {
       type: 'object',
       properties: { term: { type: 'string', description: "The chart id, name, planet, number, or term to confirm — e.g. 'd5', 'trimsamsa', 'Saturn', 'kendra', 'vimshottari'." } },
