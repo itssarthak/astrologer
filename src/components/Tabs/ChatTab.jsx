@@ -11,6 +11,8 @@ import ChatMessages from '../Chat/ChatMessages'
 import ChatGreeting from '../Chat/ChatGreeting'
 import ChatInput from '../Chat/ChatInput'
 import ChatToolbar from '../shared/ChatToolbar'
+import ChartPanel from '../Kundli/ChartPanel'
+import TemplatePrompts from '../Chat/TemplatePrompts'
 import { toolLabelActive } from '../../lib/llm/toolLabels'
 
 export default function ChatTab() {
@@ -23,6 +25,8 @@ export default function ChatTab() {
   const [micInject, setMicInject] = useState(undefined)
   // Which assistant message id is currently being spoken (for the per-message ⏹ state).
   const [speakingId, setSpeakingId] = useState(null)
+  // Right-side chart panel: collapsible (desktop) / above-chat section (mobile).
+  const [chartOpen, setChartOpen] = useState(true)
 
   const tts = useTextToSpeech()
 
@@ -74,34 +78,62 @@ export default function ChatTab() {
     else stt.start()
   }, [stt])
 
+  // Template chip pick = fill the input (no auto-send), reusing the mic-injection wiring.
+  const handlePickPrompt = useCallback(text => setMicInject(text), [])
+
   if (!activeProfile) return <div className="flex-1 flex items-center justify-center text-muted text-sm">No profile selected</div>
 
+  const hasChart = !!activeProfile.chart
+  const emptyState = (
+    <div className="flex flex-col items-start gap-1">
+      <ChatGreeting name={activeProfile.name} />
+      <TemplatePrompts onPick={handlePickPrompt} />
+    </div>
+  )
+
   return (
-    <div className="flex flex-col h-full">
-      <ChatToolbar title="Chat" onRefresh={reload} onClear={clearChat}
-        refreshDisabled={busy} clearDisabled={busy || messages.length === 0}
-        ttsSupported={tts.supported} autoSpeak={tts.autoSpeak} speaking={tts.speaking}
-        onToggleAutoSpeak={() => tts.setAutoSpeak(!tts.autoSpeak)}
-        voices={tts.voices} voice={tts.voice}
-        onSelectVoice={uri => tts.setVoice(tts.voices.find(v => v.voiceURI === uri))}
-        voiceSupported={voice.supported} handsFree={voice.handsFree}
-        onToggleHandsFree={voice.toggleHandsFree} />
-      <ChatMessages messages={messages} streaming={busy} streamingContent={streamingContent} streamingTools={liveTools}
-        emptyState={<ChatGreeting name={activeProfile.name} />}
-        onSpeak={tts.supported ? handleSpeak : undefined}
-        onStopSpeak={handleStopSpeak}
-        speakingId={tts.speaking ? speakingId : null} />
-      {busy && toolEvent && (
-        <p className="px-4 py-2 text-xs font-medium text-primary bg-primary-light/50 border-t border-border flex items-center gap-2">
-          <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" />
-          {toolLabelActive(toolEvent.name)}…
-        </p>
+    <div className="flex flex-col md:flex-row h-full min-h-0">
+      {/* Chart panel: above chat on mobile, right column on desktop. Collapsible. */}
+      {hasChart && chartOpen && (
+        <div className="order-first md:order-last flex-shrink-0 border-b md:border-b-0 md:border-l border-border bg-surface
+                        max-h-[40%] md:max-h-none md:h-full md:w-[340px] overflow-y-auto">
+          <ChartPanel profile={activeProfile} />
+        </div>
       )}
-      {error && <p className="px-4 py-2 text-xs text-red-500 bg-red-50 border-t border-red-100">{error}</p>}
-      <ChatInput onSend={handleSend} busy={busy} onStop={stop} placeholder="Ask your astrologer anything..."
-        micSupported={stt.supported && !voice.handsFree}
-        listening={stt.listening} interim={stt.interim}
-        onMicToggle={handleMicToggle} injectText={micInject} />
+
+      {/* Chat column */}
+      <div className="flex flex-col flex-1 min-w-0 min-h-0">
+        <ChatToolbar title="Chat" onRefresh={reload} onClear={clearChat}
+          refreshDisabled={busy} clearDisabled={busy || messages.length === 0}
+          ttsSupported={tts.supported} autoSpeak={tts.autoSpeak} speaking={tts.speaking}
+          onToggleAutoSpeak={() => tts.setAutoSpeak(!tts.autoSpeak)}
+          voices={tts.voices} voice={tts.voice}
+          onSelectVoice={uri => tts.setVoice(tts.voices.find(v => v.voiceURI === uri))}
+          voiceSupported={voice.supported} handsFree={voice.handsFree}
+          onToggleHandsFree={voice.toggleHandsFree}
+          extraControls={hasChart && (
+            <button onClick={() => setChartOpen(o => !o)} title={chartOpen ? 'Hide chart' : 'Show chart'}
+              className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-surface-2 transition-colors">
+              {chartOpen ? '🪐' : '☆'}
+            </button>
+          )} />
+        <ChatMessages messages={messages} streaming={busy} streamingContent={streamingContent} streamingTools={liveTools}
+          emptyState={emptyState}
+          onSpeak={tts.supported ? handleSpeak : undefined}
+          onStopSpeak={handleStopSpeak}
+          speakingId={tts.speaking ? speakingId : null} />
+        {busy && toolEvent && (
+          <p className="px-4 py-2 text-xs font-medium text-primary bg-primary-light/50 border-t border-border flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" />
+            {toolLabelActive(toolEvent.name)}…
+          </p>
+        )}
+        {error && <p className="px-4 py-2 text-xs text-red-500 bg-red-50 border-t border-red-100">{error}</p>}
+        <ChatInput onSend={handleSend} busy={busy} onStop={stop} placeholder="Ask your astrologer anything..."
+          micSupported={stt.supported && !voice.handsFree}
+          listening={stt.listening} interim={stt.interim}
+          onMicToggle={handleMicToggle} injectText={micInject} />
+      </div>
     </div>
   )
 }
