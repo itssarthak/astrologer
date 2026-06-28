@@ -44,6 +44,11 @@ test('switching active profile resets the Match and swaps its chat', async ({ pa
   await page.getByRole('button', { name: 'Match →' }).click()
   await expect(page.getByText('Guna Milan')).toBeVisible({ timeout: 150_000 })
 
+  // Wait for the auto-generated compatibility read to finish streaming. Switching profiles is
+  // intentionally blocked while a response is in flight (ProfileItem locks on busy), so clicking
+  // Carol before the read settles would be silently swallowed and the match would never reset.
+  await expect(page.getByText('A solid match.').first()).toBeVisible({ timeout: 150_000 })
+
   // Switch active profile to Carol via the sidebar
   await page.locator('aside').getByText('Carol').click()
 

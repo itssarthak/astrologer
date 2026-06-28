@@ -6,8 +6,6 @@ import LoadingSpinner from '../shared/LoadingSpinner'
 
 export default function ChatMessages({
   messages, streaming, streamingContent = '', streamingTools = [], emptyState = null,
-  // Optional per-message speech wiring (assistant messages only).
-  onSpeak, onStopSpeak, speakingId = null,
 }) {
   const bottomRef = useRef(null)
 
@@ -21,12 +19,7 @@ export default function ChatMessages({
       {messages.length === 0 && !streaming && emptyState}
       {messages.map((msg, i) => {
         const id = msg.id ?? i
-        return (
-          <ChatMessage key={id} message={msg}
-            onSpeak={onSpeak ? text => onSpeak(text, id) : undefined}
-            onStopSpeak={onStopSpeak}
-            isSpeaking={onSpeak ? speakingId === id : false} />
-        )
+        return <ChatMessage key={id} message={msg} />
       })}
       {streaming && (
         <div className="flex flex-col items-start gap-1">

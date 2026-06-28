@@ -2,16 +2,9 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
 import ChatInput from '../../src/components/Chat/ChatInput'
 
-// The merged Chat view fills the input from two sources with different semantics:
-//   injectText — mic transcripts, which APPEND (you may dictate in pieces)
-//   replaceText — tapped template prompts, which REPLACE (picking a chip overwrites)
+// The merged Chat view fills the input via replaceText — tapped template prompts, which
+// REPLACE the textarea contents (picking a chip overwrites whatever was there).
 describe('ChatInput fill behavior', () => {
-  it('appends successive injectText transcripts with a space', () => {
-    const { rerender } = render(<ChatInput onSend={() => {}} injectText="hello" />)
-    rerender(<ChatInput onSend={() => {}} injectText="world" />)
-    expect(screen.getByRole('textbox').value).toBe('hello world')
-  })
-
   it('replaces the input with replaceText (does not append)', () => {
     const { rerender } = render(<ChatInput onSend={() => {}} replaceText={{ text: 'first prompt' }} />)
     expect(screen.getByRole('textbox').value).toBe('first prompt')
