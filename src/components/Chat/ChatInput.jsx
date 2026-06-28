@@ -1,28 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
-import { MicIcon } from './VoiceIcons'
 
 export default function ChatInput({
   onSend, disabled, busy = false, onStop, placeholder = 'Ask a question...',
-  // Optional manual push-to-talk mic. Rendered only when micSupported.
-  micSupported = false, listening = false, interim = '', onMicToggle,
-  // When set (changes), its value is injected into the textarea (final transcript review).
-  injectText,
   // A {text} signal that REPLACES the textarea contents (e.g. a tapped template prompt).
-  // Distinct from injectText's append so picking a chip overwrites rather than concatenates,
-  // and re-picking the same chip re-fills even if its text is unchanged (new object each tap).
+  // Sent as a fresh {text} object each tap so re-picking the same chip re-fills even if
+  // its text is unchanged.
   replaceText,
 }) {
   const [value, setValue] = useState('')
   const textareaRef = useRef(null)
-
-  // Inject a final transcript from the caller (e.g. manual mic result) for the user to review.
-  const lastInject = useRef(undefined)
-  useEffect(() => {
-    if (injectText !== undefined && injectText !== lastInject.current) {
-      lastInject.current = injectText
-      if (injectText) setValue(prev => (prev ? prev + ' ' : '') + injectText)
-    }
-  }, [injectText])
 
   // Replace the textarea with a template prompt. Keyed on object identity, so the parent
   // sends a fresh {text} each tap and re-picking the same chip still re-fills.
@@ -65,24 +51,10 @@ export default function ChatInput({
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
   }
 
-  const effectivePlaceholder = listening ? (interim || 'Listening…') : placeholder
-
   return (
     <div className="flex gap-2 p-3 border-t border-border bg-surface">
-      {micSupported && onMicToggle && (
-        <button onClick={onMicToggle} disabled={disabled || busy}
-          title={listening ? 'Stop listening' : 'Speak'} aria-pressed={listening} aria-label={listening ? 'Stop listening' : 'Speak'}
-          className={`relative grid place-items-center w-10 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-            listening
-              ? 'bg-red-500 text-white'
-              : 'bg-surface border border-border text-muted hover:text-primary hover:border-primary'
-          }`}>
-          {listening && <span className="absolute inset-0 rounded-xl bg-red-500/40 animate-ping" />}
-          <MicIcon className="relative w-5 h-5" active={listening} />
-        </button>
-      )}
       <textarea ref={textareaRef} value={value} onChange={handleInput} onKeyDown={handleKeyDown}
-        placeholder={effectivePlaceholder} rows={1} disabled={disabled}
+        placeholder={placeholder} rows={1} disabled={disabled}
         className="flex-1 resize-none overflow-hidden rounded-xl border border-border bg-white px-3 py-2 text-sm text-text placeholder-muted focus:outline-none focus:border-primary disabled:opacity-50" />
       {busy && onStop ? (
         <button onClick={onStop}

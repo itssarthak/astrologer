@@ -49,8 +49,10 @@ test('Numbers tab renders the numerology grid with real values', async ({ page }
     await expect(page.getByText(label, { exact: true })).toBeVisible()
   }
 
-  // Primary (Chaldean) values + Pythagorean cross-checks
-  await expect(page.getByText('11', { exact: true })).toBeVisible()      // personality chaldean (master kept)
+  // Primary (Chaldean) values + Pythagorean cross-checks.
+  // Scope to the numerology value card: the Lo Shu grid cell for digit 1 (placed twice)
+  // also renders the literal text "11", so an unscoped getByText('11') is ambiguous.
+  await expect(page.locator('span.text-2xl', { hasText: /^11$/ })).toBeVisible() // personality chaldean (master kept)
   await expect(page.getByText('Pyth: 7').first()).toBeVisible()          // destiny / soul_urge pyth
   await expect(page.getByText('Pyth: 9')).toBeVisible()                  // personality pyth
 
