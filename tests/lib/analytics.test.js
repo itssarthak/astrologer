@@ -36,3 +36,43 @@ describe('analytics trackEvent', () => {
     expect(window.gtag).not.toHaveBeenCalled()
   })
 })
+
+describe('analytics device identity', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    localStorage.clear()
+  })
+  afterEach(() => vi.unstubAllEnvs())
+
+  it('configures gtag with a persistent device id as client_id and user_id', async () => {
+    vi.stubEnv('VITE_GA_MEASUREMENT_ID', 'G-TEST')
+    // gtag pushes its arguments into window.dataLayer — inspect that.
+    window.dataLayer = []
+    const { initAnalytics } = await import('../../src/lib/analytics')
+    initAnalytics()
+
+    const configCall = window.dataLayer.find((args) => args[0] === 'config')
+    expect(configCall).toBeTruthy()
+    const [, id, cfg] = configCall
+    expect(id).toBe('G-TEST')
+    expect(cfg.send_page_view).toBe(false)
+    expect(typeof cfg.client_id).toBe('string')
+    expect(cfg.client_id.length).toBeGreaterThan(0)
+    expect(cfg.user_id).toBe(cfg.client_id)
+    // The id is persisted and reused across loads.
+    expect(localStorage.getItem('astro:deviceId')).toBe(cfg.client_id)
+  })
+
+  it('reuses the same device id across separate loads', async () => {
+    vi.stubEnv('VITE_GA_MEASUREMENT_ID', 'G-TEST')
+    const { initAnalytics } = await import('../../src/lib/analytics')
+    initAnalytics()
+    const first = localStorage.getItem('astro:deviceId')
+
+    vi.resetModules()
+    const { initAnalytics: initAgain } = await import('../../src/lib/analytics')
+    initAgain()
+    const second = localStorage.getItem('astro:deviceId')
+    expect(first).toBe(second)
+  })
+})
